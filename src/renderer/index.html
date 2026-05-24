@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';" />
+    <title>GymPro - Control de Acceso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      #electron-not-found {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #131313;
+        z-index: 999999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        text-align: center;
+      }
+      #electron-not-found.visible {
+        display: flex;
+      }
+      #electron-not-found h1 {
+        font-size: 32px;
+        font-weight: 800;
+        color: #ff6b00;
+        margin-bottom: 16px;
+      }
+      #electron-not-found h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #e5e2e1;
+        margin-bottom: 24px;
+      }
+      #electron-not-found p {
+        color: #a98a7d;
+        font-size: 14px;
+        line-height: 1.8;
+        max-width: 500px;
+        margin-bottom: 32px;
+      }
+      #electron-not-found code {
+        background: #201f1f;
+        padding: 8px 16px;
+        border-radius: 8px;
+        color: #ff6b00;
+        font-family: monospace;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+      #electron-not-found .box {
+        background: #201f1f;
+        border: 1px solid #2a2a2a;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 16px;
+        max-width: 500px;
+        text-align: left;
+      }
+      #electron-not-found .box h3 {
+        color: #ff6b00;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 12px;
+      }
+      #electron-not-found .box li {
+        color: #e5e2e1;
+        font-size: 14px;
+        line-height: 1.8;
+        margin-bottom: 8px;
+        margin-left: 20px;
+      }
+      #electron-not-found .box li:last-child {
+        margin-bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="electron-not-found">
+      <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ff6b00 0%, #ff8c33 100%); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 6.5h11" />
+          <path d="M3 8v8" />
+          <path d="M7 11v2" />
+          <path d="M17 11v2" />
+          <path d="M21 8v8" />
+          <rect x="1" y="6" width="4" height="12" rx="1" />
+          <rect x="19" y="6" width="4" height="12" rx="1" />
+        </svg>
+      </div>
+      <h1>¡OOPS!</h1>
+      <h2>Esta app debe ejecutarse en ELECTRON, no en navegador web</h2>
+      
+      <div class="box">
+        <h3>✅ Ejecución CORRECTA:</h3>
+        <ol>
+          <li>Cierra esta pestaña del navegador</li>
+          <li>Abre la TERMINAL en: <code>C:\Users\hjsan\Downloads\sft_gym</code></li>
+          <li>Ejecuta: <code>npm run dev</code></li>
+          <li>Electron abrirá la app automáticamente</li>
+        </ol>
+      </div>
+
+      <div class="box">
+        <h3>❌ Error Actual:</h3>
+        <p style="margin: 0; font-size: 13px;">
+          Estás viendo esta página en <strong>Chrome/Edge</strong>.<br>
+          <code>window.electronAPI</code> = <strong style="color: #ffb4ab;">undefined</strong><br>
+          La app necesita las APIs de Electron para funcionar (base de datos, ventanas, etc.)
+        </p>
+      </div>
+
+      <p style="margin-top: 8px; font-size: 12px;">
+        Si ya ejecutaste <code>npm run dev</code>, cierra esta pestaña y busca la ventana de Electron que se abrió automáticamente.
+      </p>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+    <script>
+      (function() {
+        if (!window.electronAPI) {
+          const el = document.getElementById('electron-not-found');
+          if (el) {
+            el.classList.add('visible');
+            const rootEl = document.getElementById('root');
+            if (rootEl) {
+              rootEl.style.display = 'none';
+            }
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,249 @@
+import { useEffect, useState } from 'react'
+import { Icons } from '@/components/Icons'
+import { Payment, PaymentMethod } from '../../../shared/types'
+import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0
+  }).format(value)
+}
+
+const paymentMethods: { value: PaymentMethod; label: string; color: string }[] = [
+  { value: 'cash', label: 'Efectivo', color: '#4ade80' },
+  { value: 'transfer', label: 'Transferencia', color: '#60a5fa' },
+  { value: 'card', label: 'Tarjeta', color: '#f472b6' },
+  { value: 'nequi', label: 'Nequi', color: '#ff6b00' },
+  { value: 'daviplata', label: 'Daviplata', color: '#a78bfa' }
+]
+
+function getPaymentMethodLabel(method: string): string {
+  const pm = paymentMethods.find(p => p.value === method)
+  return pm ? pm.label : method
+}
+
+function getPaymentMethodBadge(method: string): JSX.Element {
+  const pm = paymentMethods.find(p => p.value === method)
+  const color = pm?.color || 'var(--color-secondary)'
+  
+  return (
+    <span 
+      className="badge" 
+      style={{ 
+        backgroundColor: `${color}20`,
+        color: color,
+        border: `1px solid ${color}40`
+      }}
+    >
+      {getPaymentMethodLabel(method)}
+    </span>
+  )
+}
+
+function formatDateRange(start: Date, end: Date): { start: string; end: string } {
+  return {
+    start: format(start, 'yyyy-MM-dd'),
+    end: format(end, 'yyyy-MM-dd')
+  }
+}
+
+export function PaymentsPage(): JSX.Element {
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [filterMethod, setFilterMethod] = useState<string>('all')
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month')
+  const [summary, setSummary] = useState({
+    total: 0,
+    count: 0,
+    byMethod: {} as { [key: string]: number }
+  })
+
+  const loadPayments = async () => {
+    let startDate: Date
+    let endDate: Date
+
+    const now = new Date()
+    switch (dateRange) {
+      case 'today':
+        startDate = startOfDay(now)
+        endDate = endOfDay(now)
+        break
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        endDate = endOfDay(now)
+        break
+      case 'month':
+        startDate = startOfMonth(now)
+        endDate = endOfMonth(now)
+        break
+      default:
+        startDate = new Date(0)
+        endDate = new Date()
+    }
+
+    const result = await window.electronAPI.payment.getByDateRange(
+      startDate.toISOString(),
+      endDate.toISOString()
+    )
+
+    if (result.success && result.data) {
+      let filteredPayments = result.data
+      
+      if (filterMethod !== 'all') {
+        filteredPayments = filteredPayments.filter(p => p.method === filterMethod)
+      }
+      
+      setPayments(filteredPayments)
+      
+      const total = filteredPayments.reduce((sum, p) => sum + p.amount, 0)
+      const byMethod: { [key: string]: number } = {}
+      
+      for (const payment of filteredPayments) {
+        byMethod[payment.method] = (byMethod[payment.method] || 0) + payment.amount
+      }
+      
+      setSummary({
+        total,
+        count: filteredPayments.length,
+        byMethod
+      })
+    }
+  }
+
+  useEffect(() => {
+    loadPayments()
+  }, [filterMethod, dateRange])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(4, 1fr)', 
+        gap: 24 
+      }}>
+        <div className="kpi-card">
+          <p className="kpi-label">Total Recaudado</p>
+          <p className="kpi-value" style={{ color: '#4ade80' }}>
+            {formatCurrency(summary.total)}
+          </p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-label">Cantidad de Pagos</p>
+          <p className="kpi-value">{summary.count}</p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-label">Promedio por Pago</p>
+          <p className="kpi-value" style={{ fontSize: 28 }}>
+            {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
+          </p>
+        </div>
+        <div className="kpi-card">
+          <p className="kpi-label">Efectivo</p>
+          <p className="kpi-value" style={{ color: '#4ade80' }}>
+            {formatCurrency(summary.byMethod['cash'] || 0)}
+          </p>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header" style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Historial de Pagos</h3>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div className="tabs" style={{ borderBottom: 'none' }}>
+              {(['today', 'week', 'month', 'all'] as const).map(range => (
+                <div 
+                  key={range}
+                  className={`tab ${dateRange === range ? 'active' : ''}`}
+                  onClick={() => setDateRange(range)}
+                  style={{ 
+                    padding: '8px 16px', 
+                    fontSize: 13,
+                    borderRadius: 8,
+                    borderBottom: dateRange === range ? '2px solid var(--color-primary-container)' : 'none'
+                  }}
+                >
+                  {range === 'today' ? 'Hoy' 
+                    : range === 'week' ? 'Semana' 
+                    : range === 'month' ? 'Mes' 
+                    : 'Todo'}
+                </div>
+              ))}
+            </div>
+            <select 
+              className="form-select"
+              value={filterMethod}
+              onChange={(e) => setFilterMethod(e.target.value)}
+              style={{ width: 140 }}
+            >
+              <option value="all">Todos los métodos</option>
+              {paymentMethods.map(pm => (
+                <option key={pm.value} value={pm.value}>{pm.label}</option>
+              ))}
+            </select>
+            <button className="btn btn-secondary btn-sm" onClick={loadPayments}>
+              <Icons.Refresh />
+            </button>
+          </div>
+        </div>
+
+        <div className="card-body" style={{ padding: 0 }}>
+          {payments.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <Icons.CreditCard />
+              </div>
+              <h3>No hay pagos registrados</h3>
+              <p style={{ marginTop: 8, color: 'var(--color-secondary)' }}>
+                No se encontraron pagos en este período
+              </p>
+            </div>
+          ) : (
+            <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Descripción</th>
+                    <th>Método</th>
+                    <th style={{ textAlign: 'right' }}>Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
+                        {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
+                      </td>
+                      <td>{payment.description || 'Pago'}</td>
+                      <td>
+                        <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+                          {payment.notes || '-'}
+                        </span>
+                      </td>
+                      <td>{getPaymentMethodBadge(payment.method)}</td>
+                      <td style={{ 
+                        textAlign: 'right', 
+                        fontWeight: 600,
+                        fontFamily: 'monospace'
+                      }}>
+                        {formatCurrency(payment.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
