@@ -46,7 +46,8 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
   const generateCode = async () => {
     const result = await window.electronAPI.client.generateCode()
     if (result.success && result.data) {
-      setFormData(prev => ({ ...prev, accessCode: result.data }))
+      const newCode = result.data as string
+      setFormData(prev => ({ ...prev, accessCode: newCode }))
     }
   }
 
