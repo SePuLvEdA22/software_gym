@@ -14,6 +14,7 @@ export interface DbMembership {
   end_date: string
   status: string
   created_at: string
+  frozen_at?: string | null
 }
 
 function mapDbMembership(dbMembership: DbMembership): Membership {
@@ -25,7 +26,8 @@ function mapDbMembership(dbMembership: DbMembership): Membership {
     startDate: dbMembership.start_date,
     endDate: dbMembership.end_date,
     status: dbMembership.status as MembershipStatus,
-    createdAt: dbMembership.created_at
+    createdAt: dbMembership.created_at,
+    frozenAt: dbMembership.frozen_at || null
   }
 }
 
@@ -130,6 +132,24 @@ export function getPlanById(id: string): MembershipPlan | null {
   return result ? mapDbPlan(result) : null
 }
 
+export function getActiveOrFrozenMembership(clientId: string): Membership | null {
+  const db = getDatabase()
+  const now = formatISO(new Date())
+  
+  const stmt = db.prepare(`
+    SELECT * FROM memberships 
+    WHERE client_id = ? 
+      AND (status = 'active' OR status = 'frozen')
+      AND end_date > ?
+    ORDER BY end_date DESC
+    LIMIT 1
+  `)
+  
+  const result = stmt.get(clientId, now) as DbMembership | undefined
+  
+  return result ? mapDbMembership(result) : null
+}
+
 export function createMembership(clientId: string, planId: string, startDate?: string): Membership | null {
   const db = getDatabase()
   const plan = getPlanById(planId)
@@ -137,6 +157,12 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   
   if (!plan || !client) {
     log.error('Cannot create membership: Plan or client not found')
+    return null
+  }
+  
+  const existingMembership = getActiveOrFrozenMembership(clientId)
+  if (existingMembership) {
+    log.error(`Cannot create membership: Client ${clientId} already has an active or frozen membership`)
     return null
   }
   
@@ -152,12 +178,13 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     startDate: formatISO(actualStartDate),
     endDate: formatISO(endDate),
     status: isAfter(endDate, now) ? 'active' : 'expired',
-    createdAt: formatISO(now)
+    createdAt: formatISO(now),
+    frozenAt: null
   }
   
   const stmt = db.prepare(`
-    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at, frozen_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   
   stmt.run(
@@ -168,7 +195,8 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     newMembership.startDate,
     newMembership.endDate,
     newMembership.status,
-    newMembership.createdAt
+    newMembership.createdAt,
+    newMembership.frozenAt
   )
   
   if (newMembership.status === 'active') {
@@ -176,6 +204,102 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   }
   
   return newMembership
+}
+
+export function freezeMembership(membershipId: string): Membership | null {
+  const db = getDatabase()
+  const now = formatISO(new Date())
+  
+  const getStmt = db.prepare('SELECT * FROM memberships WHERE id = ?')
+  const membership = getStmt.get(membershipId) as DbMembership | undefined
+  
+  if (!membership) {
+    log.error(`Cannot freeze: Membership ${membershipId} not found`)
+    return null
+  }
+  
+  if (membership.status !== 'active') {
+    log.error(`Cannot freeze: Membership ${membershipId} is not active (status: ${membership.status})`)
+    return null
+  }
+  
+  const updateStmt = db.prepare(`
+    UPDATE memberships 
+    SET status = 'frozen', frozen_at = ?
+    WHERE id = ?
+  `)
+  
+  updateStmt.run(now, membershipId)
+  
+  const updatedMembership = getStmt.get(membershipId) as DbMembership | undefined
+  
+  return updatedMembership ? mapDbMembership(updatedMembership) : null
+}
+
+export function unfreezeMembership(membershipId: string): Membership | null {
+  const db = getDatabase()
+  const now = new Date()
+  
+  const getStmt = db.prepare('SELECT * FROM memberships WHERE id = ?')
+  const membership = getStmt.get(membershipId) as DbMembership | undefined
+  
+  if (!membership) {
+    log.error(`Cannot unfreeze: Membership ${membershipId} not found`)
+    return null
+  }
+  
+  if (membership.status !== 'frozen') {
+    log.error(`Cannot unfreeze: Membership ${membershipId} is not frozen (status: ${membership.status})`)
+    return null
+  }
+  
+  if (!membership.frozen_at) {
+    log.error(`Cannot unfreeze: Membership ${membershipId} has no frozen_at date`)
+    return null
+  }
+  
+  const frozenDate = parseISO(membership.frozen_at)
+  const frozenDays = Math.ceil((now.getTime() - frozenDate.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (frozenDays > 0) {
+    const currentEndDate = parseISO(membership.end_date)
+    const newEndDate = addDays(currentEndDate, frozenDays)
+    
+    log.info(`Extending membership ${membershipId} by ${frozenDays} days (was frozen)`)
+    log.info(`  Old end date: ${membership.end_date}`)
+    log.info(`  New end date: ${formatISO(newEndDate)}`)
+    
+    const updateStmt = db.prepare(`
+      UPDATE memberships 
+      SET status = 'active', 
+          frozen_at = NULL,
+          end_date = ?
+      WHERE id = ?
+    `)
+    
+    updateStmt.run(formatISO(newEndDate), membershipId)
+  } else {
+    const updateStmt = db.prepare(`
+      UPDATE memberships 
+      SET status = 'active', 
+          frozen_at = NULL
+      WHERE id = ?
+    `)
+    
+    updateStmt.run(membershipId)
+  }
+  
+  const updatedMembership = getStmt.get(membershipId) as DbMembership | undefined
+  
+  if (updatedMembership) {
+    const mapped = mapDbMembership(updatedMembership)
+    if (mapped.status === 'active') {
+      updateClientStatus(mapped.clientId, 'active')
+    }
+    return mapped
+  }
+  
+  return null
 }
 
 export function getActiveMembership(clientId: string): Membership | null {

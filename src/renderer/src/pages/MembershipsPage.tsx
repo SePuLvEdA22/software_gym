@@ -43,35 +43,44 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
     }
   }, [selectedPlanData])
 
-  const handleRenew = async () => {
-    if (!selectedPlan) return
-    
-    setLoading(true)
-    
-    try {
-      const membershipResult = await window.electronAPI.membership.create(
-        client.id, 
-        selectedPlan,
-        startDate ? parseISO(startDate).toISOString() : undefined
-      )
-      
-      if (membershipResult.success && membershipResult.data) {
-        const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
-        await window.electronAPI.payment.record(
-          client.id,
-          amount,
-          paymentMethod,
-          paymentDesc,
-          membershipResult.data.id
-        )
-        
-        onSuccess()
-        onClose()
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+   const handleRenew = async () => {
+     if (!selectedPlan) return
+     
+     setLoading(true)
+     
+     try {
+       const membershipResult = await window.electronAPI.membership.create(
+         client.id, 
+         selectedPlan,
+         startDate ? parseISO(startDate).toISOString() : undefined
+       )
+       
+       if (membershipResult.success && membershipResult.data) {
+         const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
+         await window.electronAPI.payment.record(
+           client.id,
+           amount,
+           paymentMethod,
+           paymentDesc,
+           membershipResult.data.id
+         )
+         
+         onSuccess()
+         onClose()
+       } else {
+         alert(
+           '⚠️ No se puede crear nueva membresía\n\n' +
+           'Este cliente ya tiene una membresía activa o congelada.\n' +
+           'Solo se permite una membresía activa/congelada por cliente.\n\n' +
+           'Si desea renovar, primero debe descongelar o esperar a que venza la membresía actual.'
+         )
+       }
+     } catch (error: any) {
+       alert(`Error: ${error?.message || 'Error desconocido'}`)
+     } finally {
+       setLoading(false)
+     }
+   }
 
   const getEndDate = () => {
     if (!selectedPlanData || !startDate) return null
@@ -116,15 +125,21 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
             </div>
           </div>
 
-          {activeMembership && (
-            <div className="alert alert-warning" style={{ marginBottom: 28 }}>
-              <Icons.Calendar />
-              <div>
-                <span style={{ fontWeight: 600 }}>Membresía actual: </span>
-                {activeMembership.planName} - Vence el {format(parseISO(activeMembership.endDate), 'dd/MM/yyyy')}
-              </div>
-            </div>
-          )}
+           {activeMembership && (
+             <div className={`alert ${activeMembership.status === 'frozen' ? 'alert-warning' : 'alert-warning'}`} style={{ marginBottom: 28 }}>
+               {activeMembership.status === 'frozen' ? <Icons.Snowflake /> : <Icons.Calendar />}
+               <div>
+                 <span style={{ fontWeight: 600 }}>
+                   {activeMembership.status === 'frozen' ? 'Membresía Congelada: ' : 'Membresía actual: '}
+                 </span>
+                 {activeMembership.planName} - 
+                 {activeMembership.status === 'frozen' 
+                   ? ' (Fecha de vencimiento se extiende al descongelar)'
+                   : ` Vence el ${format(parseISO(activeMembership.endDate), 'dd/MM/yyyy')}`
+                 }
+               </div>
+             </div>
+           )}
 
           <div className="form-group" style={{ marginBottom: 20 }}>
             <label className="form-label">Plan de Membresía</label>
@@ -262,19 +277,47 @@ export function MembershipsPage(): JSX.Element {
     setShowRenewModal(true)
   }
 
-  const getStatusBadge = (membership: Membership) => {
-    const now = new Date()
-    const endDate = parseISO(membership.endDate)
-    const daysLeft = differenceInDays(endDate, now)
+   const handleFreeze = async (membershipId: string) => {
+     const result = await window.electronAPI.membership.freeze(membershipId)
+     if (result.success && result.data) {
+       alert('Membresía congelada exitosamente')
+       if (selectedClient) {
+         handleClientSelect(selectedClient)
+       }
+     } else {
+       alert(`Error al congelar membresía: ${result.error || 'No se pudo congelar'}`)
+     }
+   }
 
-    if (membership.status === 'expired' || daysLeft < 0) {
-      return <span className="badge badge-error">Vencido</span>
-    }
-    if (daysLeft <= 7) {
-      return <span className="badge badge-warning">Por vencer ({daysLeft}d)</span>
-    }
-    return <span className="badge badge-success">Activo ({daysLeft}d)</span>
-  }
+   const handleUnfreeze = async (membershipId: string) => {
+     const result = await window.electronAPI.membership.unfreeze(membershipId)
+     if (result.success && result.data) {
+       alert('Membresía descongelada exitosamente\nLa fecha de vencimiento ha sido extendida.')
+       if (selectedClient) {
+         handleClientSelect(selectedClient)
+       }
+     } else {
+       alert(`Error al descongelar membresía: ${result.error || 'No se pudo descongelar'}`)
+     }
+   }
+
+   const getStatusBadge = (membership: Membership) => {
+     if (membership.status === 'frozen') {
+       return <span className="badge badge-warning">Congelado</span>
+     }
+     
+     const now = new Date()
+     const endDate = parseISO(membership.endDate)
+     const daysLeft = differenceInDays(endDate, now)
+
+     if (membership.status === 'expired' || daysLeft < 0) {
+       return <span className="badge badge-error">Vencido</span>
+     }
+     if (daysLeft <= 7) {
+       return <span className="badge badge-warning">Por vencer ({daysLeft}d)</span>
+     }
+     return <span className="badge badge-success">Activo ({daysLeft}d)</span>
+   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -405,37 +448,60 @@ export function MembershipsPage(): JSX.Element {
                 </div>
                 <p>Seleccione un cliente para ver sus membresías</p>
               </div>
-            ) : clientMemberships.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">
-                  <Icons.Membership />
-                </div>
-                <p>Este cliente no tiene membresías registradas</p>
-              </div>
-            ) : (
-              <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Plan</th>
-                      <th>Inicio</th>
-                      <th>Vence</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {clientMemberships.map(membership => (
-                      <tr key={membership.id}>
-                        <td style={{ fontWeight: 500 }}>{membership.planName}</td>
-                        <td>{format(parseISO(membership.startDate), 'dd/MM/yyyy')}</td>
-                        <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
-                        <td>{getStatusBadge(membership)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+             ) : clientMemberships.length === 0 ? (
+               <div className="empty-state">
+                 <div className="empty-state-icon">
+                   <Icons.Membership />
+                 </div>
+                 <p>Este cliente no tiene membresías registradas</p>
+               </div>
+             ) : (
+               <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+                 <table>
+                   <thead>
+                     <tr>
+                       <th>Plan</th>
+                       <th>Inicio</th>
+                       <th>Vence</th>
+                       <th>Estado</th>
+                       <th style={{ width: 140 }}>Acciones</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {clientMemberships.map(membership => (
+                       <tr key={membership.id}>
+                         <td style={{ fontWeight: 500 }}>{membership.planName}</td>
+                         <td>{format(parseISO(membership.startDate), 'dd/MM/yyyy')}</td>
+                         <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
+                         <td>{getStatusBadge(membership)}</td>
+                         <td>
+                           {membership.status === 'active' && (
+                             <button
+                               className="btn btn-secondary btn-sm"
+                               onClick={() => handleFreeze(membership.id)}
+                               title="Congelar membresía"
+                             >
+                               <Icons.Snowflake />
+                               Congelar
+                             </button>
+                           )}
+                           {membership.status === 'frozen' && (
+                             <button
+                               className="btn btn-primary btn-sm"
+                               onClick={() => handleUnfreeze(membership.id)}
+                               title="Descongelar membresía"
+                             >
+                               <Icons.Play />
+                               Descongelar
+                             </button>
+                           )}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             )}
           </div>
         </div>
       </div>
@@ -468,23 +534,23 @@ export function MembershipsPage(): JSX.Element {
         </div>
       </div>
 
-      {showRenewModal && selectedClient && (
-        <RenewModal
-          client={selectedClient}
-          activeMembership={clientMemberships.find(m => m.status === 'active') || null}
-          plans={plans}
-          onClose={() => {
-            setShowRenewModal(false)
-            setSelectedClient(null)
-          }}
-          onSuccess={() => {
-            loadClients()
-            if (selectedClient) {
-              handleClientSelect(selectedClient)
-            }
-          }}
-        />
-      )}
+       {showRenewModal && selectedClient && (
+         <RenewModal
+           client={selectedClient}
+           activeMembership={clientMemberships.find(m => m.status === 'active' || m.status === 'frozen') || null}
+           plans={plans}
+           onClose={() => {
+             setShowRenewModal(false)
+             setSelectedClient(null)
+           }}
+           onSuccess={() => {
+             loadClients()
+             if (selectedClient) {
+               handleClientSelect(selectedClient)
+             }
+           }}
+         />
+       )}
     </div>
   )
 }

@@ -77,6 +77,7 @@ function runMigrations(db: Database.Database): void {
         end_date TEXT NOT NULL,
         status TEXT DEFAULT 'active',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        frozen_at TEXT,
         FOREIGN KEY (client_id) REFERENCES clients(id),
         FOREIGN KEY (plan_id) REFERENCES membership_plans(id)
       );
@@ -141,12 +142,25 @@ function runMigrations(db: Database.Database): void {
       CREATE INDEX IF NOT EXISTS idx_memberships_end_date ON memberships(end_date);
       CREATE INDEX IF NOT EXISTS idx_access_logs_timestamp ON access_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(date);
-    `)
-  })
-  
-  migration()
-  log.info('Database migrations completed')
-}
+     `)
+   })
+   
+   migration()
+   
+   const addFrozenAtColumn = db.transaction(() => {
+     const columns = db.prepare('PRAGMA table_info(memberships)').all() as Array<{ name: string }>
+     const hasFrozenAt = columns.some((c: { name: string }) => c.name === 'frozen_at')
+     
+     if (!hasFrozenAt) {
+       db.exec('ALTER TABLE memberships ADD COLUMN frozen_at TEXT')
+       log.info('Added frozen_at column to memberships table')
+     }
+   })
+   
+   addFrozenAtColumn()
+   
+   log.info('Database migrations completed')
+ }
 
 function insertSeedData(db: Database.Database): void {
   const checkPlans = db.prepare('SELECT COUNT(*) as count FROM membership_plans')

@@ -194,5 +194,19 @@ export const Icons = {
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
+  ),
+
+  Snowflake: (props: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className} style={props.style}>
+      <line x1="12" y1="2" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2L16 6M12 2L8 6M12 22L16 18M12 22L8 18M2 12L6 8M2 12L6 16M22 12L18 8M22 12L18 16" />
+    </svg>
+  ),
+
+  Play: (props: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className} style={props.style}>
+      <polygon points="5 3 19 12 5 21 5 3" />
+    </svg>
   )
 }

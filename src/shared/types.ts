@@ -53,9 +53,10 @@ export interface Membership {
   endDate: string
   status: MembershipStatus
   createdAt: string
+  frozenAt?: string | null
 }
 
-export type MembershipStatus = 'active' | 'expired' | 'cancelled'
+export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen'
 
 export interface Payment {
   id: string
@@ -88,7 +89,7 @@ export interface AccessLog {
 }
 
 export type AccessType = 'check_in' | 'check_out'
-export type AccessResult = 'granted' | 'denied_expired' | 'denied_inactive' | 'denied_not_found'
+export type AccessResult = 'granted' | 'denied_expired' | 'denied_inactive' | 'denied_not_found' | 'denied_frozen'
 
 export interface AccessValidation {
   valid: boolean

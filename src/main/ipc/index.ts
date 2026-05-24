@@ -17,8 +17,11 @@ import {
   getPlanById,
   createMembership,
   getActiveMembership,
+  getActiveOrFrozenMembership,
   getClientMemberships,
   updateExpiredMemberships,
+  freezeMembership,
+  unfreezeMembership,
   recordPayment,
   getClientPayments,
   getPaymentsByDateRange,
@@ -176,6 +179,26 @@ export function setupIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle('membership:freeze', async (_, membershipId) => {
+    try {
+      const membership = freezeMembership(membershipId)
+      return { success: !!membership, data: membership }
+    } catch (error: any) {
+      log.error('Error freezing membership:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('membership:unfreeze', async (_, membershipId) => {
+    try {
+      const membership = unfreezeMembership(membershipId)
+      return { success: !!membership, data: membership }
+    } catch (error: any) {
+      log.error('Error unfreezing membership:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes) => {
     try {
       const payment = recordPayment(clientId, amount, method, description, membershipId, notes)
@@ -235,10 +258,10 @@ export function setupIpcHandlers(): void {
         }
       }
 
-      const membership = getActiveMembership(client.id)
+      const activeOrFrozen = getActiveOrFrozenMembership(client.id)
       const now = new Date()
 
-      if (!membership) {
+      if (!activeOrFrozen) {
         updateClientStatus(client.id, 'expired')
         logAccess(accessCode, 'denied_expired', 'Membresía vencida', client.id, client.fullName)
         return {
@@ -252,6 +275,21 @@ export function setupIpcHandlers(): void {
         }
       }
 
+      if (activeOrFrozen.status === 'frozen') {
+        logAccess(accessCode, 'denied_frozen', 'Membresía congelada', client.id, client.fullName)
+        return {
+          success: true,
+          data: {
+            valid: false,
+            client,
+            membership: activeOrFrozen,
+            message: 'Membresía congelada - contacta recepción',
+            code: 'denied_frozen'
+          }
+        }
+      }
+
+      const membership = activeOrFrozen
       const endDate = parseISO(membership.endDate)
       const daysRemaining = differenceInDays(endDate, now)
 
