@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { Client, MembershipPlan, DashboardMetrics, AccessLog, Membership, Payment } from '../../../shared/types'
 
+export type ToastType = 'success' | 'error' | 'warning' | 'info'
+
+export interface Toast {
+  id: string
+  type: ToastType
+  message: string
+  title?: string
+}
+
 interface AppState {
   clients: Client[]
   plans: MembershipPlan[]
@@ -10,6 +19,7 @@ interface AppState {
   searchQuery: string
   sidebarCollapsed: boolean
   triggerNewClientModal: boolean
+  toasts: Toast[]
 
   setLoading: (loading: boolean) => void
   setSearchQuery: (query: string) => void
@@ -22,6 +32,8 @@ interface AppState {
   updateClientInState: (client: Client) => void
   removeClient: (id: string) => void
   setTriggerNewClientModal: (value: boolean) => void
+  showToast: (type: ToastType, message: string, title?: string) => void
+  removeToast: (id: string) => void
 }
 
 const initialMetrics: DashboardMetrics = {
@@ -38,6 +50,10 @@ const initialMetrics: DashboardMetrics = {
   recentAccesses: []
 }
 
+function generateToastId(): string {
+  return 'toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+}
+
 export const useAppStore = create<AppState>((set) => ({
   clients: [],
   plans: [],
@@ -47,6 +63,7 @@ export const useAppStore = create<AppState>((set) => ({
   searchQuery: '',
   sidebarCollapsed: false,
   triggerNewClientModal: false,
+  toasts: [],
 
   setLoading: (loading) => set({ loading }),
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -62,5 +79,22 @@ export const useAppStore = create<AppState>((set) => ({
   removeClient: (id) => set((state) => ({ 
     clients: state.clients.filter(c => c.id !== id)
   })),
-  setTriggerNewClientModal: (value) => set({ triggerNewClientModal: value })
+  setTriggerNewClientModal: (value) => set({ triggerNewClientModal: value }),
+
+  showToast: (type, message, title) => {
+    const id = generateToastId()
+    const toast: Toast = { id, type, message, title }
+    
+    set((state) => ({ toasts: [...state.toasts, toast] }))
+    
+    setTimeout(() => {
+      set((state) => ({
+        toasts: state.toasts.filter(t => t.id !== id)
+      }))
+    }, 5000)
+  },
+
+  removeToast: (id) => set((state) => ({
+    toasts: state.toasts.filter(t => t.id !== id)
+  }))
 }))

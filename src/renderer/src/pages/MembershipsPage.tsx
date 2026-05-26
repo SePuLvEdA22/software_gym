@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAppStore } from '@/store/appStore'
+import { useAppStore, ToastType } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, PaymentMethod } from '../../../shared/types'
 import { format, parseISO, differenceInDays, addDays } from 'date-fns'
@@ -29,6 +29,7 @@ interface RenewModalProps {
 }
 
 function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: RenewModalProps): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [amount, setAmount] = useState<number>(0)
@@ -55,29 +56,29 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
          startDate ? parseISO(startDate).toISOString() : undefined
        )
        
-       if (membershipResult.success && membershipResult.data) {
-         const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
-         await window.electronAPI.payment.record(
-           client.id,
-           amount,
-           paymentMethod,
-           paymentDesc,
-           membershipResult.data.id
-         )
-         
-         onSuccess()
-         onClose()
-       } else {
-         alert(
-           '⚠️ No se puede crear nueva membresía\n\n' +
-           'Este cliente ya tiene una membresía activa o congelada.\n' +
-           'Solo se permite una membresía activa/congelada por cliente.\n\n' +
-           'Si desea renovar, primero debe descongelar o esperar a que venza la membresía actual.'
-         )
-       }
-     } catch (error: any) {
-       alert(`Error: ${error?.message || 'Error desconocido'}`)
-     } finally {
+        if (membershipResult.success && membershipResult.data) {
+          const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
+          await window.electronAPI.payment.record(
+            client.id,
+            amount,
+            paymentMethod,
+            paymentDesc,
+            membershipResult.data.id
+          )
+          
+          showToast('success', 'Membresía renovada exitosamente', 'Éxito')
+          onSuccess()
+          onClose()
+        } else {
+          showToast(
+            'warning',
+            'Este cliente ya tiene una membresía activa o congelada. Descongela primero o espera a que venza.',
+            'No se puede renovar'
+          )
+        }
+      } catch (error: any) {
+        showToast('error', error?.message || 'Error desconocido', 'Error')
+      } finally {
        setLoading(false)
      }
    }
@@ -226,7 +227,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
 }
 
 export function MembershipsPage(): JSX.Element {
-  const { clients, setClients, plans, setPlans } = useAppStore()
+  const { clients, setClients, plans, setPlans, showToast } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [showRenewModal, setShowRenewModal] = useState(false)
@@ -280,24 +281,24 @@ export function MembershipsPage(): JSX.Element {
    const handleFreeze = async (membershipId: string) => {
      const result = await window.electronAPI.membership.freeze(membershipId)
      if (result.success && result.data) {
-       alert('Membresía congelada exitosamente')
+       showToast('success', 'Membresía congelada exitosamente', 'Listo')
        if (selectedClient) {
          handleClientSelect(selectedClient)
        }
      } else {
-       alert(`Error al congelar membresía: ${result.error || 'No se pudo congelar'}`)
+       showToast('error', result.error || 'No se pudo congelar la membresía', 'Error')
      }
    }
 
    const handleUnfreeze = async (membershipId: string) => {
      const result = await window.electronAPI.membership.unfreeze(membershipId)
      if (result.success && result.data) {
-       alert('Membresía descongelada exitosamente\nLa fecha de vencimiento ha sido extendida.')
+       showToast('success', 'Membresía descongelada. La fecha de vencimiento ha sido extendida.', 'Listo')
        if (selectedClient) {
          handleClientSelect(selectedClient)
        }
      } else {
-       alert(`Error al descongelar membresía: ${result.error || 'No se pudo descongelar'}`)
+       showToast('error', result.error || 'No se pudo descongelar la membresía', 'Error')
      }
    }
 

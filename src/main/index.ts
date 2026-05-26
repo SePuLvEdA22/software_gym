@@ -58,7 +58,7 @@ function createAdminWindow(): BrowserWindow {
     minHeight: 700,
     show: false,
     autoHideMenuBar: true,
-    title: 'GymPro - Panel Administrativo',
+     title: 'BodyFitGym - Panel Administrativo',
      webPreferences: {
        preload: getPreloadPath(),
        sandbox: false,
@@ -121,7 +121,7 @@ function createKioskWindow(displayIndex = 0): BrowserWindow {
     frame: true,
     fullscreen: false,
     autoHideMenuBar: true,
-    title: 'GYMPRO KIOSCO - Toca la pantalla',
+     title: 'BodyFitGym Kiosco - Toca la pantalla',
      webPreferences: {
        preload: getPreloadPath(),
        sandbox: false,

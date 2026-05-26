@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 
 export function SettingsPage(): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
   const [kioskOpen, setKioskOpen] = useState(false)
   const [doorConfig, setDoorConfig] = useState({
     openDuration: 5000,
@@ -74,18 +76,18 @@ export function SettingsPage(): JSX.Element {
         }
         console.log('[SettingsPage] Debug info:', debugInfo)
         
-        alert(
-          '⚠️ CONTEXTO INVALIDO\n\n' +
-          'Esta funcionalidad solo funciona dentro de la ventana de Electron.\n\n' +
-          'COMO SABER SI ESTAS EN ELECTRON:\n' +
-          '- La ventana debería tener título "Gym Access Control"\n' +
-          '- No deberías ver la barra de URL del navegador\n\n' +
-          'Si estas viendo esto en Chrome/Edge/Firefox:\n' +
-          '1. Cierra esta pestaña\n' +
-          '2. Mira la TERMINAL donde ejecutaste npm run dev\n' +
-          '3. Electron abrió una ventana NUEVA - usa esa.\n\n' +
-          `[Debug Info]\n${debugInfo}`
-        )
+         alert(
+           '⚠️ CONTEXTO INVALIDO\n\n' +
+           'Esta funcionalidad solo funciona dentro de la ventana de Electron.\n\n' +
+           'COMO SABER SI ESTAS EN ELECTRON:\n' +
+           '- La ventana debería tener título "BodyFitGym - Panel Administrativo"\n' +
+           '- No deberías ver la barra de URL del navegador\n\n' +
+           'Si estas viendo esto en Chrome/Edge/Firefox:\n' +
+           '1. Cierra esta pestaña\n' +
+           '2. Mira la TERMINAL donde ejecutaste npm run dev\n' +
+           '3. Electron abrió una ventana NUEVA - usa esa.\n\n' +
+           `[Debug Info]\n${debugInfo}`
+         )
         return
       }
       
@@ -95,18 +97,18 @@ export function SettingsPage(): JSX.Element {
       
       if (result.success) {
         setKioskOpen(true)
-        alert(
-          '✅ KIOSCO ABIERTO!\n\n' +
-          'Si tienes 2 MONITORES:\n' +
-          '  → Mira el segundo monitor (deberia estar en pantalla completa)\n\n' +
-          'Si tienes 1 MONITOR:\n' +
-          '  → Busca la ventana nueva con título "GYMPRO KIOSCO"\n\n' +
-          'Para volver al panel admin:\n' +
-          '  → Presiona la tecla "A" en el kiosco para mostrar el botón de admin'
-        )
-      } else {
-        alert(`❌ Error al abrir kiosco:\n${result.error || 'Error desconocido'}\n\nMira la terminal para mas detalles.`)
-      }
+         alert(
+           '✅ KIOSCO ABIERTO!\n\n' +
+           'Si tienes 2 MONITORES:\n' +
+           '  → Mira el segundo monitor (deberia estar en pantalla completa)\n\n' +
+           'Si tienes 1 MONITOR:\n' +
+           '  → Busca la ventana nueva con título "BodyFitGym Kiosco"\n\n' +
+           'Para volver al panel admin:\n' +
+           '  → Presiona la tecla "A" en el kiosco para mostrar el botón de admin'
+         )
+       } else {
+         showToast('error', result.error || 'No se pudo abrir el kiosco. Mira la terminal para detalles.', 'Error')
+       }
     } catch (error: any) {
       console.error('[SettingsPage] Exception in handleOpenKiosk:', error)
       console.error('[SettingsPage] error.message:', error?.message)
@@ -139,32 +141,23 @@ export function SettingsPage(): JSX.Element {
   }, [])
 
   const handleSaveDoor = () => {
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    showToast('success', 'Configuración de puerta guardada correctamente', 'Guardado')
   }
 
   const handleSaveWhatsapp = () => {
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    showToast('success', 'Configuración de WhatsApp guardada correctamente', 'Guardado')
   }
 
   const handleSaveAdmin = () => {
     if (adminUser.newPassword && adminUser.newPassword !== adminUser.confirmPassword) {
-      alert('Las contraseñas no coinciden')
+      showToast('warning', 'Las contraseñas no coinciden', 'Verificación')
       return
     }
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    showToast('success', 'Configuración de administrador guardada correctamente', 'Guardado')
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {saveSuccess && (
-        <div className="alert alert-success" style={{ position: 'fixed', top: 24, right: 24, zIndex: 9999 }}>
-          <Icons.Check />
-          <span>Configuración guardada correctamente</span>
-        </div>
-       )}
 
       <div className="card">
         <div className="card-header">

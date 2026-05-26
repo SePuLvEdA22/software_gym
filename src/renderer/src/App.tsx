@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
+import { ToastContainer } from '@/components/ToastContainer'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { AccessPage } from '@/pages/AccessPage'
@@ -26,7 +27,7 @@ function getPageTitle(pathname: string): string {
     case '/settings':
       return 'Configuración'
     default:
-      return 'Gym Access Control'
+       return 'BodyFitGym'
   }
 }
 
@@ -60,7 +61,12 @@ export function App(): JSX.Element {
     <HashRouter>
       <Routes>
         <Route path="/kiosk" element={<KioskPage />} />
-        <Route path="/*" element={<AdminLayout />} />
+        <Route path="/*" element={
+          <>
+            <AdminLayout />
+            <ToastContainer />
+          </>
+        } />
       </Routes>
     </HashRouter>
   )
