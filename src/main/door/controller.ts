@@ -3,24 +3,14 @@ import { formatISO } from 'date-fns'
 import log from 'electron-log'
 import { getDatabase } from '../database'
 import { DoorEvent, DoorEventType, DoorEventTrigger } from '../../shared/types'
+import { getDoorConfig } from './config'
+import { sendHttpCommand } from './httpRelay'
+import { sendSerialCommand } from './serialRelay'
 
 type DoorStatus = 'closed' | 'open' | 'error'
 
-interface DoorConfig {
-  openDuration: number
-  mockMode: boolean
-  portName: string
-  baudRate: number
-}
-
 let doorStatus: DoorStatus = 'closed'
 let doorOpenTimer: NodeJS.Timeout | null = null
-let config: DoorConfig = {
-  openDuration: 5000,
-  mockMode: true,
-  portName: 'COM3',
-  baudRate: 9600
-}
 
 type DoorCallback = (event: DoorEvent) => void
 const callbacks: DoorCallback[] = []
@@ -37,7 +27,7 @@ function emitDoorEvent(eventType: DoorEventType, trigger: DoorEventTrigger, note
     timestamp: formatISO(new Date()),
     notes: notes || ''
   }
-  
+
   try {
     const db = getDatabase()
     const stmt = db.prepare(`
@@ -48,7 +38,7 @@ function emitDoorEvent(eventType: DoorEventType, trigger: DoorEventTrigger, note
   } catch (error) {
     log.error('Error saving door event:', error)
   }
-  
+
   for (const callback of callbacks) {
     try {
       callback(event)
@@ -56,14 +46,15 @@ function emitDoorEvent(eventType: DoorEventType, trigger: DoorEventTrigger, note
       log.error('Error in door callback:', error)
     }
   }
-  
+
   log.info(`Door event: ${eventType} (${trigger})`)
 }
 
 export function getDoorStatus(): { status: DoorStatus; mockMode: boolean } {
+  const config = getDoorConfig()
   return {
     status: doorStatus,
-    mockMode: config.mockMode
+    mockMode: config.connectionType === 'mock'
   }
 }
 
@@ -72,55 +63,94 @@ export async function openDoor(trigger: DoorEventTrigger = 'access_code'): Promi
     log.warn('Door is already open')
     return false
   }
-  
+
   log.info(`Opening door (trigger: ${trigger})`)
-  
-  if (config.mockMode) {
-    return performMockOpen(trigger)
-  } else {
-    return performHardwareOpen(trigger)
+
+  const config = getDoorConfig()
+
+  switch (config.connectionType) {
+    case 'mock':
+      return performMockOpen(trigger)
+    case 'http':
+      return performHttpOpen(trigger)
+    case 'serial':
+      return performSerialOpen(trigger)
+    default:
+      return performMockOpen(trigger)
   }
 }
 
 function performMockOpen(trigger: DoorEventTrigger): boolean {
   doorStatus = 'open'
   emitDoorEvent('open', trigger, 'Mock mode')
-  
+
   if (doorOpenTimer) {
     clearTimeout(doorOpenTimer)
   }
-  
+
+  const config = getDoorConfig()
   doorOpenTimer = setTimeout(() => {
     closeDoor('auto_close')
   }, config.openDuration)
-  
+
   return true
 }
 
-async function performHardwareOpen(trigger: DoorEventTrigger): Promise<boolean> {
+async function performHttpOpen(trigger: DoorEventTrigger): Promise<boolean> {
   try {
-    const success = await sendOpenSignalToHardware()
-    
+    const config = getDoorConfig()
+    const success = await sendHttpCommand()
+
     if (success) {
       doorStatus = 'open'
       emitDoorEvent('open', trigger)
-      
+
       if (doorOpenTimer) {
         clearTimeout(doorOpenTimer)
       }
-      
+
       doorOpenTimer = setTimeout(() => {
         closeDoor('auto_close')
       }, config.openDuration)
-      
+
       return true
     }
-    
+
     doorStatus = 'error'
-    emitDoorEvent('denied', trigger, 'Hardware error')
+    emitDoorEvent('denied', trigger, 'HTTP relay error')
     return false
   } catch (error: any) {
-    log.error('Hardware open error:', error)
+    log.error('HTTP open error:', error)
+    doorStatus = 'error'
+    return false
+  }
+}
+
+async function performSerialOpen(trigger: DoorEventTrigger): Promise<boolean> {
+  try {
+    const config = getDoorConfig()
+    const success = await sendSerialCommand()
+
+    if (success) {
+      doorStatus = 'open'
+      emitDoorEvent('open', trigger)
+
+      if (doorOpenTimer) {
+        clearTimeout(doorOpenTimer)
+      }
+
+      doorOpenTimer = setTimeout(() => {
+        closeDoor('auto_close')
+      }, config.openDuration)
+
+      return true
+    }
+
+    doorStatus = 'error'
+    emitDoorEvent('denied', trigger, 'Serial relay error')
+    return false
+  } catch (error: any) {
+    log.error('Serial open error:', error)
     doorStatus = 'error'
     return false
   }
@@ -130,21 +160,15 @@ function closeDoor(trigger: DoorEventTrigger): void {
   if (doorStatus === 'closed') {
     return
   }
-  
+
   doorStatus = 'closed'
   emitDoorEvent('close', trigger)
-  
-  if (!config.mockMode) {
-    sendCloseSignalToHardware().catch(error => {
-      log.error('Error sending close signal:', error)
-    })
-  }
-  
+
   log.info('Door closed')
 }
 
 export function manualOpen(): boolean {
-  return openDoor('manual')
+  return openDoor('manual') as unknown as boolean
 }
 
 export function manualClose(): void {
@@ -155,39 +179,19 @@ export function manualClose(): void {
   closeDoor('manual')
 }
 
-async function sendOpenSignalToHardware(): Promise<boolean> {
-  log.warn('Hardware integration not implemented - using mock mode')
-  return true
-}
-
-async function sendCloseSignalToHardware(): Promise<boolean> {
-  log.warn('Hardware integration not implemented - using mock mode')
-  return true
-}
-
-export function updateDoorConfig(newConfig: Partial<DoorConfig>): void {
-  config = { ...config, ...newConfig }
-  log.info('Door config updated:', config)
-}
-
-export function getDoorConfig(): DoorConfig {
-  return { ...config }
-}
-
 export async function initializeDoorController(): Promise<void> {
+  const config = getDoorConfig()
   log.info('Initializing door controller...')
-  log.info('Mode:', config.mockMode ? 'Mock' : 'Hardware')
-  
-  if (!config.mockMode) {
-    try {
-      log.info(`Connecting to ${config.portName} at ${config.baudRate} baud...`)
-    } catch (error: any) {
-      log.error('Failed to initialize hardware:', error)
-      log.info('Falling back to mock mode')
-      config.mockMode = true
-    }
+  log.info(`Connection type: ${config.connectionType}`)
+
+  if (config.connectionType === 'http') {
+    log.info(`HTTP relay URL: ${config.httpUrl}`)
+  } else if (config.connectionType === 'serial') {
+    log.info(`Serial port: ${config.portName} at ${config.baudRate} baud`)
+  } else {
+    log.info('Mock mode - no hardware connection')
   }
-  
+
   doorStatus = 'closed'
   log.info('Door controller initialized')
 }

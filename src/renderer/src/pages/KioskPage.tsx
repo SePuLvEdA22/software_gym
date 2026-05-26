@@ -417,7 +417,7 @@ export function KioskPage(): JSX.Element {
 
       <div style={{ textAlign: 'center' }}>
         <h1 style={{ fontSize: 44, fontWeight: 800, color: '#ff6b00', margin: 0 }}>
-          GYMPRO
+          BODYFITGYM
         </h1>
         <p style={{ fontSize: 18, color: '#a98a7d', marginTop: 8 }}>
           Ingresa tu código de acceso

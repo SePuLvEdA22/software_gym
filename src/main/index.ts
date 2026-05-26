@@ -3,9 +3,10 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import log from 'electron-log'
-import { initDatabase, closeDatabase } from './database'
+import { initDatabase, closeDatabase, getDatabase } from './database'
 import { setupIpcHandlers } from './ipc'
 import { initializeDoorController } from './door/controller'
+import { setDoorConfig } from './door/config'
 
 log.initialize({ preload: true })
 log.transports.file.level = 'info'
@@ -278,7 +279,7 @@ function setupWindowControls(): void {
 }
 
 app.whenReady().then(async () => {
-  electronApp.setAppUserModelId('com.gym.accesscontrol')
+  electronApp.setAppUserModelId('com.bodyfitgym.app')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -287,6 +288,12 @@ app.whenReady().then(async () => {
   log.info('Initializing database...')
   initDatabase()
   log.info('Database initialized')
+
+  const savedConfig = getDatabase().prepare("SELECT value FROM settings WHERE key = 'door_config'").get() as { value: string } | undefined
+  if (savedConfig) {
+    setDoorConfig(savedConfig.value)
+    log.info('Door config loaded from database')
+  }
 
   log.info('Initializing door controller...')
   await initializeDoorController()

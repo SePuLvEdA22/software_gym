@@ -38,6 +38,10 @@ import {
 import { AccessValidation, Membership, Client, ClientStatus } from '../../shared/types'
 import { formatISO, parseISO, differenceInDays, isAfter } from 'date-fns'
 import { openDoor, getDoorStatus, registerDoorCallback } from '../door/controller'
+import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
+import { sendHttpCommand } from '../door/httpRelay'
+import { sendSerialCommand } from '../door/serialRelay'
+import { getDatabase } from '../database'
 
 export function setupIpcHandlers(): void {
   ipcMain.handle('client:create', async (_, data) => {
@@ -378,6 +382,49 @@ export function setupIpcHandlers(): void {
       return { success: true, data: status }
     } catch (error: any) {
       log.error('Error getting door status:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('door:getConfig', async () => {
+    try {
+      const config = getDoorConfig()
+      return { success: true, data: config }
+    } catch (error: any) {
+      log.error('Error getting door config:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('door:saveConfig', async (_, config) => {
+    try {
+      updateDoorConfig(config)
+      const db = getDatabase()
+      db.prepare(`INSERT INTO settings (key, value) VALUES ('door_config', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
+        .run(getDoorConfigJson())
+      log.info('Door config saved to database')
+      return { success: true, data: null }
+    } catch (error: any) {
+      log.error('Error saving door config:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('door:testConnection', async () => {
+    try {
+      const config = getDoorConfig()
+      let result = false
+      if (config.connectionType === 'http') {
+        result = await sendHttpCommand()
+      } else if (config.connectionType === 'serial') {
+        result = await sendSerialCommand()
+      } else {
+        result = true
+      }
+      return { success: true, data: result }
+    } catch (error: any) {
+      log.error('Error testing connection:', error)
       return { success: false, error: error.message }
     }
   })

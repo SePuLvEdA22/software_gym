@@ -100,7 +100,13 @@ const electronAPI = {
     open: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('door:open'),
     getStatus: (): Promise<IpcResult<{ status: string; mockMode: boolean }>> =>
-      ipcRenderer.invoke('door:getStatus')
+      ipcRenderer.invoke('door:getStatus'),
+    getConfig: (): Promise<IpcResult<any>> =>
+      ipcRenderer.invoke('door:getConfig'),
+    saveConfig: (config: any): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('door:saveConfig', config),
+    testConnection: (): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('door:testConnection')
   },
 
   system: {

@@ -1,9 +1,9 @@
 {
-  "name": "gym-access-control",
+  "name": "bodyfitgym",
   "version": "1.0.0",
-  "description": "Sistema profesional de administracion y control de acceso para gimnasio",
+  "description": "Sistema profesional de administracion y control de acceso para BodyFitGym",
   "main": "./out/main/index.js",
-  "author": "Gym Access Control",
+  "author": "BodyFitGym",
   "license": "MIT",
   "type": "module",
   "scripts": {

@@ -8,7 +8,7 @@ let db: Database.Database | null = null
 
 export function getDatabasePath(): string {
   const userDataPath = app.getPath('userData')
-  const dbPath = join(userDataPath, 'gym_access.db')
+  const dbPath = join(userDataPath, 'bodyfitgym.db')
   log.info('Database path:', dbPath)
   return dbPath
 }
