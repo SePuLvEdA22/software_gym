@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync } from 'fs'
 import log from 'electron-log'
 
 let db: Database.Database | null = null
@@ -212,6 +212,56 @@ export function getDatabase(): Database.Database {
     throw new Error('Database not initialized')
   }
   return db
+}
+
+export function backupDatabase(destPath: string): boolean {
+  try {
+    if (db) db.close()
+    const srcPath = getDatabasePath()
+    if (existsSync(srcPath)) {
+      copyFileSync(srcPath, destPath)
+      log.info(`Database backed up to: ${destPath}`)
+    }
+    db = new Database(getDatabasePath())
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    return true
+  } catch (error: any) {
+    log.error('Backup error:', error)
+    if (!db) {
+      db = new Database(getDatabasePath())
+      db.pragma('journal_mode = WAL')
+      db.pragma('foreign_keys = ON')
+    }
+    return false
+  }
+}
+
+export function restoreDatabase(srcPath: string): boolean {
+  try {
+    if (db) db.close()
+    const destPath = getDatabasePath()
+    if (existsSync(destPath)) {
+      const backupPath = destPath + '.backup'
+      copyFileSync(destPath, backupPath)
+      log.info(`Existing database backed up to: ${backupPath}`)
+    }
+    copyFileSync(srcPath, destPath)
+    db = new Database(getDatabasePath())
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+    runMigrations(db)
+    log.info('Database restored successfully')
+    return true
+  } catch (error: any) {
+    log.error('Restore error:', error)
+    if (!db) {
+      db = new Database(getDatabasePath())
+      db.pragma('journal_mode = WAL')
+      db.pragma('foreign_keys = ON')
+    }
+    return false
+  }
 }
 
 export function closeDatabase(): void {

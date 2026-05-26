@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { AccessLog, AccessResult } from '../../../shared/types'
-import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
+import { format, parseISO, startOfDay, endOfDay, startOfMonth } from 'date-fns'
 
 function getResultBadge(result: AccessResult): JSX.Element {
   switch (result) {
@@ -13,6 +14,8 @@ function getResultBadge(result: AccessResult): JSX.Element {
       return <span className="badge badge-warning">Inactivo</span>
     case 'denied_not_found':
       return <span className="badge badge-error">No Encontrado</span>
+    default:
+      return <span className="badge badge-default">{result}</span>
   }
 }
 
@@ -24,10 +27,13 @@ function getResultIcon(result: AccessResult): JSX.Element {
     case 'denied_inactive':
     case 'denied_not_found':
       return <Icons.X />
+    default:
+      return <Icons.X />
   }
 }
 
 export function LogsPage(): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
   const [logs, setLogs] = useState<AccessLog[]>([])
   const [filterResult, setFilterResult] = useState<string>('all')
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('today')
@@ -41,40 +47,39 @@ export function LogsPage(): JSX.Element {
   })
 
   const loadLogs = async () => {
-    let result
-    
-    if (dateRange === 'all') {
-      result = await window.electronAPI.access.getLogs(500)
-    } else {
-      const now = new Date()
-      let startDate: Date
-      let endDate: Date = endOfDay(now)
+    const result = dateRange === 'all'
+      ? await window.electronAPI.access.getLogs(500)
+      : await (() => {
+          const now = new Date()
+          let startDate: Date
+          const endDate: Date = endOfDay(now)
 
-      switch (dateRange) {
-        case 'today':
-          startDate = startOfDay(now)
-          break
-        case 'week':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          break
-        case 'month':
-          startDate = startOfMonth(now)
-          break
-        default:
-          startDate = new Date(0)
-      }
+          switch (dateRange) {
+            case 'today':
+              startDate = startOfDay(now)
+              break
+            case 'week':
+              startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+              break
+            case 'month':
+              startDate = startOfMonth(now)
+              break
+            default:
+              startDate = new Date(0)
+          }
 
-      result = await window.electronAPI.access.getLogsByDate(
-        startDate.toISOString(),
-        endDate.toISOString()
-      )
-    }
+          return window.electronAPI.access.getLogsByDate(
+            startDate.toISOString(),
+            endDate.toISOString()
+          )
+        })()
 
     if (result.success && result.data) {
-      let filteredLogs = result.data
+      const logsData = result.data as AccessLog[]
+      let filteredLogs = logsData
       
       if (filterResult !== 'all') {
-        filteredLogs = filteredLogs.filter(l => l.result === filterResult)
+        filteredLogs = logsData.filter(l => l.result === filterResult)
       }
       
       setLogs(filteredLogs)
@@ -177,7 +182,14 @@ export function LogsPage(): JSX.Element {
             </select>
             <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
               <Icons.Refresh />
-              Actualizar
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={async () => {
+              if (window.electronAPI?.system?.exportCsv) {
+                const result = await window.electronAPI.system.exportCsv('access')
+                if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+              }
+            }} title="Exportar CSV">
+              <Icons.Download />
             </button>
           </div>
         </div>

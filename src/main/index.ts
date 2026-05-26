@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, screen, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -7,6 +7,7 @@ import { initDatabase, closeDatabase, getDatabase } from './database'
 import { setupIpcHandlers } from './ipc'
 import { initializeDoorController } from './door/controller'
 import { setDoorConfig } from './door/config'
+import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig } from './whatsapp'
 
 log.initialize({ preload: true })
 log.transports.file.level = 'info'
@@ -74,6 +75,14 @@ function createAdminWindow(): BrowserWindow {
     window.maximize()
   })
 
+  window.on('close', (e) => {
+    if (tray) {
+      e.preventDefault()
+      window.hide()
+      log.info('Window minimized to tray')
+    }
+  })
+
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -89,7 +98,7 @@ function createAdminWindow(): BrowserWindow {
   return window
 }
 
-function createKioskWindow(displayIndex = 0): BrowserWindow {
+function createKioskWindow(_displayIndex = 0): BrowserWindow {
   const displays = screen.getAllDisplays()
   const primaryDisplay = screen.getPrimaryDisplay()
   
@@ -108,10 +117,9 @@ function createKioskWindow(displayIndex = 0): BrowserWindow {
     ? displays.find(d => d.id !== primaryDisplay.id) || displays[1] || displays[0]
     : displays[0]
 
-  const actualIndex = displays.indexOf(targetDisplay)
   const { x, y, width, height } = targetDisplay.bounds
 
-  log.info(`Using display ${actualIndex}: ${width}x${height} at (${x},${y})`)
+  log.info(`Using display: ${width}x${height} at (${x},${y})`)
   log.info('========================================')
 
   const window = new BrowserWindow({
@@ -149,7 +157,7 @@ function createKioskWindow(displayIndex = 0): BrowserWindow {
     })
   }
 
-  window.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     log.error(`=== KIOSK FAILED TO LOAD ===`)
     log.error(`Error code: ${errorCode}`)
     log.error(`Description: ${errorDescription}`)
@@ -278,6 +286,86 @@ function setupWindowControls(): void {
   log.info('Window controls IPC handlers registered')
 }
 
+let tray: Tray | null = null
+
+function createTray(): void {
+  const iconSize = 16
+  const canvas = Buffer.alloc(iconSize * iconSize * 4)
+  for (let i = 0; i < iconSize * iconSize; i++) {
+    canvas[i * 4] = 255
+    canvas[i * 4 + 1] = 107
+    canvas[i * 4 + 2] = 0
+    canvas[i * 4 + 3] = 255
+  }
+  const image = nativeImage.createFromBuffer(canvas, { width: iconSize, height: iconSize })
+
+  tray = new Tray(image)
+  tray.setToolTip('BodyFitGym')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Mostrar ventana',
+      click: () => {
+        if (adminWindow && !adminWindow.isDestroyed()) {
+          adminWindow.show()
+          adminWindow.focus()
+        }
+      }
+    },
+    {
+      label: 'Enviar recordatorios ahora',
+      click: async () => {
+        const result = await checkAndSendExpiryReminders()
+        log.info(`Manually sent ${result.sent} reminders`)
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Salir',
+      click: () => {
+        tray?.destroy()
+        tray = null
+        app.quit()
+      }
+    }
+  ])
+
+  tray.setContextMenu(contextMenu)
+
+  tray.on('double-click', () => {
+    if (adminWindow && !adminWindow.isDestroyed()) {
+      adminWindow.show()
+      adminWindow.focus()
+    }
+  })
+}
+
+ipcMain.handle('system:set-auto-start', async (_, enabled: boolean) => {
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      path: app.getPath('exe')
+    })
+    const db = getDatabase()
+    db.prepare(`INSERT INTO settings (key, value) VALUES ('auto_start', ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+      .run(enabled ? '1' : '0')
+    return { success: true }
+  } catch (error: any) {
+    log.error('Error setting auto-start:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('system:get-auto-start', async () => {
+  try {
+    const settings = app.getLoginItemSettings()
+    return { success: true, data: settings.openAtLogin }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+})
+
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.bodyfitgym.app')
 
@@ -289,10 +377,20 @@ app.whenReady().then(async () => {
   initDatabase()
   log.info('Database initialized')
 
-  const savedConfig = getDatabase().prepare("SELECT value FROM settings WHERE key = 'door_config'").get() as { value: string } | undefined
-  if (savedConfig) {
-    setDoorConfig(savedConfig.value)
+  const savedDoorConfig = getDatabase().prepare("SELECT value FROM settings WHERE key = 'door_config'").get() as { value: string } | undefined
+  if (savedDoorConfig) {
+    setDoorConfig(savedDoorConfig.value)
     log.info('Door config loaded from database')
+  }
+
+  const savedWhatsappConfig = getDatabase().prepare("SELECT value FROM settings WHERE key = 'whatsapp_config'").get() as { value: string } | undefined
+  if (savedWhatsappConfig) {
+    try {
+      updateWhatsappConfig(JSON.parse(savedWhatsappConfig.value))
+      log.info('WhatsApp config loaded from database')
+    } catch (e) {
+      log.warn('Failed to parse saved WhatsApp config')
+    }
   }
 
   log.info('Initializing door controller...')
@@ -301,6 +399,8 @@ app.whenReady().then(async () => {
   log.info('Setting up IPC handlers...')
   setupIpcHandlers()
   setupWindowControls()
+
+  createTray()
 
   const appMode = getAppMode()
   log.info(`Starting in mode: ${appMode}`)
@@ -326,6 +426,30 @@ app.whenReady().then(async () => {
       log.error('Error creating kiosk window:', error)
     }
   }
+
+  const autoStartRow = getDatabase().prepare("SELECT value FROM settings WHERE key = 'auto_start'").get() as { value: string } | undefined
+  if (autoStartRow && autoStartRow.value === '1') {
+    app.setLoginItemSettings({ openAtLogin: true, path: app.getPath('exe') })
+    log.info('Auto-start enabled')
+  }
+
+  if (getWhatsappConfig().enabled) {
+    const reminderResult = await checkAndSendExpiryReminders()
+    log.info(`Startup reminder check: ${reminderResult.sent} sent`)
+  }
+
+  setInterval(async () => {
+    try {
+      if (getWhatsappConfig().enabled) {
+        const result = await checkAndSendExpiryReminders()
+        if (result.sent > 0) {
+          log.info(`Periodic reminder check: ${result.sent} sent`)
+        }
+      }
+    } catch (e) {
+      log.error('Periodic reminder check error:', e)
+    }
+  }, 6 * 60 * 60 * 1000)
 
   app.on('activate', () => {
     const windows = BrowserWindow.getAllWindows()

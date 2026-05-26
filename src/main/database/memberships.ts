@@ -2,7 +2,7 @@ import { getDatabase } from './index'
 import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
-import { addDays, formatISO, isAfter, isBefore, parseISO } from 'date-fns'
+import { addDays, formatISO, isAfter, parseISO } from 'date-fns'
 import log from 'electron-log'
 
 export interface DbMembership {
@@ -109,7 +109,7 @@ export function getAllPlans(activeOnly = true): MembershipPlan[] {
   const db = getDatabase()
   
   let query = 'SELECT * FROM membership_plans WHERE 1=1'
-  const params: number[] = []
+  const params: (string | number)[] = []
   
   if (activeOnly) {
     query += ' AND is_active = ?'
@@ -130,6 +130,84 @@ export function getPlanById(id: string): MembershipPlan | null {
   const result = stmt.get(id) as DbPlan | undefined
   
   return result ? mapDbPlan(result) : null
+}
+
+export function createPlan(data: Omit<MembershipPlan, 'id' | 'createdAt' | 'isActive'>): MembershipPlan {
+  const db = getDatabase()
+  const id = uuidv4()
+  const now = formatISO(new Date())
+
+  const stmt = db.prepare(`
+    INSERT INTO membership_plans (id, name, type, price, duration_days, description, is_active, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+  `)
+
+  stmt.run(id, data.name, data.type, data.price, data.durationDays, data.description, now)
+
+  return {
+    id,
+    name: data.name,
+    type: data.type,
+    price: data.price,
+    durationDays: data.durationDays,
+    description: data.description,
+    isActive: true,
+    createdAt: now
+  }
+}
+
+export function updatePlan(id: string, data: Partial<MembershipPlan>): MembershipPlan | null {
+  const db = getDatabase()
+  const existing = getPlanById(id)
+  if (!existing) return null
+
+  const fields: string[] = []
+  const params: (string | number | boolean)[] = []
+
+  if (data.name !== undefined) { fields.push('name = ?'); params.push(data.name) }
+  if (data.type !== undefined) { fields.push('type = ?'); params.push(data.type) }
+  if (data.price !== undefined) { fields.push('price = ?'); params.push(data.price) }
+  if (data.durationDays !== undefined) { fields.push('duration_days = ?'); params.push(data.durationDays) }
+  if (data.description !== undefined) { fields.push('description = ?'); params.push(data.description) }
+  if (data.isActive !== undefined) { fields.push('is_active = ?'); params.push(data.isActive ? 1 : 0) }
+
+  if (fields.length === 0) return existing
+
+  params.push(id)
+  db.prepare(`UPDATE membership_plans SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+
+  return getPlanById(id)
+}
+
+export function deletePlan(id: string): boolean {
+  const db = getDatabase()
+  const result = db.prepare('DELETE FROM membership_plans WHERE id = ?').run(id)
+  return result.changes > 0
+}
+
+export function getExpiringMemberships(days: number): { clientId: string; clientName: string; phone: string; planName: string; endDate: string; daysLeft: number }[] {
+  const db = getDatabase()
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const endDate = new Date(now)
+  endDate.setDate(endDate.getDate() + days)
+  const endStr = formatISO(endDate)
+
+  const rows = db.prepare(`
+    SELECT c.id as clientId, c.full_name as clientName, c.phone,
+           m.plan_name as planName, m.end_date as endDate
+    FROM memberships m
+    JOIN clients c ON c.id = m.client_id
+    WHERE m.status = 'active'
+      AND m.end_date >= ? 
+      AND m.end_date <= ?
+    ORDER BY m.end_date ASC
+  `).all(formatISO(now), endStr) as { clientId: string; clientName: string; phone: string; planName: string; endDate: string }[]
+
+  return rows.map(r => ({
+    ...r,
+    daysLeft: Math.ceil((new Date(r.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  }))
 }
 
 export function getActiveOrFrozenMembership(clientId: string): Membership | null {

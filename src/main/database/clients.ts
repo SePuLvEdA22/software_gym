@@ -1,5 +1,5 @@
 import { getDatabase } from './index'
-import { Client, Gender, ClientStatus, EmergencyContact } from '../../shared/types'
+import { Client, Gender, ClientStatus } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface DbClient {

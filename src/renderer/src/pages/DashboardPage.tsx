@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { AccessLog, PeakHour, PlanStat } from '../../../shared/types'
 import { format, parseISO } from 'date-fns'
 
@@ -314,6 +314,8 @@ export function DashboardPage(): JSX.Element {
   const navigate = useNavigate()
   const { dashboardMetrics, setDashboardMetrics, setTriggerNewClientModal } = useAppStore()
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([])
+  const [expiringSoon, setExpiringSoon] = useState<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>([])
+  const [birthdays, setBirthdays] = useState<{ clientId: string; clientName: string; day: number }[]>([])
 
   const loadMetrics = async () => {
     const result = await window.electronAPI.dashboard.getMetrics()
@@ -324,6 +326,16 @@ export function DashboardPage(): JSX.Element {
     const revenueResult = await window.electronAPI.dashboard.getRevenueByMonth(6)
     if (revenueResult.success && revenueResult.data) {
       setRevenueData(revenueResult.data)
+    }
+
+    const expiringResult = await window.electronAPI.dashboard.getExpiringSoon(7)
+    if (expiringResult.success && expiringResult.data) {
+      setExpiringSoon(expiringResult.data as any[])
+    }
+
+    const birthdayResult = await window.electronAPI.dashboard.getBirthdays()
+    if (birthdayResult.success && birthdayResult.data) {
+      setBirthdays(birthdayResult.data as any[])
     }
   }
 
@@ -408,6 +420,80 @@ export function DashboardPage(): JSX.Element {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
         <TopPlansChart data={metrics.topPlans} />
         <RecentAccesses accesses={metrics.recentAccesses} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+        <div className="card">
+          <div className="card-header">
+            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icons.Bell style={{ color: 'var(--color-warning)' }} />
+              Próximos a Vencer (7 días)
+            </h3>
+          </div>
+          <div className="card-body">
+            {expiringSoon.length === 0 ? (
+              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+                No hay membresías próximas a vencer
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {expiringSoon.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)',
+                    borderRadius: 8, border: item.daysLeft <= 1 ? '1px solid var(--color-error)' : 'none'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>
+                    </div>
+                    <div style={{
+                      fontWeight: 700, fontSize: 16,
+                      color: item.daysLeft <= 1 ? 'var(--color-error)' : item.daysLeft <= 3 ? 'var(--color-warning)' : 'var(--color-primary-container)'
+                    }}>
+                      {item.daysLeft}d
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icons.Calendar style={{ color: 'var(--color-primary-container)' }} />
+              Cumpleaños del Mes
+            </h3>
+          </div>
+          <div className="card-body">
+            {birthdays.length === 0 ? (
+              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+                No hay cumpleaños este mes
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {birthdays.map((b, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)', borderRadius: 8
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      backgroundColor: 'rgba(255,107,0,0.15)', color: '#ff6b00',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: 14
+                    }}>
+                      {b.day}
+                    </div>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{b.clientName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

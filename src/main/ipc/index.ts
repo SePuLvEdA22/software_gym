@@ -33,11 +33,26 @@ import {
 import {
   getDashboardMetrics,
   getRevenueByMonth,
-  getClientsByStatus
+  getClientsByStatus,
+  getExpiringSoon,
+  getBirthdaysThisMonth
 } from '../database/dashboard'
-import { AccessValidation, Membership, Client, ClientStatus } from '../../shared/types'
-import { formatISO, parseISO, differenceInDays, isAfter } from 'date-fns'
-import { openDoor, getDoorStatus, registerDoorCallback } from '../door/controller'
+import {
+  createPlan,
+  updatePlan,
+  deletePlan
+} from '../database/memberships'
+import {
+  updateWhatsappConfig,
+  getWhatsappConfig,
+  sendWelcomeMessage,
+  sendPaymentConfirmation,
+  getMessageHistory,
+  checkAndSendExpiryReminders
+} from '../whatsapp/index'
+import { backupDatabase, restoreDatabase } from '../database/index'
+import { AccessValidation } from '../../shared/types'
+import { openDoor, getDoorStatus } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
 import { sendHttpCommand } from '../door/httpRelay'
 import { sendSerialCommand } from '../door/serialRelay'
@@ -263,7 +278,6 @@ export function setupIpcHandlers(): void {
       }
 
       const activeOrFrozen = getActiveOrFrozenMembership(client.id)
-      const now = new Date()
 
       if (!activeOrFrozen) {
         updateClientStatus(client.id, 'expired')
@@ -294,8 +308,6 @@ export function setupIpcHandlers(): void {
       }
 
       const membership = activeOrFrozen
-      const endDate = parseISO(membership.endDate)
-      const daysRemaining = differenceInDays(endDate, now)
 
       logAccess(accessCode, 'granted', 'Acceso permitido', client.id, client.fullName)
       
@@ -331,6 +343,16 @@ export function setupIpcHandlers(): void {
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting client access logs:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate) => {
+    try {
+      const logs = getAccessLogsByDate(startDate, endDate)
+      return { success: true, data: logs }
+    } catch (error: any) {
+      log.error('Error getting logs by date:', error)
       return { success: false, error: error.message }
     }
   })
@@ -435,6 +457,189 @@ export function setupIpcHandlers(): void {
       return { success: true, data: count }
     } catch (error: any) {
       log.error('Error updating expired memberships:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('plans:create', async (_, data) => {
+    try {
+      return { success: true, data: createPlan(data) }
+    } catch (error: any) {
+      log.error('Error creating plan:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('plans:update', async (_, id, data) => {
+    try {
+      const result = updatePlan(id, data)
+      return { success: !!result, data: result }
+    } catch (error: any) {
+      log.error('Error updating plan:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('plans:delete', async (_, id) => {
+    try {
+      return { success: deletePlan(id) }
+    } catch (error: any) {
+      log.error('Error deleting plan:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('dashboard:getExpiringSoon', async (_, days) => {
+    try {
+      return { success: true, data: getExpiringSoon(days) }
+    } catch (error: any) {
+      log.error('Error getting expiring memberships:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('dashboard:getBirthdays', async () => {
+    try {
+      return { success: true, data: getBirthdaysThisMonth() }
+    } catch (error: any) {
+      log.error('Error getting birthdays:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:getConfig', async () => {
+    try {
+      return { success: true, data: getWhatsappConfig() }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:saveConfig', async (_, config) => {
+    try {
+      updateWhatsappConfig(config)
+      const db = getDatabase()
+      db.prepare(`INSERT INTO settings (key, value) VALUES ('whatsapp_config', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
+        .run(JSON.stringify(getWhatsappConfig()))
+      log.info('WhatsApp config saved to database')
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error saving WhatsApp config:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:sendWelcome', async (_, clientId) => {
+    try {
+      const result = await sendWelcomeMessage(clientId)
+      return result
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:sendPaymentConfirmation', async (_, clientId, planName, endDate) => {
+    try {
+      const result = await sendPaymentConfirmation(clientId, planName, endDate)
+      return result
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:getHistory', async (_, clientId, limit) => {
+    try {
+      return { success: true, data: getMessageHistory(clientId, limit) }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('whatsapp:checkReminders', async () => {
+    try {
+      const result = await checkAndSendExpiryReminders()
+      return { success: true, data: result }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('system:backupDb', async () => {
+    try {
+      const { canceled, filePath } = await require('electron').dialog.showSaveDialog({
+        title: 'Guardar copia de seguridad',
+        defaultPath: `backup-bodyfitgym-${new Date().toISOString().slice(0, 10)}.db`,
+        filters: [{ name: 'Database', extensions: ['db'] }]
+      })
+      if (canceled || !filePath) return { success: false, error: 'Cancelado' }
+      const ok = backupDatabase(filePath)
+      return { success: ok, data: filePath }
+    } catch (error: any) {
+      log.error('Backup error:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('system:restoreDb', async () => {
+    try {
+      const { canceled, filePaths } = await require('electron').dialog.showOpenDialog({
+        title: 'Restaurar copia de seguridad',
+        filters: [{ name: 'Database', extensions: ['db'] }],
+        properties: ['openFile']
+      })
+      if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelado' }
+      const ok = restoreDatabase(filePaths[0])
+      return { success: ok }
+    } catch (error: any) {
+      log.error('Restore error:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('system:exportCsv', async (_, type: string, filters?: any) => {
+    try {
+      const db = getDatabase()
+      let rows: any[] = []
+      let csv = ''
+
+      if (type === 'clients') {
+        rows = db.prepare('SELECT full_name, document_id, phone, email, status, registration_date FROM clients ORDER BY full_name').all() as any[]
+        csv = 'Nombre,Documento,Telefono,Email,Estado,Registro\n'
+        csv += rows.map(r => `"${r.full_name}","${r.document_id || ''}","${r.phone || ''}","${r.email || ''}","${r.status}","${r.registration_date}"`).join('\n')
+      } else if (type === 'payments') {
+        rows = db.prepare(`
+          SELECT p.date, c.full_name, p.amount, p.method, p.description, p.notes
+          FROM payments p JOIN clients c ON c.id = p.client_id
+          ORDER BY p.date DESC
+        `).all() as any[]
+        csv = 'Fecha,Cliente,Valor,Metodo,Descripcion,Notas\n'
+        csv += rows.map(r => `"${r.date}","${r.full_name}",${r.amount},"${r.method}","${r.description || ''}","${r.notes || ''}"`).join('\n')
+      } else if (type === 'access') {
+        const dateFrom = filters?.from || ''
+        const dateTo = filters?.to || ''
+        let sql = `SELECT a.timestamp, a.client_name, a.access_code, a.result, a.message FROM access_logs a WHERE 1=1`
+        const params: string[] = []
+        if (dateFrom) { sql += ' AND a.timestamp >= ?'; params.push(dateFrom) }
+        if (dateTo) { sql += ' AND a.timestamp <= ?'; params.push(dateTo) }
+        sql += ' ORDER BY a.timestamp DESC'
+        rows = db.prepare(sql).all(...params) as any[]
+        csv = 'Fecha,Cliente,Codigo,Resultado,Mensaje\n'
+        csv += rows.map(r => `"${r.timestamp}","${r.client_name || ''}","${r.access_code}","${r.result}","${r.message || ''}"`).join('\n')
+      }
+
+      const { canceled, filePath } = await require('electron').dialog.showSaveDialog({
+        title: 'Exportar CSV',
+        defaultPath: `${type}-${new Date().toISOString().slice(0, 10)}.csv`,
+        filters: [{ name: 'CSV', extensions: ['csv'] }]
+      })
+      if (canceled || !filePath) return { success: false, error: 'Cancelado' }
+
+      const { writeFileSync } = require('fs')
+      writeFileSync(filePath, '\uFEFF' + csv, 'utf-8')
+      return { success: true, data: filePath }
+    } catch (error: any) {
+      log.error('Export error:', error)
       return { success: false, error: error.message }
     }
   })

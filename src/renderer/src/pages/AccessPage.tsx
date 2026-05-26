@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Icons } from '@/components/Icons'
-import { Client, Membership, AccessValidation } from '../../../shared/types'
+import { Client, Membership } from '../../../shared/types'
 import { format, parseISO, differenceInDays } from 'date-fns'
 
 type AccessState = 'idle' | 'granted' | 'denied' | 'checking'

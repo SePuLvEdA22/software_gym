@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Payment, PaymentMethod } from '../../../shared/types'
 import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
@@ -42,14 +43,8 @@ function getPaymentMethodBadge(method: string): JSX.Element {
   )
 }
 
-function formatDateRange(start: Date, end: Date): { start: string; end: string } {
-  return {
-    start: format(start, 'yyyy-MM-dd'),
-    end: format(end, 'yyyy-MM-dd')
-  }
-}
-
 export function PaymentsPage(): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
   const [payments, setPayments] = useState<Payment[]>([])
   const [filterMethod, setFilterMethod] = useState<string>('all')
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month')
@@ -156,6 +151,14 @@ export function PaymentsPage(): JSX.Element {
         }}>
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>Historial de Pagos</h3>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button className="btn btn-secondary btn-sm" onClick={async () => {
+              if (window.electronAPI?.system?.exportCsv) {
+                const result = await window.electronAPI.system.exportCsv('payments')
+                if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+              }
+            }} title="Exportar CSV">
+              <Icons.Download />
+            </button>
             <div className="tabs" style={{ borderBottom: 'none' }}>
               {(['today', 'week', 'month', 'all'] as const).map(range => (
                 <div 

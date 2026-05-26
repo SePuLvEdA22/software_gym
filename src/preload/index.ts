@@ -9,9 +9,7 @@ import {
   DashboardMetrics,
   ClientStatus,
   PaymentMethod,
-  DoorEvent,
-  DoorEventType,
-  DoorEventTrigger
+  WhatsappMessage
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -46,7 +44,13 @@ const electronAPI = {
     getAll: (activeOnly = true): Promise<IpcResult<MembershipPlan[]>> =>
       ipcRenderer.invoke('plans:getAll', activeOnly),
     getById: (id: string): Promise<IpcResult<MembershipPlan | null>> =>
-      ipcRenderer.invoke('plans:getById', id)
+      ipcRenderer.invoke('plans:getById', id),
+    create: (data: Omit<MembershipPlan, 'id' | 'createdAt' | 'isActive'>): Promise<IpcResult<MembershipPlan>> =>
+      ipcRenderer.invoke('plans:create', data),
+    update: (id: string, data: Partial<MembershipPlan>): Promise<IpcResult<MembershipPlan | null>> =>
+      ipcRenderer.invoke('plans:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('plans:delete', id)
   },
 
   membership: {
@@ -83,6 +87,8 @@ const electronAPI = {
       ipcRenderer.invoke('access:validate', accessCode),
     getLogs: (limit?: number): Promise<IpcResult<AccessLog[]>> =>
       ipcRenderer.invoke('access:getLogs', limit),
+    getLogsByDate: (startDate: string, endDate: string): Promise<IpcResult<AccessLog[]>> =>
+      ipcRenderer.invoke('access:getLogsByDate', startDate, endDate),
     getLogsByClient: (clientId: string, limit?: number): Promise<IpcResult<AccessLog[]>> =>
       ipcRenderer.invoke('access:getLogsByClient', clientId, limit)
   },
@@ -93,7 +99,11 @@ const electronAPI = {
     getRevenueByMonth: (months?: number): Promise<IpcResult<{ month: string; revenue: number }[]>> =>
       ipcRenderer.invoke('dashboard:getRevenueByMonth', months),
     getClientsByStatus: (): Promise<IpcResult<{ [key: string]: number }>> =>
-      ipcRenderer.invoke('dashboard:getClientsByStatus')
+      ipcRenderer.invoke('dashboard:getClientsByStatus'),
+    getExpiringSoon: (days: number): Promise<IpcResult<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>> =>
+      ipcRenderer.invoke('dashboard:getExpiringSoon', days),
+    getBirthdays: (): Promise<IpcResult<{ clientId: string; clientName: string; birthDate: string; day: number }[]>> =>
+      ipcRenderer.invoke('dashboard:getBirthdays')
   },
 
   door: {
@@ -109,9 +119,30 @@ const electronAPI = {
       ipcRenderer.invoke('door:testConnection')
   },
 
+  whatsapp: {
+    getConfig: (): Promise<IpcResult<any>> =>
+      ipcRenderer.invoke('whatsapp:getConfig'),
+    saveConfig: (config: any): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('whatsapp:saveConfig', config),
+    sendWelcome: (clientId: string): Promise<IpcResult<{ success: boolean }>> =>
+      ipcRenderer.invoke('whatsapp:sendWelcome', clientId),
+    sendPaymentConfirmation: (clientId: string, planName: string, endDate: string): Promise<IpcResult<{ success: boolean }>> =>
+      ipcRenderer.invoke('whatsapp:sendPaymentConfirmation', clientId, planName, endDate),
+    getHistory: (clientId?: string, limit?: number): Promise<IpcResult<WhatsappMessage[]>> =>
+      ipcRenderer.invoke('whatsapp:getHistory', clientId, limit),
+    checkReminders: (): Promise<IpcResult<{ sent: number }>> =>
+      ipcRenderer.invoke('whatsapp:checkReminders')
+  },
+
   system: {
     updateExpired: (): Promise<IpcResult<number>> =>
-      ipcRenderer.invoke('system:updateExpired')
+      ipcRenderer.invoke('system:updateExpired'),
+    backupDb: (): Promise<IpcResult<string>> =>
+      ipcRenderer.invoke('system:backupDb'),
+    restoreDb: (): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('system:restoreDb'),
+    exportCsv: (type: string, filters?: any): Promise<IpcResult<string>> =>
+      ipcRenderer.invoke('system:exportCsv', type, filters)
   },
 
   window: {

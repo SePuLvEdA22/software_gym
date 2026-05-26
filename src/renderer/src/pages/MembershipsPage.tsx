@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useAppStore, ToastType } from '@/store/appStore'
+import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, PaymentMethod } from '../../../shared/types'
 import { format, parseISO, differenceInDays, addDays } from 'date-fns'

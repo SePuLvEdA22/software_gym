@@ -431,7 +431,7 @@ export function KioskPage(): JSX.Element {
         onClear={resetAll}
         onBackspace={handleBackspace}
         onEnter={validateAccess}
-        disabled={accessState === 'checking'}
+        disabled={false}
       />
 
       <div style={{ display: 'flex', gap: 24, opacity: 0.4 }}>

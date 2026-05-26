@@ -1,5 +1,5 @@
-import { get as httpGet, request as httpRequest, RequestOptions } from 'http'
-import { get as httpsGet, request as httpsRequest } from 'https'
+import { request as httpRequest, RequestOptions } from 'http'
+import { request as httpsRequest } from 'https'
 import { URL } from 'url'
 import log from 'electron-log'
 import { getDoorConfig } from './config'
@@ -82,7 +82,7 @@ export function sendHttpCommand(): Promise<boolean> {
       resolve(false)
     })
 
-    if (config.httpBody && (config.httpMethod === 'POST' || config.httpMethod === 'PUT')) {
+    if (config.httpBody && config.httpMethod === 'POST') {
       req.write(config.httpBody)
     }
 

@@ -1,13 +1,15 @@
 import { v4 as uuidv4 } from 'uuid'
-import { formatISO, addDays, isToday, differenceInDays } from 'date-fns'
+import { formatISO, differenceInDays } from 'date-fns'
 import log from 'electron-log'
 import { getDatabase } from '../database'
-import { getActiveMembership, getAllClients } from '../database/memberships'
-import { WhatsappMessage, MessageType, MessageStatus, Client } from '../../shared/types'
+import { getActiveMembership } from '../database/memberships'
+import { getAllClients } from '../database/clients'
+import { WhatsappMessage, MessageType, MessageStatus } from '../../shared/types'
 
 interface WhatsappConfig {
   enabled: boolean
-  provider: 'mock' | 'twilio' | 'evolution_api' | 'custom'
+  provider: 'mock' | 'twilio' | 'evolution_api' | 'custom' | 'whatsapp_cloud'
+  phoneNumberId: string
   apiUrl: string
   apiKey: string
   instanceId: string
@@ -21,6 +23,7 @@ interface WhatsappConfig {
 let config: WhatsappConfig = {
   enabled: false,
   provider: 'mock',
+  phoneNumberId: '',
   apiUrl: '',
   apiKey: '',
   instanceId: '',
@@ -114,7 +117,7 @@ export async function sendMessage(
   }
   
   try {
-    const result = await sendViaProvider(phone, message)
+    const result = await sendViaProvider(phone, message, messageType)
     
     const updateStmt = db.prepare(`
       UPDATE whatsapp_messages SET status = ?, sent_at = ? WHERE id = ?
@@ -138,8 +141,10 @@ export async function sendMessage(
   }
 }
 
-async function sendViaProvider(phone: string, message: string): Promise<{ success: boolean }> {
+async function sendViaProvider(phone: string, message: string, messageType?: MessageType): Promise<{ success: boolean }> {
   switch (config.provider) {
+    case 'whatsapp_cloud':
+      return sendViaWhatsAppCloud(phone, message, messageType)
     case 'twilio':
       return sendViaTwilio(phone, message)
     case 'evolution_api':
@@ -151,19 +156,110 @@ async function sendViaProvider(phone: string, message: string): Promise<{ succes
   }
 }
 
-async function sendViaTwilio(phone: string, message: string): Promise<{ success: boolean }> {
+const templateNames: Record<MessageType, string> = {
+  welcome: 'bienvenida',
+  payment_confirmation: 'pago_confirmado',
+  expiry_reminder_3d: 'recordatorio',
+  expiry_reminder_1d: 'recordatorio',
+  expiry_reminder_same_day: 'recordatorio',
+  membership_expired: 'membresia_vencida'
+}
+
+function extractTemplateParams(_messageType: MessageType, message: string): { type: 'text'; text: string }[] {
+  return [{ type: 'text', text: message }]
+}
+
+async function sendViaWhatsAppCloud(phone: string, message: string, messageType?: MessageType): Promise<{ success: boolean }> {
+  try {
+    const url = `https://graph.facebook.com/v22.0/${config.phoneNumberId}/messages`
+    const templateName = messageType ? templateNames[messageType] : undefined
+
+    let body: any
+
+    if (templateName) {
+      body = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: phone.replace(/\D/g, ''),
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'es' },
+          components: [{
+            type: 'body',
+            parameters: extractTemplateParams(messageType!, message)
+          }]
+        }
+      }
+    } else {
+      body = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: phone.replace(/\D/g, ''),
+        type: 'text',
+        text: { body: message }
+      }
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    })
+
+    const data = await response.json()
+    log.info(`[WhatsApp Cloud] Response: ${response.status}`, data)
+
+    return { success: response.ok }
+  } catch (error: any) {
+    log.error('[WhatsApp Cloud] Error:', error.message)
+    return { success: false }
+  }
+}
+
+async function sendViaTwilio(_phone: string, _message: string): Promise<{ success: boolean }> {
   log.warn('Twilio integration placeholder')
   return { success: true }
 }
 
 async function sendViaEvolutionApi(phone: string, message: string): Promise<{ success: boolean }> {
-  log.warn('Evolution API integration placeholder')
+  try {
+    const response = await fetch(`${config.apiUrl}/message/sendText/${config.instanceId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': config.apiKey
+      },
+      body: JSON.stringify({
+        number: phone,
+        text: message
+      })
+    })
+    const data = await response.json()
+    log.info(`[Evolution API] Response:`, data)
+    return { success: data.status === 'success' }
+  } catch (error: any) {
+    log.error('[Evolution API] Error:', error.message)
+    return { success: false }
+  }
+}
+
+async function sendViaCustom(_phone: string, _message: string): Promise<{ success: boolean }> {
+  log.warn('Custom WhatsApp integration placeholder')
   return { success: true }
 }
 
-async function sendViaCustom(phone: string, message: string): Promise<{ success: boolean }> {
-  log.warn('Custom WhatsApp integration placeholder')
-  return { success: true }
+function wasAlreadySentToday(clientId: string, messageType: MessageType): boolean {
+  const db = getDatabase()
+  const today = formatISO(new Date()).slice(0, 10)
+  const result = db.prepare(`
+    SELECT COUNT(*) as count FROM whatsapp_messages
+    WHERE client_id = ? AND message_type = ? AND created_at LIKE ?
+  `).get(clientId, messageType, `${today}%`) as { count: number }
+  return result.count > 0
 }
 
 export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
@@ -191,21 +287,27 @@ export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
     if (!phone) continue
     
     if (daysLeft === 3 && config.reminders.threeDays) {
-      const message = generateExpiryReminderMessage(client.fullName, 3, membership.planName)
-      await sendMessage(client.id, phone, 'expiry_reminder_3d', message)
-      sentCount++
+      if (!wasAlreadySentToday(client.id, 'expiry_reminder_3d')) {
+        const message = generateExpiryReminderMessage(client.fullName, 3, membership.planName)
+        await sendMessage(client.id, phone, 'expiry_reminder_3d', message)
+        sentCount++
+      }
     }
     
     if (daysLeft === 1 && config.reminders.oneDay) {
-      const message = generateExpiryReminderMessage(client.fullName, 1, membership.planName)
-      await sendMessage(client.id, phone, 'expiry_reminder_1d', message)
-      sentCount++
+      if (!wasAlreadySentToday(client.id, 'expiry_reminder_1d')) {
+        const message = generateExpiryReminderMessage(client.fullName, 1, membership.planName)
+        await sendMessage(client.id, phone, 'expiry_reminder_1d', message)
+        sentCount++
+      }
     }
     
     if (daysLeft === 0 && config.reminders.sameDay) {
-      const message = generateExpiryReminderMessage(client.fullName, 0, membership.planName)
-      await sendMessage(client.id, phone, 'expiry_reminder_same_day', message)
-      sentCount++
+      if (!wasAlreadySentToday(client.id, 'expiry_reminder_same_day')) {
+        const message = generateExpiryReminderMessage(client.fullName, 0, membership.planName)
+        await sendMessage(client.id, phone, 'expiry_reminder_same_day', message)
+        sentCount++
+      }
     }
   }
   
@@ -276,15 +378,15 @@ function formatPhoneNumber(phone: string): string | null {
 export function getMessageHistory(clientId?: string, limit = 50): WhatsappMessage[] {
   const db = getDatabase()
   
-  let query = 'SELECT * FROM whatsapp_messages WHERE 1=1'
+  let query = `SELECT wm.*, c.full_name as client_name FROM whatsapp_messages wm LEFT JOIN clients c ON c.id = wm.client_id WHERE 1=1`
   const params: (string | number)[] = []
   
   if (clientId) {
-    query += ' AND client_id = ?'
+    query += ' AND wm.client_id = ?'
     params.push(clientId)
   }
   
-  query += ' ORDER BY created_at DESC LIMIT ?'
+  query += ' ORDER BY wm.created_at DESC LIMIT ?'
   params.push(limit)
   
   const stmt = db.prepare(query)
@@ -293,6 +395,7 @@ export function getMessageHistory(clientId?: string, limit = 50): WhatsappMessag
   return results.map(r => ({
     id: r.id,
     clientId: r.client_id,
+    clientName: r.client_name || '',
     phone: r.phone,
     messageType: r.message_type as MessageType,
     message: r.message,

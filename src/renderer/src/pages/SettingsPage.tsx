@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { MembershipPlan, MembershipType } from '../../../shared/types'
 
 export function SettingsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -19,7 +20,8 @@ export function SettingsPage(): JSX.Element {
 
   const [whatsappConfig, setWhatsappConfig] = useState({
     enabled: false,
-    provider: 'mock' as 'mock' | 'twilio' | 'evolution_api' | 'custom',
+    provider: 'mock' as 'mock' | 'twilio' | 'evolution_api' | 'custom' | 'whatsapp_cloud',
+    phoneNumberId: '',
     apiUrl: '',
     apiKey: '',
     instanceId: '',
@@ -37,7 +39,106 @@ export function SettingsPage(): JSX.Element {
     confirmPassword: ''
   })
 
-  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [plans, setPlans] = useState<MembershipPlan[]>([])
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null)
+  const [planForm, setPlanForm] = useState({ name: '', type: 'monthly' as MembershipType, price: 0, durationDays: 30, description: '' })
+  const [autoStart, setAutoStart] = useState(false)
+
+  const handlePlanFormChange = (field: string, value: string | number) => {
+    setPlanForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const openNewPlan = () => {
+    setEditingPlan(null)
+    setPlanForm({ name: '', type: 'monthly', price: 0, durationDays: 30, description: '' })
+    setShowPlanModal(true)
+  }
+
+  const openEditPlan = (plan: MembershipPlan) => {
+    setEditingPlan(plan)
+    setPlanForm({ name: plan.name, type: plan.type, price: plan.price, durationDays: plan.durationDays, description: plan.description })
+    setShowPlanModal(true)
+  }
+
+  const savePlan = async () => {
+    if (!planForm.name || planForm.price <= 0 || planForm.durationDays <= 0) {
+      showToast('warning', 'Completa todos los campos obligatorios', 'Validación')
+      return
+    }
+    try {
+      if (editingPlan) {
+        const result = await window.electronAPI.plans.update(editingPlan.id, {
+          name: planForm.name,
+          type: planForm.type,
+          price: planForm.price,
+          durationDays: planForm.durationDays,
+          description: planForm.description
+        })
+        if (result.success) {
+          showToast('success', 'Plan actualizado correctamente', 'Guardado')
+        }
+      } else {
+        const result = await window.electronAPI.plans.create(planForm)
+        if (result.success) {
+          showToast('success', 'Plan creado correctamente', 'Guardado')
+        }
+      }
+      setShowPlanModal(false)
+      loadPlans()
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al guardar plan', 'Error')
+    }
+  }
+
+  const deletePlan = async (id: string) => {
+    if (!confirm('¿Eliminar este plan? Los clientes con este plan no se verán afectados.')) return
+    try {
+      const result = await window.electronAPI.plans.delete(id)
+      if (result.success) {
+        showToast('success', 'Plan eliminado', 'Eliminado')
+        loadPlans()
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al eliminar plan', 'Error')
+    }
+  }
+
+  const togglePlanActive = async (plan: MembershipPlan) => {
+    try {
+      await window.electronAPI.plans.update(plan.id, { isActive: !plan.isActive })
+      loadPlans()
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al cambiar estado', 'Error')
+    }
+  }
+
+  const loadPlans = async () => {
+    try {
+      const result = await window.electronAPI.plans.getAll(false)
+      if (result.success && result.data) setPlans(result.data as MembershipPlan[])
+    } catch (e) { /* ignore */ }
+  }
+
+  const loadWhatsAppConfig = async () => {
+    try {
+      if (window.electronAPI?.whatsapp?.getConfig) {
+        const result = await window.electronAPI.whatsapp.getConfig()
+        if (result.success && result.data) {
+          setWhatsappConfig(prev => ({ ...prev, ...result.data }))
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  const loadAutoStart = async () => {
+    try {
+      if (window.electronAPI?.system) {
+        const result = await (window.electronAPI as any).system.getAutoStart()
+        if (result.success) setAutoStart(result.data)
+      }
+    } catch (e) { /* ignore */ }
+  }
 
   const checkKioskStatus = async () => {
     try {
@@ -144,6 +245,9 @@ export function SettingsPage(): JSX.Element {
   useEffect(() => {
     checkKioskStatus()
     loadDoorConfig()
+    loadPlans()
+    loadWhatsAppConfig()
+    loadAutoStart()
   }, [])
 
   const loadDoorConfig = async () => {
@@ -191,8 +295,21 @@ export function SettingsPage(): JSX.Element {
     }
   }
 
-  const handleSaveWhatsapp = () => {
-    showToast('success', 'Configuración de WhatsApp guardada correctamente', 'Guardado')
+  const handleSaveWhatsapp = async () => {
+    try {
+      if (window.electronAPI?.whatsapp?.saveConfig) {
+        const result = await window.electronAPI.whatsapp.saveConfig(whatsappConfig)
+        if (result.success) {
+          showToast('success', 'Configuración de WhatsApp guardada correctamente', 'Guardado')
+        } else {
+          showToast('error', result.error || 'Error al guardar', 'Error')
+        }
+      } else {
+        showToast('success', 'Configuración de WhatsApp guardada (sin Electron)', 'Guardado')
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al guardar', 'Error')
+    }
   }
 
   const handleSaveAdmin = () => {
@@ -553,35 +670,50 @@ export function SettingsPage(): JSX.Element {
                   <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Proveedor</label>
-                  <select 
-                    className="form-select"
-                    value={whatsappConfig.provider}
-                    onChange={(e) => setWhatsappConfig(prev => ({ 
-                      ...prev, 
-                      provider: e.target.value as 'mock' | 'twilio' | 'evolution_api' | 'custom'
-                    }))}
-                  >
-                    <option value="mock">Modo Simulación</option>
-                    <option value="evolution_api">Evolution API</option>
-                    <option value="twilio">Twilio</option>
-                    <option value="custom">API Personalizada</option>
-                  </select>
+                    <select 
+                      className="form-select"
+                      value={whatsappConfig.provider}
+                      onChange={(e) => setWhatsappConfig(prev => ({ 
+                        ...prev, 
+                        provider: e.target.value as any
+                      }))}
+                    >
+                      <option value="mock">Modo Simulación</option>
+                      <option value="whatsapp_cloud">WhatsApp Cloud API (Meta)</option>
+                      <option value="evolution_api">Evolution API</option>
+                      <option value="twilio">Twilio</option>
+                      <option value="custom">API Personalizada</option>
+                    </select>
                 </div>
               </div>
 
               {whatsappConfig.provider !== 'mock' && (
                 <>
-                  <div className="form-row">
+                  {whatsappConfig.provider === 'whatsapp_cloud' && (
                     <div className="form-group">
-                      <label className="form-label">URL de la API</label>
+                      <label className="form-label">Phone Number ID</label>
                       <input 
                         type="text" 
                         className="form-input"
-                        value={whatsappConfig.apiUrl}
-                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, apiUrl: e.target.value }))}
-                        placeholder="https://api.example.com"
+                        value={whatsappConfig.phoneNumberId}
+                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, phoneNumberId: e.target.value }))}
+                        placeholder="ID numérico del número en Meta Business"
                       />
                     </div>
+                  )}
+                  <div className="form-row">
+                    {whatsappConfig.provider !== 'whatsapp_cloud' && (
+                      <div className="form-group">
+                        <label className="form-label">URL de la API</label>
+                        <input 
+                          type="text" 
+                          className="form-input"
+                          value={whatsappConfig.apiUrl}
+                          onChange={(e) => setWhatsappConfig(prev => ({ ...prev, apiUrl: e.target.value }))}
+                          placeholder="https://api.example.com"
+                        />
+                      </div>
+                    )}
                     <div className="form-group">
                       <label className="form-label">API Key / Token</label>
                       <input 
@@ -715,6 +847,193 @@ export function SettingsPage(): JSX.Element {
               Actualizar Usuario
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h3 style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icons.Membership />
+            Planes de Membresía
+          </h3>
+        </div>
+        <div className="card-body">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <button className="btn btn-primary" onClick={openNewPlan}>
+              <Icons.Plus />
+              Nuevo Plan
+            </button>
+          </div>
+          <table className="table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Precio</th>
+                <th>Duración</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map(plan => (
+                <tr key={plan.id}>
+                  <td style={{ fontWeight: 600 }}>{plan.name}</td>
+                  <td>{plan.type}</td>
+                  <td>${plan.price.toLocaleString('es-CO')}</td>
+                  <td>{plan.durationDays} días</td>
+                  <td>
+                    <span className={`badge ${plan.isActive ? 'badge-success' : 'badge-default'}`}>
+                      {plan.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => openEditPlan(plan)}>
+                        <Icons.Edit />
+                      </button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => togglePlanActive(plan)}>
+                        {plan.isActive ? <Icons.X /> : <Icons.Check />}
+                      </button>
+                      <button className="btn btn-sm btn-danger" onClick={() => deletePlan(plan.id)}>
+                        <Icons.Trash />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {plans.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-secondary)', padding: 24 }}>No hay planes registrados</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showPlanModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="card" style={{ width: 480, maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="card-header">
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>
+                {editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
+              </h3>
+            </div>
+            <div className="card-body">
+              <div className="form-group">
+                <label className="form-label">Nombre *</label>
+                <input className="form-input" value={planForm.name}
+                  onChange={e => handlePlanFormChange('name', e.target.value)}
+                  placeholder="Ej: Mensual Premium" />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Tipo</label>
+                  <select className="form-select" value={planForm.type}
+                    onChange={e => handlePlanFormChange('type', e.target.value)}>
+                    <option value="daily">Diario</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="biweekly">15 Días</option>
+                    <option value="monthly">Mensual</option>
+                    <option value="quarterly">Trimestral</option>
+                    <option value="semiannual">Semestral</option>
+                    <option value="annual">Anual</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Duración (días) *</label>
+                  <input type="number" className="form-input" value={planForm.durationDays}
+                    onChange={e => handlePlanFormChange('durationDays', Number(e.target.value))} min={1} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Precio *</label>
+                <input type="number" className="form-input" value={planForm.price}
+                  onChange={e => handlePlanFormChange('price', Number(e.target.value))} min={0} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Descripción</label>
+                <textarea className="form-textarea" value={planForm.description}
+                  onChange={e => handlePlanFormChange('description', e.target.value)} rows={2} />
+              </div>
+              <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setShowPlanModal(false)}>
+                  Cancelar
+                </button>
+                <button className="btn btn-primary" onClick={savePlan}>
+                  <Icons.Check />
+                  {editingPlan ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-header">
+          <h3 style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icons.Settings />
+            Sistema
+          </h3>
+        </div>
+        <div className="card-body">
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0' }}>
+              <input type="checkbox" checked={autoStart}
+                onChange={async (e) => {
+                  const enabled = e.target.checked
+                  setAutoStart(enabled)
+                  if (window.electronAPI?.system) {
+                    await (window.electronAPI as any).system.setAutoStart(enabled)
+                  }
+                }} />
+              <span style={{ fontWeight: 500 }}>Iniciar automáticamente con Windows</span>
+            </label>
+            <p style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
+              La app se abrirá sola cuando enciendas la PC del gimnasio
+            </p>
+          </div>
+
+          <div className="divider" />
+
+          <h4 style={{ marginBottom: 16 }}>Copia de Seguridad</h4>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-primary" onClick={async () => {
+              if (window.electronAPI?.system?.backupDb) {
+                const result = await window.electronAPI.system.backupDb()
+                if (result.success) {
+                  showToast('success', `Backup guardado en: ${result.data}`, 'Backup Exitoso')
+                } else if (result.error !== 'Cancelado') {
+                  showToast('error', result.error || 'Error al hacer backup', 'Error')
+                }
+              }
+            }}>
+              <Icons.Download />
+              Respaldar Base de Datos
+            </button>
+            <button className="btn btn-secondary" onClick={async () => {
+              if (window.electronAPI?.system?.restoreDb) {
+                const ok = confirm('¿Restaurar base de datos? Se perderán los cambios no respaldados.')
+                if (!ok) return
+                const result = await window.electronAPI.system.restoreDb()
+                if (result.success) {
+                  showToast('success', 'Base de datos restaurada. Reinicia la app.', 'Restauración Exitosa')
+                } else if (result.error !== 'Cancelado') {
+                  showToast('error', result.error || 'Error al restaurar', 'Error')
+                }
+              }
+            }}>
+              <Icons.Upload />
+              Restaurar Base de Datos
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 8 }}>
+            La base de datos contiene clientes, membresías, pagos, accesos y configuración.
+          </p>
         </div>
       </div>
     </div>

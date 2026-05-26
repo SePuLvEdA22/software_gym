@@ -9,6 +9,7 @@ import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { KioskPage } from '@/pages/KioskPage'
+import { WhatsappPage } from '@/pages/WhatsappPage'
 
 function getPageTitle(pathname: string): string {
   switch (pathname) {
@@ -24,6 +25,8 @@ function getPageTitle(pathname: string): string {
       return 'Pagos'
     case '/logs':
       return 'Historial de Accesos'
+    case '/whatsapp':
+      return 'Notificaciones WhatsApp'
     case '/settings':
       return 'Configuración'
     default:
@@ -48,6 +51,7 @@ function AdminLayout(): JSX.Element {
             <Route path="/memberships" element={<MembershipsPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/logs" element={<LogsPage />} />
+            <Route path="/whatsapp" element={<WhatsappPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </div>

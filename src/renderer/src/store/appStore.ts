@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Client, MembershipPlan, DashboardMetrics, AccessLog, Membership, Payment } from '../../../shared/types'
+import { Client, MembershipPlan, DashboardMetrics, AccessLog } from '../../../shared/types'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 

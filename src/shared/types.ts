@@ -127,6 +127,7 @@ export interface PlanStat {
 export interface WhatsappMessage {
   id: string
   clientId: string
+  clientName?: string
   phone: string
   messageType: MessageType
   message: string

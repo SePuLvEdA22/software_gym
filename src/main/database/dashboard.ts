@@ -124,6 +124,48 @@ export function getClientsByStatus(): { [key: string]: number } {
   return counts
 }
 
+export function getExpiringSoon(days: number): { clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[] {
+  const db = getDatabase()
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const future = new Date(today)
+  future.setDate(future.getDate() + days)
+
+  const rows = db.prepare(`
+    SELECT c.id as clientId, c.full_name as clientName,
+           m.plan_name as planName, m.end_date as endDate
+    FROM memberships m
+    JOIN clients c ON c.id = m.client_id
+    WHERE m.status = 'active'
+      AND m.end_date >= ? AND m.end_date <= ?
+    ORDER BY m.end_date ASC
+  `).all(formatISO(today), formatISO(future)) as { clientId: string; clientName: string; planName: string; endDate: string }[]
+
+  return rows.map(r => ({
+    ...r,
+    daysLeft: Math.ceil((new Date(r.endDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  }))
+}
+
+export function getBirthdaysThisMonth(): { clientId: string; clientName: string; birthDate: string; day: number }[] {
+  const db = getDatabase()
+  const now = new Date()
+  const month = now.getMonth() + 1
+
+  const rows = db.prepare(`
+    SELECT id as clientId, full_name as clientName, birth_date as birthDate
+    FROM clients
+    WHERE birth_date IS NOT NULL AND birth_date != ''
+      AND CAST(strftime('%m', birth_date) AS INTEGER) = ?
+    ORDER BY CAST(strftime('%d', birth_date) AS INTEGER) ASC
+  `).all(month) as { clientId: string; clientName: string; birthDate: string }[]
+
+  return rows.map(r => ({
+    ...r,
+    day: parseInt(r.birthDate.split('-')[2] || '0', 10)
+  }))
+}
+
 export function getRevenueByMonth(months: number = 6): { month: string; revenue: number }[] {
   const db = getDatabase()
   const today = new Date()

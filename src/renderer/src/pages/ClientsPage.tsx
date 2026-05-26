@@ -310,7 +310,7 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
 }
 
 export function ClientsPage(): JSX.Element {
-  const { clients, setClients, addClient, updateClientInState, removeClient, triggerNewClientModal, setTriggerNewClientModal } = useAppStore()
+  const { clients, setClients, addClient, updateClientInState, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -398,6 +398,14 @@ export function ClientsPage(): JSX.Element {
         alignItems: 'center',
         gap: 16
       }}>
+        <button className="btn btn-secondary" onClick={async () => {
+          if (window.electronAPI?.system?.exportCsv) {
+            const result = await window.electronAPI.system.exportCsv('clients')
+            if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+          }
+        }} title="Exportar CSV">
+          <Icons.Download />
+        </button>
         <div style={{ display: 'flex', gap: 12, flex: 1 }}>
           <input 
             type="text" 
