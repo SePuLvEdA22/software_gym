@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Payment, PaymentMethod } from '../../../shared/types'
+import { Payment, PaymentMethod, RevenueByPeriod } from '../../../shared/types'
 import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
 
 function formatCurrency(value: number): string {
@@ -48,9 +48,13 @@ export function PaymentsPage(): JSX.Element {
   const [payments, setPayments] = useState<Payment[]>([])
   const [filterMethod, setFilterMethod] = useState<string>('all')
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month')
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [revenueByTime, setRevenueByTime] = useState<RevenueByPeriod>({ morning: 0, afternoon: 0, total: 0 })
+  const [yearRevenue, setYearRevenue] = useState<number>(0)
   const [summary, setSummary] = useState({
     total: 0,
     count: 0,
+    totalDiscount: 0,
     byMethod: {} as { [key: string]: number }
   })
 
@@ -92,6 +96,7 @@ export function PaymentsPage(): JSX.Element {
       setPayments(filteredPayments)
       
       const total = filteredPayments.reduce((sum, p) => sum + p.amount, 0)
+      const totalDiscount = filteredPayments.reduce((sum, p) => sum + (p.discount || 0), 0)
       const byMethod: { [key: string]: number } = {}
       
       for (const payment of filteredPayments) {
@@ -101,45 +106,90 @@ export function PaymentsPage(): JSX.Element {
       setSummary({
         total,
         count: filteredPayments.length,
+        totalDiscount,
         byMethod
       })
+    }
+
+    const yearResult = await window.electronAPI.dashboard.getRevenueByYear(selectedYear)
+    if (yearResult.success && typeof yearResult.data === 'number') {
+      setYearRevenue(yearResult.data)
+    }
+
+    const timeResult = await window.electronAPI.dashboard.getRevenueByTimeOfDay(
+      startDate.toISOString(),
+      endDate.toISOString()
+    )
+    if (timeResult.success && timeResult.data) {
+      setRevenueByTime(timeResult.data)
     }
   }
 
   useEffect(() => {
     loadPayments()
-  }, [filterMethod, dateRange])
+  }, [filterMethod, dateRange, selectedYear])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(4, 1fr)', 
-        gap: 24 
-      }}>
-        <div className="kpi-card">
-          <p className="kpi-label">Total Recaudado</p>
-          <p className="kpi-value" style={{ color: '#4ade80' }}>
-            {formatCurrency(summary.total)}
-          </p>
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: 24 
+        }}>
+          <div className="kpi-card">
+            <p className="kpi-label">Total Recaudado</p>
+            <p className="kpi-value" style={{ color: '#4ade80' }}>
+              {formatCurrency(summary.total)}
+            </p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Cantidad de Pagos</p>
+            <p className="kpi-value">{summary.count}</p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Promedio por Pago</p>
+            <p className="kpi-value" style={{ fontSize: 28 }}>
+              {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
+            </p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Total Descuentos</p>
+            <p className="kpi-value" style={{ color: '#ff6b00' }}>
+              {formatCurrency(summary.totalDiscount)}
+            </p>
+          </div>
         </div>
-        <div className="kpi-card">
-          <p className="kpi-label">Cantidad de Pagos</p>
-          <p className="kpi-value">{summary.count}</p>
+
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: 24 
+        }}>
+          <div className="kpi-card">
+            <p className="kpi-label">Mañana (antes 12pm)</p>
+            <p className="kpi-value" style={{ color: '#60a5fa' }}>
+              {formatCurrency(revenueByTime.morning)}
+            </p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Tarde (después 12pm)</p>
+            <p className="kpi-value" style={{ color: '#f472b6' }}>
+              {formatCurrency(revenueByTime.afternoon)}
+            </p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Efectivo</p>
+            <p className="kpi-value" style={{ color: '#4ade80' }}>
+              {formatCurrency(summary.byMethod['cash'] || 0)}
+            </p>
+          </div>
+          <div className="kpi-card">
+            <p className="kpi-label">Anual ({selectedYear})</p>
+            <p className="kpi-value" style={{ color: '#ff6b00' }}>
+              {formatCurrency(yearRevenue)}
+            </p>
+          </div>
         </div>
-        <div className="kpi-card">
-          <p className="kpi-label">Promedio por Pago</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>
-            {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
-          </p>
-        </div>
-        <div className="kpi-card">
-          <p className="kpi-label">Efectivo</p>
-          <p className="kpi-value" style={{ color: '#4ade80' }}>
-            {formatCurrency(summary.byMethod['cash'] || 0)}
-          </p>
-        </div>
-      </div>
 
       <div className="card">
         <div className="card-header" style={{ 
@@ -190,6 +240,16 @@ export function PaymentsPage(): JSX.Element {
                 <option key={pm.value} value={pm.value}>{pm.label}</option>
               ))}
             </select>
+            <select 
+              className="form-select"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              style={{ width: 110 }}
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
             <button className="btn btn-secondary btn-sm" onClick={loadPayments}>
               <Icons.Refresh />
             </button>
@@ -209,40 +269,48 @@ export function PaymentsPage(): JSX.Element {
             </div>
           ) : (
             <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Cliente</th>
-                    <th>Descripción</th>
-                    <th>Método</th>
-                    <th style={{ textAlign: 'right' }}>Monto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((payment) => (
-                    <tr key={payment.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
-                        {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
-                      </td>
-                      <td>{payment.description || 'Pago'}</td>
-                      <td>
-                        <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
-                          {payment.notes || '-'}
-                        </span>
-                      </td>
-                      <td>{getPaymentMethodBadge(payment.method)}</td>
-                      <td style={{ 
-                        textAlign: 'right', 
-                        fontWeight: 600,
-                        fontFamily: 'monospace'
-                      }}>
-                        {formatCurrency(payment.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Descripción</th>
+                        <th>Método</th>
+                        <th style={{ textAlign: 'right' }}>Monto</th>
+                        <th style={{ textAlign: 'right' }}>Desc.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment) => (
+                        <tr key={payment.id}>
+                          <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
+                            {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
+                          </td>
+                          <td>{payment.description || 'Pago'}</td>
+                          <td>
+                            <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+                              {payment.notes || '-'}
+                            </span>
+                          </td>
+                          <td>{getPaymentMethodBadge(payment.method)}</td>
+                          <td style={{ 
+                            textAlign: 'right', 
+                            fontWeight: 600,
+                            fontFamily: 'monospace'
+                          }}>
+                            {formatCurrency(payment.amount)}
+                          </td>
+                          <td style={{ 
+                            textAlign: 'right', 
+                            fontFamily: 'monospace',
+                            color: payment.discount > 0 ? '#ff6b00' : 'var(--color-secondary)'
+                          }}>
+                            {payment.discount > 0 ? formatCurrency(payment.discount) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
             </div>
           )}
         </div>

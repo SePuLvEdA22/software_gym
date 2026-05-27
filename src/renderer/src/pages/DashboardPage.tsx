@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import { AccessLog, PeakHour, PlanStat } from '../../../shared/types'
+import { AccessLog, PeakHour, PlanStat, InactiveClient } from '../../../shared/types'
 import { format, parseISO } from 'date-fns'
 
 const COLORS = ['#ff6b00', '#4ade80', '#ffb4ab', '#60a5fa', '#f472b6', '#a78bfa']
@@ -316,6 +316,7 @@ export function DashboardPage(): JSX.Element {
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([])
   const [expiringSoon, setExpiringSoon] = useState<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>([])
   const [birthdays, setBirthdays] = useState<{ clientId: string; clientName: string; day: number }[]>([])
+  const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([])
 
   const loadMetrics = async () => {
     const result = await window.electronAPI.dashboard.getMetrics()
@@ -336,6 +337,11 @@ export function DashboardPage(): JSX.Element {
     const birthdayResult = await window.electronAPI.dashboard.getBirthdays()
     if (birthdayResult.success && birthdayResult.data) {
       setBirthdays(birthdayResult.data as any[])
+    }
+
+    const inactiveResult = await window.electronAPI.client.getInactive(30)
+    if (inactiveResult.success && inactiveResult.data) {
+      setInactiveClients(inactiveResult.data)
     }
   }
 
@@ -372,6 +378,8 @@ export function DashboardPage(): JSX.Element {
     todayRevenue: 0,
     monthRevenue: 0,
     newThisMonth: 0,
+    debtorsCount: 0,
+    inactiveClientsCount: 0,
     peakHours: [],
     topPlans: [],
     recentAccesses: []
@@ -383,7 +391,7 @@ export function DashboardPage(): JSX.Element {
 
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(4, 1fr)', 
+        gridTemplateColumns: 'repeat(6, 1fr)', 
         gap: 24 
       }}>
         <KpiCard
@@ -410,6 +418,18 @@ export function DashboardPage(): JSX.Element {
           icon="CreditCard"
           color="success"
         />
+        <KpiCard
+          label="Clientes con Deuda"
+          value={metrics.debtorsCount}
+          icon="Bell"
+          color="error"
+        />
+        <KpiCard
+          label="Inactivos 30d"
+          value={metrics.inactiveClientsCount}
+          icon="Clock"
+          color="warning"
+        />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
@@ -422,7 +442,7 @@ export function DashboardPage(): JSX.Element {
         <RecentAccesses accesses={metrics.recentAccesses} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
         <div className="card">
           <div className="card-header">
             <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -488,6 +508,39 @@ export function DashboardPage(): JSX.Element {
                       {b.day}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>{b.clientName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Icons.Clock style={{ color: 'var(--color-warning)' }} />
+              Inactivos (+30d sin visitar)
+            </h3>
+          </div>
+          <div className="card-body">
+            {inactiveClients.length === 0 ? (
+              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+                No hay clientes inactivos
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {inactiveClients.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)', borderRadius: 8
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-warning)' }}>
+                      {item.daysSinceLastVisit}d
+                    </div>
                   </div>
                 ))}
               </div>

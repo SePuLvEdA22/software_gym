@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icons } from './Icons'
+import logoSrc from '../assets/logo.png'
 
 interface NavItem {
   id: string
@@ -26,10 +27,8 @@ export function Sidebar(): JSX.Element {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <Icons.Dumbbell />
-          </div>
+          <div className="sidebar-logo">
+          <img src={logoSrc} alt="BodyFitGym" className="sidebar-logo-img" />
           <span className="sidebar-logo-text">BodyFitGym</span>
         </div>
       </div>

@@ -45,6 +45,8 @@ const initialMetrics: DashboardMetrics = {
   todayRevenue: 0,
   monthRevenue: 0,
   newThisMonth: 0,
+  debtorsCount: 0,
+  inactiveClientsCount: 0,
   peakHours: [],
   topPlans: [],
   recentAccesses: []

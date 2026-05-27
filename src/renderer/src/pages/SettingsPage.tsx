@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { MembershipPlan, MembershipType } from '../../../shared/types'
+import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types'
 
 export function SettingsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -44,6 +44,11 @@ export function SettingsPage(): JSX.Element {
   const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null)
   const [planForm, setPlanForm] = useState({ name: '', type: 'monthly' as MembershipType, price: 0, durationDays: 30, description: '' })
   const [autoStart, setAutoStart] = useState(false)
+
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [showPromoModal, setShowPromoModal] = useState(false)
+  const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
+  const [promoForm, setPromoForm] = useState({ name: '', planId: '', discountType: 'percentage' as 'percentage' | 'fixed', discountValue: 0, startDate: '', endDate: '' })
 
   const handlePlanFormChange = (field: string, value: string | number) => {
     setPlanForm(prev => ({ ...prev, [field]: value }))
@@ -111,6 +116,79 @@ export function SettingsPage(): JSX.Element {
     } catch (e: any) {
       showToast('error', e.message || 'Error al cambiar estado', 'Error')
     }
+  }
+
+  const openNewPromo = () => {
+    setEditingPromo(null)
+    setPromoForm({ name: '', planId: '', discountType: 'percentage', discountValue: 0, startDate: '', endDate: '' })
+    setShowPromoModal(true)
+  }
+
+  const openEditPromo = (promo: Promotion) => {
+    setEditingPromo(promo)
+    setPromoForm({
+      name: promo.name,
+      planId: promo.planId,
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      startDate: promo.startDate.split('T')[0],
+      endDate: promo.endDate.split('T')[0]
+    })
+    setShowPromoModal(true)
+  }
+
+  const savePromo = async () => {
+    if (!promoForm.name || !promoForm.planId || promoForm.discountValue <= 0 || !promoForm.startDate || !promoForm.endDate) {
+      showToast('warning', 'Completa todos los campos obligatorios', 'Validación')
+      return
+    }
+    try {
+      const data = {
+        ...promoForm,
+        startDate: new Date(promoForm.startDate).toISOString(),
+        endDate: new Date(promoForm.endDate).toISOString()
+      }
+      if (editingPromo) {
+        const result = await window.electronAPI.promotion.update(editingPromo.id, data)
+        if (result.success) showToast('success', 'Promoción actualizada', 'Guardado')
+      } else {
+        const result = await window.electronAPI.promotion.create(data)
+        if (result.success) showToast('success', 'Promoción creada', 'Guardado')
+      }
+      setShowPromoModal(false)
+      loadPromotions()
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al guardar promoción', 'Error')
+    }
+  }
+
+  const deletePromo = async (id: string) => {
+    if (!confirm('¿Eliminar esta promoción?')) return
+    try {
+      const result = await window.electronAPI.promotion.delete(id)
+      if (result.success) {
+        showToast('success', 'Promoción eliminada', 'Eliminado')
+        loadPromotions()
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al eliminar promoción', 'Error')
+    }
+  }
+
+  const togglePromoActive = async (promo: Promotion) => {
+    try {
+      await window.electronAPI.promotion.update(promo.id, { isActive: !promo.isActive })
+      loadPromotions()
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al cambiar estado', 'Error')
+    }
+  }
+
+  const loadPromotions = async () => {
+    try {
+      const result = await window.electronAPI.promotion.getAll(false)
+      if (result.success && result.data) setPromotions(result.data as Promotion[])
+    } catch (e) { /* ignore */ }
   }
 
   const loadPlans = async () => {
@@ -246,6 +324,7 @@ export function SettingsPage(): JSX.Element {
     checkKioskStatus()
     loadDoorConfig()
     loadPlans()
+    loadPromotions()
     loadWhatsAppConfig()
     loadAutoStart()
   }, [])
@@ -909,6 +988,142 @@ export function SettingsPage(): JSX.Element {
           </table>
         </div>
       </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h3 style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icons.Bell />
+            Promociones y Descuentos
+          </h3>
+        </div>
+        <div className="card-body">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <button className="btn btn-primary" onClick={openNewPromo}>
+              <Icons.Plus />
+              Nueva Promoción
+            </button>
+          </div>
+          <table className="table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Plan</th>
+                <th>Descuento</th>
+                <th>Vigencia</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {promotions.map(promo => {
+                const plan = plans.find(p => p.id === promo.planId)
+                return (
+                  <tr key={promo.id}>
+                    <td style={{ fontWeight: 600 }}>{promo.name}</td>
+                    <td>{plan?.name || promo.planId}</td>
+                    <td>{promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue.toLocaleString('es-CO')}`}</td>
+                    <td style={{ fontSize: 13 }}>
+                      {promo.startDate.split('T')[0]} → {promo.endDate.split('T')[0]}
+                    </td>
+                    <td>
+                      <span className={`badge ${promo.isActive ? 'badge-success' : 'badge-default'}`}>
+                        {promo.isActive ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-sm btn-secondary" onClick={() => openEditPromo(promo)}>
+                          <Icons.Edit />
+                        </button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => togglePromoActive(promo)}>
+                          {promo.isActive ? <Icons.X /> : <Icons.Check />}
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => deletePromo(promo.id)}>
+                          <Icons.Trash />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              {promotions.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-secondary)', padding: 24 }}>No hay promociones registradas</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showPromoModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="card" style={{ width: 480, maxHeight: '90vh', overflow: 'auto' }}>
+            <div className="card-header">
+              <h3 style={{ fontSize: 16, fontWeight: 600 }}>
+                {editingPromo ? 'Editar Promoción' : 'Nueva Promoción'}
+              </h3>
+            </div>
+            <div className="card-body">
+              <div className="form-group">
+                <label className="form-label">Nombre *</label>
+                <input className="form-input" value={promoForm.name}
+                  onChange={e => setPromoForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ej: Promo Mes del Niño" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Plan *</label>
+                <select className="form-select" value={promoForm.planId}
+                  onChange={e => setPromoForm(prev => ({ ...prev, planId: e.target.value }))}>
+                  <option value="">Seleccione un plan</option>
+                  {plans.filter(p => p.isActive).map(plan => (
+                    <option key={plan.id} value={plan.id}>{plan.name} - ${plan.price.toLocaleString('es-CO')}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Tipo de Descuento</label>
+                  <select className="form-select" value={promoForm.discountType}
+                    onChange={e => setPromoForm(prev => ({ ...prev, discountType: e.target.value as 'percentage' | 'fixed' }))}>
+                    <option value="percentage">Porcentaje (%)</option>
+                    <option value="fixed">Valor Fijo ($)</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Valor *</label>
+                  <input type="number" className="form-input" value={promoForm.discountValue}
+                    onChange={e => setPromoForm(prev => ({ ...prev, discountValue: Number(e.target.value) }))}
+                    min={0} placeholder={promoForm.discountType === 'percentage' ? 'Ej: 20' : 'Ej: 50000'} />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Fecha Inicio *</label>
+                  <input type="date" className="form-input" value={promoForm.startDate}
+                    onChange={e => setPromoForm(prev => ({ ...prev, startDate: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fecha Fin *</label>
+                  <input type="date" className="form-input" value={promoForm.endDate}
+                    onChange={e => setPromoForm(prev => ({ ...prev, endDate: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button className="btn btn-secondary" onClick={() => setShowPromoModal(false)}>
+                  Cancelar
+                </button>
+                <button className="btn btn-primary" onClick={savePromo}>
+                  <Icons.Check />
+                  {editingPromo ? 'Actualizar' : 'Crear'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPlanModal && (
         <div style={{

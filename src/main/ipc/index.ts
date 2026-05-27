@@ -28,14 +28,28 @@ import {
   logAccess,
   getAccessLogs,
   getAccessLogsByDate,
-  getClientAccessLogs
+  getClientAccessLogs,
+  getAllPromotions,
+  getPromotionById,
+  createPromotion,
+  updatePromotion,
+  deletePromotion,
+  getEffectivePrice,
+  getClientDebt,
+  getDebtors,
+  getFreezeHistory,
+  getClientFreezeHistory,
+  getClientAttendanceStats,
+  getInactiveClients
 } from '../database/memberships'
 import {
   getDashboardMetrics,
   getRevenueByMonth,
   getClientsByStatus,
   getExpiringSoon,
-  getBirthdaysThisMonth
+  getBirthdaysThisMonth,
+  getRevenueByYear,
+  getRevenueByTimeOfDay
 } from '../database/dashboard'
 import {
   createPlan,
@@ -64,6 +78,9 @@ export function setupIpcHandlers(): void {
       return { success: true, data: createClient(data) }
     } catch (error: any) {
       log.error('Error creating client:', error)
+      if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
+        return { success: false, error: 'Ya existe un cliente con ese número de documento' }
+      }
       return { success: false, error: error.message }
     }
   })
@@ -74,6 +91,9 @@ export function setupIpcHandlers(): void {
       return { success: !!result, data: result }
     } catch (error: any) {
       log.error('Error updating client:', error)
+      if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
+        return { success: false, error: 'Ya existe otro cliente con ese número de documento' }
+      }
       return { success: false, error: error.message }
     }
   })
@@ -198,9 +218,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('membership:freeze', async (_, membershipId) => {
+  ipcMain.handle('membership:freeze', async (_, membershipId, reason, plannedDays) => {
     try {
-      const membership = freezeMembership(membershipId)
+      const membership = freezeMembership(membershipId, reason, plannedDays)
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error freezing membership:', error)
@@ -218,9 +238,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes) => {
+  ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes, discount) => {
     try {
-      const payment = recordPayment(clientId, amount, method, description, membershipId, notes)
+      const payment = recordPayment(clientId, amount, method, description, membershipId, notes, discount)
       return { success: true, data: payment }
     } catch (error: any) {
       log.error('Error recording payment:', error)
@@ -457,6 +477,136 @@ export function setupIpcHandlers(): void {
       return { success: true, data: count }
     } catch (error: any) {
       log.error('Error updating expired memberships:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('promotion:getAll', async (_, activeOnly) => {
+    try {
+      const promotions = getAllPromotions(activeOnly)
+      return { success: true, data: promotions }
+    } catch (error: any) {
+      log.error('Error getting promotions:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('promotion:getById', async (_, id) => {
+    try {
+      const promotion = getPromotionById(id)
+      return { success: true, data: promotion }
+    } catch (error: any) {
+      log.error('Error getting promotion:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('promotion:create', async (_, data) => {
+    try {
+      return { success: true, data: createPromotion(data) }
+    } catch (error: any) {
+      log.error('Error creating promotion:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('promotion:update', async (_, id, data) => {
+    try {
+      const result = updatePromotion(id, data)
+      return { success: !!result, data: result }
+    } catch (error: any) {
+      log.error('Error updating promotion:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('promotion:delete', async (_, id) => {
+    try {
+      return { success: deletePromotion(id) }
+    } catch (error: any) {
+      log.error('Error deleting promotion:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('membership:getEffectivePrice', async (_, planId) => {
+    try {
+      const plan = getPlanById(planId)
+      if (!plan) return { success: false, error: 'Plan no encontrado' }
+      return { success: true, data: getEffectivePrice(plan) }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('client:getDebt', async (_, clientId) => {
+    try {
+      const debts = getClientDebt(clientId)
+      return { success: true, data: debts }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('client:getDebtors', async () => {
+    try {
+      const debtors = getDebtors()
+      return { success: true, data: debtors }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('membership:getFreezeHistory', async (_, membershipId) => {
+    try {
+      return { success: true, data: getFreezeHistory(membershipId) }
+    } catch (error: any) {
+      log.error('Error getting freeze history:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('client:getFreezeHistory', async (_, clientId) => {
+    try {
+      return { success: true, data: getClientFreezeHistory(clientId) }
+    } catch (error: any) {
+      log.error('Error getting client freeze history:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('client:getAttendanceStats', async (_, clientId) => {
+    try {
+      return { success: true, data: getClientAttendanceStats(clientId) }
+    } catch (error: any) {
+      log.error('Error getting attendance stats:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('client:getInactive', async (_, daysThreshold) => {
+    try {
+      return { success: true, data: getInactiveClients(daysThreshold) }
+    } catch (error: any) {
+      log.error('Error getting inactive clients:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('dashboard:getRevenueByYear', async (_, year) => {
+    try {
+      return { success: true, data: getRevenueByYear(year) }
+    } catch (error: any) {
+      log.error('Error getting revenue by year:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('dashboard:getRevenueByTimeOfDay', async (_, startDate, endDate) => {
+    try {
+      return { success: true, data: getRevenueByTimeOfDay(startDate, endDate) }
+    } catch (error: any) {
+      log.error('Error getting revenue by time of day:', error)
       return { success: false, error: error.message }
     }
   })

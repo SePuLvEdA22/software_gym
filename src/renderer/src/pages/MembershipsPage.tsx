@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Client, Membership, MembershipPlan, PaymentMethod } from '../../../shared/types'
+import { Client, Membership, MembershipPlan, PaymentMethod, FreezeHistory } from '../../../shared/types'
 import { format, parseISO, differenceInDays, addDays } from 'date-fns'
 
 function formatCurrency(value: number): string {
@@ -33,16 +33,34 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [amount, setAmount] = useState<number>(0)
+  const [discount, setDiscount] = useState<number>(0)
   const [startDate, setStartDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'))
   const [loading, setLoading] = useState(false)
+  const [promoInfo, setPromoInfo] = useState<{ price: number; discount: number; promotionName: string | null } | null>(null)
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan)
 
   useEffect(() => {
     if (selectedPlanData) {
       setAmount(selectedPlanData.price)
+      setDiscount(0)
+      setPromoInfo(null)
+      loadEffectivePrice(selectedPlanData.id)
     }
   }, [selectedPlanData])
+
+  const loadEffectivePrice = async (planId: string) => {
+    try {
+      const result = await window.electronAPI.promotion.getEffectivePrice(planId)
+      if (result.success && result.data) {
+        setPromoInfo(result.data)
+        if (result.data.promotionName) {
+          setAmount(result.data.price)
+          setDiscount(result.data.discount)
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
 
    const handleRenew = async () => {
      if (!selectedPlan) return
@@ -58,13 +76,25 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
        
         if (membershipResult.success && membershipResult.data) {
           const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
-          await window.electronAPI.payment.record(
-            client.id,
-            amount,
-            paymentMethod,
-            paymentDesc,
-            membershipResult.data.id
-          )
+          if (discount > 0) {
+            await window.electronAPI.payment.record(
+              client.id,
+              amount,
+              paymentMethod,
+              paymentDesc,
+              membershipResult.data.id,
+              `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}`,
+              discount
+            )
+          } else {
+            await window.electronAPI.payment.record(
+              client.id,
+              amount,
+              paymentMethod,
+              paymentDesc,
+              membershipResult.data.id
+            )
+          }
           
           showToast('success', 'Membresía renovada exitosamente', 'Éxito')
           onSuccess()
@@ -183,7 +213,17 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
 
           <div className="divider" />
 
-          <div className="form-row">
+          {promoInfo?.promotionName && (
+            <div className="alert alert-success" style={{ marginBottom: 16 }}>
+              <Icons.Bell />
+              <div>
+                <span style={{ fontWeight: 600 }}>Promoción activa: </span>
+                {promoInfo.promotionName} - Ahorras ${promoInfo.discount.toLocaleString('es-CO')}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <div className="form-group">
               <label className="form-label">Método de Pago</label>
               <select 
@@ -197,12 +237,22 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Monto</label>
+              <label className="form-label">Monto a Pagar</label>
               <input 
                 type="number" 
                 className="form-input"
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descuento</label>
+              <input 
+                type="number" 
+                className="form-input"
+                value={discount}
+                onChange={(e) => setDiscount(Number(e.target.value))}
+                placeholder="0"
               />
             </div>
           </div>
@@ -226,11 +276,188 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
   )
 }
 
+interface FreezeModalProps {
+  membership: Membership
+  onClose: () => void
+  onSuccess: () => void
+}
+
+function FreezeModal({ membership, onClose, onSuccess }: FreezeModalProps): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
+  const [reason, setReason] = useState('')
+  const [plannedDays, setPlannedDays] = useState<number | ''>('')
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    try {
+      const result = await window.electronAPI.membership.freeze(
+        membership.id,
+        reason || undefined,
+        plannedDays || undefined
+      )
+      if (result.success) {
+        showToast('success', 'Membresía congelada exitosamente', 'Listo')
+        onSuccess()
+        onClose()
+      } else {
+        showToast('error', result.error || 'No se pudo congelar la membresía', 'Error')
+      }
+    } catch (error: any) {
+      showToast('error', error?.message || 'Error desconocido', 'Error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Congelar Membresía</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        <div className="modal-body">
+          <div className="alert alert-info" style={{ marginBottom: 20 }}>
+            <Icons.Snowflake />
+            <div>
+              <strong>{membership.planName}</strong> - Vence el {format(parseISO(membership.endDate), 'dd/MM/yyyy')}
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">Motivo de la congelación</label>
+            <textarea
+              className="form-input"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ej: Vacaciones, médico, etc."
+              rows={3}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Días planeados (opcional)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={plannedDays}
+              onChange={(e) => setPlannedDays(e.target.value ? Number(e.target.value) : '')}
+              placeholder="Dejar vacío si es indefinido"
+              min={1}
+            />
+            <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+              Los días se registrarán para seguimiento. Al descongelar se extenderá la membresía automáticamente.
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleConfirm}
+            disabled={loading}
+          >
+            {loading ? 'Congelando...' : 'Confirmar Congelación'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface FreezeHistoryModalProps {
+  membershipId: string
+  onClose: () => void
+}
+
+function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModalProps): JSX.Element {
+  const [history, setHistory] = useState<FreezeHistory[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadHistory()
+  }, [])
+
+  const loadHistory = async () => {
+    const result = await window.electronAPI.membership.getFreezeHistory(membershipId)
+    if (result.success && result.data) {
+      setHistory(result.data)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 500 }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Historial de Congelaciones</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        <div className="modal-body">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 20 }}>Cargando...</div>
+          ) : history.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--color-secondary)' }}>
+              No hay historial de congelaciones
+            </div>
+          ) : (
+            <div>
+              {history.map(h => (
+                <div key={h.id} style={{
+                  padding: 16,
+                  marginBottom: 12,
+                  backgroundColor: 'var(--color-surface-container-high)',
+                  borderRadius: 12
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontWeight: 600 }}>Desde: {format(parseISO(h.frozenAt), 'dd/MM/yyyy')}</span>
+                    {h.unfrozenAt && (
+                      <span style={{ fontWeight: 600 }}>Hasta: {format(parseISO(h.unfrozenAt), 'dd/MM/yyyy')}</span>
+                    )}
+                  </div>
+                  {h.reason && (
+                    <div style={{ fontSize: 13, marginBottom: 4 }}>
+                      <strong>Motivo:</strong> {h.reason}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                    {h.plannedDays && <span>Planeado: {h.plannedDays} días | </span>}
+                    {h.actualDays !== null && h.actualDays !== undefined
+                      ? <span>Real: {h.actualDays} días</span>
+                      : <span>Estado: {h.unfrozenAt ? 'Descongelado' : 'En congelación'}</span>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MembershipsPage(): JSX.Element {
   const { clients, setClients, plans, setPlans, showToast } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [showRenewModal, setShowRenewModal] = useState(false)
+  const [showFreezeModal, setShowFreezeModal] = useState(false)
+  const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
+  const [selectedMembershipForFreeze, setSelectedMembershipForFreeze] = useState<Membership | null>(null)
+  const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(null)
   const [clientMemberships, setClientMemberships] = useState<Membership[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'all'>('active')
 
@@ -278,17 +505,10 @@ export function MembershipsPage(): JSX.Element {
     setShowRenewModal(true)
   }
 
-   const handleFreeze = async (membershipId: string) => {
-     const result = await window.electronAPI.membership.freeze(membershipId)
-     if (result.success && result.data) {
-       showToast('success', 'Membresía congelada exitosamente', 'Listo')
-       if (selectedClient) {
-         handleClientSelect(selectedClient)
-       }
-     } else {
-       showToast('error', result.error || 'No se pudo congelar la membresía', 'Error')
-     }
-   }
+   const handleFreezeClick = (membership: Membership) => {
+      setSelectedMembershipForFreeze(membership)
+      setShowFreezeModal(true)
+    }
 
    const handleUnfreeze = async (membershipId: string) => {
      const result = await window.electronAPI.membership.unfreeze(membershipId)
@@ -476,26 +696,40 @@ export function MembershipsPage(): JSX.Element {
                          <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
                          <td>{getStatusBadge(membership)}</td>
                          <td>
-                           {membership.status === 'active' && (
-                             <button
-                               className="btn btn-secondary btn-sm"
-                               onClick={() => handleFreeze(membership.id)}
-                               title="Congelar membresía"
-                             >
-                               <Icons.Snowflake />
-                               Congelar
-                             </button>
-                           )}
-                           {membership.status === 'frozen' && (
-                             <button
-                               className="btn btn-primary btn-sm"
-                               onClick={() => handleUnfreeze(membership.id)}
-                               title="Descongelar membresía"
-                             >
-                               <Icons.Play />
-                               Descongelar
-                             </button>
-                           )}
+                            {membership.status === 'active' && (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => handleFreezeClick(membership)}
+                                  title="Congelar membresía"
+                                >
+                                  <Icons.Snowflake />
+                                  Congelar
+                                </button>
+                              </div>
+                            )}
+                            {membership.status === 'frozen' && (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => handleUnfreeze(membership.id)}
+                                  title="Descongelar membresía"
+                                >
+                                  <Icons.Play />
+                                  Descongelar
+                                </button>
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setSelectedMembershipForHistory(membership.id)
+                                    setShowFreezeHistoryModal(true)
+                                  }}
+                                  title="Historial de congelaciones"
+                                >
+                                  <Icons.Clock />
+                                </button>
+                              </div>
+                            )}
                          </td>
                        </tr>
                      ))}
@@ -535,23 +769,49 @@ export function MembershipsPage(): JSX.Element {
         </div>
       </div>
 
-       {showRenewModal && selectedClient && (
-         <RenewModal
-           client={selectedClient}
-           activeMembership={clientMemberships.find(m => m.status === 'active' || m.status === 'frozen') || null}
-           plans={plans}
-           onClose={() => {
-             setShowRenewModal(false)
-             setSelectedClient(null)
-           }}
-           onSuccess={() => {
-             loadClients()
-             if (selectedClient) {
-               handleClientSelect(selectedClient)
-             }
-           }}
-         />
-       )}
+        {showRenewModal && selectedClient && (
+          <RenewModal
+            client={selectedClient}
+            activeMembership={clientMemberships.find(m => m.status === 'active' || m.status === 'frozen') || null}
+            plans={plans}
+            onClose={() => {
+              setShowRenewModal(false)
+              setSelectedClient(null)
+            }}
+            onSuccess={() => {
+              loadClients()
+              if (selectedClient) {
+                handleClientSelect(selectedClient)
+              }
+            }}
+          />
+        )}
+
+        {showFreezeModal && selectedMembershipForFreeze && (
+          <FreezeModal
+            membership={selectedMembershipForFreeze}
+            onClose={() => {
+              setShowFreezeModal(false)
+              setSelectedMembershipForFreeze(null)
+            }}
+            onSuccess={() => {
+              loadClients()
+              if (selectedClient) {
+                handleClientSelect(selectedClient)
+              }
+            }}
+          />
+        )}
+
+        {showFreezeHistoryModal && selectedMembershipForHistory && (
+          <FreezeHistoryModal
+            membershipId={selectedMembershipForHistory}
+            onClose={() => {
+              setShowFreezeHistoryModal(false)
+              setSelectedMembershipForHistory(null)
+            }}
+          />
+        )}
     </div>
   )
 }

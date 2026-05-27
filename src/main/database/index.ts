@@ -84,9 +84,10 @@ function runMigrations(db: Database.Database): void {
 
       CREATE TABLE IF NOT EXISTS payments (
         id TEXT PRIMARY KEY,
-        client_id TEXT NOT NULL,
+        client_id TEXT,
         membership_id TEXT,
         amount REAL NOT NULL,
+        discount REAL DEFAULT 0,
         method TEXT NOT NULL,
         description TEXT,
         date TEXT NOT NULL,
@@ -128,6 +129,32 @@ function runMigrations(db: Database.Database): void {
         notes TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS promotions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        plan_id TEXT NOT NULL,
+        discount_type TEXT NOT NULL,
+        discount_value REAL NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (plan_id) REFERENCES membership_plans(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS freeze_history (
+        id TEXT PRIMARY KEY,
+        membership_id TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        frozen_at TEXT NOT NULL,
+        unfrozen_at TEXT,
+        reason TEXT,
+        planned_days INTEGER,
+        actual_days INTEGER,
+        FOREIGN KEY (membership_id) REFERENCES memberships(id),
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+      );
+
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT,
@@ -147,19 +174,48 @@ function runMigrations(db: Database.Database): void {
    
    migration()
    
-   const addFrozenAtColumn = db.transaction(() => {
-     const columns = db.prepare('PRAGMA table_info(memberships)').all() as Array<{ name: string }>
-     const hasFrozenAt = columns.some((c: { name: string }) => c.name === 'frozen_at')
-     
-     if (!hasFrozenAt) {
-       db.exec('ALTER TABLE memberships ADD COLUMN frozen_at TEXT')
-       log.info('Added frozen_at column to memberships table')
-     }
-   })
-   
-   addFrozenAtColumn()
-   
-   log.info('Database migrations completed')
+  const addFrozenAtColumn = db.transaction(() => {
+    const columns = db.prepare('PRAGMA table_info(memberships)').all() as Array<{ name: string }>
+    const hasFrozenAt = columns.some((c: { name: string }) => c.name === 'frozen_at')
+    
+    if (!hasFrozenAt) {
+      db.exec('ALTER TABLE memberships ADD COLUMN frozen_at TEXT')
+      log.info('Added frozen_at column to memberships table')
+    }
+  })
+  
+  addFrozenAtColumn()
+  
+  const addDiscountColumn = db.transaction(() => {
+    const columns = db.prepare('PRAGMA table_info(payments)').all() as Array<{ name: string }>
+    const hasDiscount = columns.some((c: { name: string }) => c.name === 'discount')
+    
+    if (!hasDiscount) {
+      db.exec('ALTER TABLE payments ADD COLUMN discount REAL DEFAULT 0')
+      log.info('Added discount column to payments table')
+    }
+  })
+  
+  addDiscountColumn()
+  
+  const addFreezeColumns = db.transaction(() => {
+    const columns = db.prepare('PRAGMA table_info(memberships)').all() as Array<{ name: string }>
+    const hasFreezeReason = columns.some((c: { name: string }) => c.name === 'freeze_reason')
+    const hasFreezeDays = columns.some((c: { name: string }) => c.name === 'freeze_days')
+    
+    if (!hasFreezeReason) {
+      db.exec('ALTER TABLE memberships ADD COLUMN freeze_reason TEXT')
+      log.info('Added freeze_reason column to memberships table')
+    }
+    if (!hasFreezeDays) {
+      db.exec('ALTER TABLE memberships ADD COLUMN freeze_days INTEGER')
+      log.info('Added freeze_days column to memberships table')
+    }
+  })
+  
+  addFreezeColumns()
+    
+    log.info('Database migrations completed')
  }
 
 function insertSeedData(db: Database.Database): void {

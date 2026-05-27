@@ -1,8 +1,8 @@
 import { getDatabase } from './index'
-import { DashboardMetrics, PeakHour, PlanStat } from '../../shared/types'
-import { getTodayAccessCount, getAccessLogsByDate } from './memberships'
+import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
+import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
 import { getAllClients } from './clients'
-import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, getHours } from 'date-fns'
+import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, getHours, startOfYear, endOfYear } from 'date-fns'
 
 export interface DbAccessLog {
   id: string
@@ -93,6 +93,16 @@ export function getDashboardMetrics(): DashboardMetrics {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
   
+  const debtorsCount = db.prepare(`
+    SELECT COUNT(DISTINCT m.client_id) as count
+    FROM memberships m
+    JOIN membership_plans p ON p.id = m.plan_id
+    WHERE (m.status = 'active' OR m.status = 'frozen')
+      AND (SELECT COALESCE(SUM(pm.amount), 0) FROM payments pm WHERE pm.membership_id = m.id) < p.price
+  `).get() as { count: number }
+
+  const inactiveClientsCount = getInactiveClients(30).length
+
   return {
     totalClients: allClients.length,
     activeClients,
@@ -102,6 +112,8 @@ export function getDashboardMetrics(): DashboardMetrics {
     todayRevenue: todayRevenueResult.total,
     monthRevenue: monthRevenueResult.total,
     newThisMonth: newThisMonthResult.count,
+    debtorsCount: debtorsCount.count,
+    inactiveClientsCount,
     peakHours,
     topPlans,
     recentAccesses
@@ -190,4 +202,34 @@ export function getRevenueByMonth(months: number = 6): { month: string; revenue:
   }
   
   return results
+}
+
+export function getRevenueByYear(year: number): number {
+  const db = getDatabase()
+  const date = new Date(year, 0, 1)
+  const yearStart = formatISO(startOfYear(date))
+  const yearEnd = formatISO(endOfYear(date))
+  const result = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE date >= ? AND date <= ?').get(yearStart, yearEnd) as { total: number }
+  return result.total
+}
+
+export function getRevenueByTimeOfDay(startDate: string, endDate: string): RevenueByPeriod {
+  const db = getDatabase()
+  const rows = db.prepare(`
+    SELECT amount, date FROM payments 
+    WHERE date >= ? AND date <= ?
+  `).all(startDate, endDate) as { amount: number; date: string }[]
+
+  let morning = 0
+  let afternoon = 0
+  for (const row of rows) {
+    const hour = new Date(row.date).getHours()
+    if (hour < 12) {
+      morning += row.amount
+    } else {
+      afternoon += row.amount
+    }
+  }
+
+  return { morning, afternoon, total: morning + afternoon }
 }

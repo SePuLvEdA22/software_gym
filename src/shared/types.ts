@@ -35,6 +35,18 @@ export interface MembershipPlan {
   createdAt: string
 }
 
+export interface Promotion {
+  id: string
+  name: string
+  planId: string
+  discountType: 'percentage' | 'fixed'
+  discountValue: number
+  startDate: string
+  endDate: string
+  isActive: boolean
+  createdAt: string
+}
+
 export type MembershipType = 
   | 'daily' 
   | 'weekly' 
@@ -54,6 +66,19 @@ export interface Membership {
   status: MembershipStatus
   createdAt: string
   frozenAt?: string | null
+  freezeReason?: string | null
+  freezeDays?: number | null
+}
+
+export interface FreezeHistory {
+  id: string
+  membershipId: string
+  clientId: string
+  frozenAt: string
+  unfrozenAt: string | null
+  reason: string | null
+  plannedDays: number | null
+  actualDays: number | null
 }
 
 export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen'
@@ -63,6 +88,7 @@ export interface Payment {
   clientId: string
   membershipId: string | null
   amount: number
+  discount: number
   method: PaymentMethod
   description: string
   date: string
@@ -108,6 +134,8 @@ export interface DashboardMetrics {
   todayRevenue: number
   monthRevenue: number
   newThisMonth: number
+  debtorsCount: number
+  inactiveClientsCount: number
   peakHours: PeakHour[]
   topPlans: PlanStat[]
   recentAccesses: AccessLog[]
@@ -122,6 +150,48 @@ export interface PlanStat {
   planName: string
   count: number
   revenue: number
+}
+
+export interface ClientDebt {
+  clientId: string
+  clientName: string
+  clientPhone: string
+  membershipId: string
+  planName: string
+  totalDue: number
+  totalPaid: number
+  balance: number
+  endDate: string
+  status: string
+}
+
+export interface DebtorSummary {
+  clientId: string
+  clientName: string
+  phone: string
+  balance: number
+}
+
+export interface ClientAttendanceStats {
+  totalVisits: number
+  lastVisit: string | null
+  firstVisit: string | null
+  daysAttendedThisMonth: number
+}
+
+export interface InactiveClient {
+  clientId: string
+  clientName: string
+  phone: string
+  planName: string
+  lastVisit: string | null
+  daysSinceLastVisit: number
+}
+
+export interface RevenueByPeriod {
+  morning: number
+  afternoon: number
+  total: number
 }
 
 export interface WhatsappMessage {

@@ -9,7 +9,14 @@ import {
   DashboardMetrics,
   ClientStatus,
   PaymentMethod,
-  WhatsappMessage
+  Promotion,
+  ClientDebt,
+  DebtorSummary,
+  WhatsappMessage,
+  FreezeHistory,
+  ClientAttendanceStats,
+  InactiveClient,
+  RevenueByPeriod
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -37,7 +44,17 @@ const electronAPI = {
     delete: (id: string): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('client:delete', id),
     generateCode: (): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('client:generateCode')
+      ipcRenderer.invoke('client:generateCode'),
+    getDebt: (clientId: string): Promise<IpcResult<ClientDebt[]>> =>
+      ipcRenderer.invoke('client:getDebt', clientId),
+    getDebtors: (): Promise<IpcResult<DebtorSummary[]>> =>
+      ipcRenderer.invoke('client:getDebtors'),
+    getFreezeHistory: (clientId: string): Promise<IpcResult<FreezeHistory[]>> =>
+      ipcRenderer.invoke('client:getFreezeHistory', clientId),
+    getAttendanceStats: (clientId: string): Promise<IpcResult<ClientAttendanceStats>> =>
+      ipcRenderer.invoke('client:getAttendanceStats', clientId),
+    getInactive: (daysThreshold?: number): Promise<IpcResult<InactiveClient[]>> =>
+      ipcRenderer.invoke('client:getInactive', daysThreshold)
   },
 
   plans: {
@@ -60,10 +77,12 @@ const electronAPI = {
       ipcRenderer.invoke('membership:getActive', clientId),
     getByClient: (clientId: string): Promise<IpcResult<Membership[]>> =>
       ipcRenderer.invoke('membership:getByClient', clientId),
-    freeze: (membershipId: string): Promise<IpcResult<Membership | null>> =>
-      ipcRenderer.invoke('membership:freeze', membershipId),
+    freeze: (membershipId: string, reason?: string, plannedDays?: number): Promise<IpcResult<Membership | null>> =>
+      ipcRenderer.invoke('membership:freeze', membershipId, reason, plannedDays),
     unfreeze: (membershipId: string): Promise<IpcResult<Membership | null>> =>
-      ipcRenderer.invoke('membership:unfreeze', membershipId)
+      ipcRenderer.invoke('membership:unfreeze', membershipId),
+    getFreezeHistory: (membershipId: string): Promise<IpcResult<FreezeHistory[]>> =>
+      ipcRenderer.invoke('membership:getFreezeHistory', membershipId)
   },
 
   payment: {
@@ -73,9 +92,10 @@ const electronAPI = {
       method: PaymentMethod,
       description: string,
       membershipId?: string,
-      notes?: string
+      notes?: string,
+      discount?: number
     ): Promise<IpcResult<Payment>> =>
-      ipcRenderer.invoke('payment:record', clientId, amount, method, description, membershipId, notes),
+      ipcRenderer.invoke('payment:record', clientId, amount, method, description, membershipId, notes, discount),
     getByClient: (clientId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByClient', clientId),
     getByDateRange: (startDate: string, endDate: string): Promise<IpcResult<Payment[]>> =>
@@ -103,7 +123,11 @@ const electronAPI = {
     getExpiringSoon: (days: number): Promise<IpcResult<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>> =>
       ipcRenderer.invoke('dashboard:getExpiringSoon', days),
     getBirthdays: (): Promise<IpcResult<{ clientId: string; clientName: string; birthDate: string; day: number }[]>> =>
-      ipcRenderer.invoke('dashboard:getBirthdays')
+      ipcRenderer.invoke('dashboard:getBirthdays'),
+    getRevenueByYear: (year: number): Promise<IpcResult<number>> =>
+      ipcRenderer.invoke('dashboard:getRevenueByYear', year),
+    getRevenueByTimeOfDay: (startDate: string, endDate: string): Promise<IpcResult<RevenueByPeriod>> =>
+      ipcRenderer.invoke('dashboard:getRevenueByTimeOfDay', startDate, endDate)
   },
 
   door: {
@@ -132,6 +156,21 @@ const electronAPI = {
       ipcRenderer.invoke('whatsapp:getHistory', clientId, limit),
     checkReminders: (): Promise<IpcResult<{ sent: number }>> =>
       ipcRenderer.invoke('whatsapp:checkReminders')
+  },
+
+  promotion: {
+    getAll: (activeOnly = true): Promise<IpcResult<Promotion[]>> =>
+      ipcRenderer.invoke('promotion:getAll', activeOnly),
+    getById: (id: string): Promise<IpcResult<Promotion | null>> =>
+      ipcRenderer.invoke('promotion:getById', id),
+    create: (data: Omit<Promotion, 'id' | 'createdAt' | 'isActive'>): Promise<IpcResult<Promotion>> =>
+      ipcRenderer.invoke('promotion:create', data),
+    update: (id: string, data: Partial<Promotion>): Promise<IpcResult<Promotion | null>> =>
+      ipcRenderer.invoke('promotion:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('promotion:delete', id),
+    getEffectivePrice: (planId: string): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
+      ipcRenderer.invoke('membership:getEffectivePrice', planId)
   },
 
   system: {

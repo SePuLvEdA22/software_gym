@@ -239,10 +239,12 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
 function AccessGrantedView({ 
   client, 
   membership,
+  debtBalance,
   onReset 
 }: { 
   client: Client
   membership?: Membership
+  debtBalance?: number
   onReset: () => void
 }): JSX.Element {
   const daysRemaining = membership 
@@ -340,6 +342,25 @@ function AccessGrantedView({
                 {daysRemaining} días
               </span>
             </div>
+          </div>
+        )}
+
+        {debtBalance && debtBalance > 0 && (
+          <div style={{ 
+            marginTop: 16,
+            padding: 12,
+            backgroundColor: 'rgba(255, 180, 171, 0.15)',
+            borderRadius: 8,
+            border: '1px solid var(--color-error)'
+          }}>
+            <p style={{ 
+              fontSize: 14, 
+              fontWeight: 600,
+              color: 'var(--color-error)',
+              textAlign: 'center'
+            }}>
+              Saldo pendiente: ${debtBalance.toLocaleString('es-CO')} - Por favor cancela en recepción
+            </p>
           </div>
         )}
       </div>
@@ -455,6 +476,7 @@ export function AccessPage(): JSX.Element {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [client, setClient] = useState<Client | null>(null)
   const [membership, setMembership] = useState<Membership | null>(null)
+  const [debtBalance, setDebtBalance] = useState<number>(0)
 
   const handleDigit = useCallback((digit: string) => {
     if (accessCode.length < 20 && accessState === 'idle') {
@@ -468,6 +490,7 @@ export function AccessPage(): JSX.Element {
     setValidationResult(null)
     setClient(null)
     setMembership(null)
+    setDebtBalance(0)
   }, [])
 
   const handleBackspace = useCallback(() => {
@@ -490,6 +513,13 @@ export function AccessPage(): JSX.Element {
       
       if (result.data.valid) {
         setAccessState('granted')
+        if (result.data.client) {
+          const debtResult = await window.electronAPI.client.getDebt(result.data.client.id)
+          if (debtResult.success && debtResult.data) {
+            const totalBalance = debtResult.data.reduce((sum, d) => sum + d.balance, 0)
+            setDebtBalance(totalBalance)
+          }
+        }
         await window.electronAPI.door.open()
       } else {
         setAccessState('denied')
@@ -599,6 +629,7 @@ export function AccessPage(): JSX.Element {
         <AccessGrantedView
           client={client}
           membership={membership || undefined}
+          debtBalance={debtBalance}
           onReset={handleClear}
         />
       ) : accessState === 'denied' && validationResult ? (

@@ -1,5 +1,5 @@
 import { getDatabase } from './index'
-import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult } from '../../shared/types'
+import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
 import { addDays, formatISO, isAfter, parseISO } from 'date-fns'
@@ -15,6 +15,8 @@ export interface DbMembership {
   status: string
   created_at: string
   frozen_at?: string | null
+  freeze_reason?: string | null
+  freeze_days?: number | null
 }
 
 function mapDbMembership(dbMembership: DbMembership): Membership {
@@ -27,7 +29,9 @@ function mapDbMembership(dbMembership: DbMembership): Membership {
     endDate: dbMembership.end_date,
     status: dbMembership.status as MembershipStatus,
     createdAt: dbMembership.created_at,
-    frozenAt: dbMembership.frozen_at || null
+    frozenAt: dbMembership.frozen_at || null,
+    freezeReason: dbMembership.freeze_reason || null,
+    freezeDays: dbMembership.freeze_days || null
   }
 }
 
@@ -60,6 +64,7 @@ export interface DbPayment {
   client_id: string
   membership_id: string | null
   amount: number
+  discount: number
   method: string
   description: string
   date: string
@@ -73,6 +78,7 @@ function mapDbPayment(dbPayment: DbPayment): Payment {
     clientId: dbPayment.client_id,
     membershipId: dbPayment.membership_id,
     amount: dbPayment.amount,
+    discount: dbPayment.discount || 0,
     method: dbPayment.method as PaymentMethod,
     description: dbPayment.description,
     date: dbPayment.date,
@@ -185,6 +191,170 @@ export function deletePlan(id: string): boolean {
   return result.changes > 0
 }
 
+export interface DbPromotion {
+  id: string
+  name: string
+  plan_id: string
+  discount_type: string
+  discount_value: number
+  start_date: string
+  end_date: string
+  is_active: number
+  created_at: string
+}
+
+function mapDbPromotion(p: DbPromotion): Promotion {
+  return {
+    id: p.id,
+    name: p.name,
+    planId: p.plan_id,
+    discountType: p.discount_type as 'percentage' | 'fixed',
+    discountValue: p.discount_value,
+    startDate: p.start_date,
+    endDate: p.end_date,
+    isActive: p.is_active === 1,
+    createdAt: p.created_at
+  }
+}
+
+export function getAllPromotions(activeOnly = true): Promotion[] {
+  const db = getDatabase()
+  let query = 'SELECT * FROM promotions WHERE 1=1'
+  const params: (string | number)[] = []
+  if (activeOnly) {
+    query += ' AND is_active = ?'
+    params.push(1)
+  }
+  query += ' ORDER BY created_at DESC'
+  const results = db.prepare(query).all(...params) as DbPromotion[]
+  return results.map(mapDbPromotion)
+}
+
+export function getPromotionById(id: string): Promotion | null {
+  const db = getDatabase()
+  const result = db.prepare('SELECT * FROM promotions WHERE id = ?').get(id) as DbPromotion | undefined
+  return result ? mapDbPromotion(result) : null
+}
+
+export function createPromotion(data: Omit<Promotion, 'id' | 'createdAt' | 'isActive'>): Promotion {
+  const db = getDatabase()
+  const id = uuidv4()
+  const now = formatISO(new Date())
+  db.prepare(`
+    INSERT INTO promotions (id, name, plan_id, discount_type, discount_value, start_date, end_date, is_active, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+  `).run(id, data.name, data.planId, data.discountType, data.discountValue, data.startDate, data.endDate, now)
+  return { id, ...data, isActive: true, createdAt: now }
+}
+
+export function updatePromotion(id: string, data: Partial<Promotion>): Promotion | null {
+  const db = getDatabase()
+  const existing = getPromotionById(id)
+  if (!existing) return null
+  const fields: string[] = []
+  const params: (string | number | boolean)[] = []
+  if (data.name !== undefined) { fields.push('name = ?'); params.push(data.name) }
+  if (data.planId !== undefined) { fields.push('plan_id = ?'); params.push(data.planId) }
+  if (data.discountType !== undefined) { fields.push('discount_type = ?'); params.push(data.discountType) }
+  if (data.discountValue !== undefined) { fields.push('discount_value = ?'); params.push(data.discountValue) }
+  if (data.startDate !== undefined) { fields.push('start_date = ?'); params.push(data.startDate) }
+  if (data.endDate !== undefined) { fields.push('end_date = ?'); params.push(data.endDate) }
+  if (data.isActive !== undefined) { fields.push('is_active = ?'); params.push(data.isActive ? 1 : 0) }
+  if (fields.length === 0) return existing
+  params.push(id)
+  db.prepare(`UPDATE promotions SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+  return getPromotionById(id)
+}
+
+export function deletePromotion(id: string): boolean {
+  const db = getDatabase()
+  return db.prepare('DELETE FROM promotions WHERE id = ?').run(id).changes > 0
+}
+
+export function getActivePromotionForPlan(planId: string): Promotion | null {
+  const db = getDatabase()
+  const now = formatISO(new Date())
+  const result = db.prepare(`
+    SELECT * FROM promotions
+    WHERE plan_id = ? AND is_active = 1 AND start_date <= ? AND end_date >= ?
+    LIMIT 1
+  `).get(planId, now, now) as DbPromotion | undefined
+  return result ? mapDbPromotion(result) : null
+}
+
+export function getEffectivePrice(plan: MembershipPlan): { price: number; discount: number; promotionName: string | null } {
+  const promo = getActivePromotionForPlan(plan.id)
+  if (!promo) return { price: plan.price, discount: 0, promotionName: null }
+  const discount = promo.discountType === 'percentage'
+    ? plan.price * (promo.discountValue / 100)
+    : Math.min(promo.discountValue, plan.price)
+  return { price: plan.price - discount, discount, promotionName: promo.name }
+}
+
+export function getClientDebt(clientId: string): ClientDebt[] {
+  const db = getDatabase()
+  const rows = db.prepare(`
+    SELECT 
+      m.id as membershipId,
+      m.plan_name as planName,
+      p.price as planPrice,
+      m.end_date as endDate,
+      m.status,
+      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid
+    FROM memberships m
+    JOIN membership_plans p ON p.id = m.plan_id
+    WHERE m.client_id = ?
+    ORDER BY m.created_at DESC
+  `).all(clientId) as { membershipId: string; planName: string; planPrice: number; endDate: string; status: string; totalPaid: number }[]
+
+  const debts: ClientDebt[] = []
+  for (const row of rows) {
+    const actualPrice = row.planPrice
+    if (row.totalPaid < actualPrice) {
+      debts.push({
+        clientId,
+        clientName: '',
+        clientPhone: '',
+        membershipId: row.membershipId,
+        planName: row.planName,
+        totalDue: actualPrice,
+        totalPaid: row.totalPaid,
+        balance: actualPrice - row.totalPaid,
+        endDate: row.endDate,
+        status: row.status
+      })
+    }
+  }
+  return debts
+}
+
+export function getDebtors(): DebtorSummary[] {
+  const db = getDatabase()
+  const rows = db.prepare(`
+    SELECT 
+      c.id as clientId,
+      c.full_name as clientName,
+      c.phone,
+      m.id as membershipId,
+      p.price as planPrice,
+      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid
+    FROM memberships m
+    JOIN clients c ON c.id = m.client_id
+    JOIN membership_plans p ON p.id = m.plan_id
+    WHERE m.status = 'active' OR m.status = 'frozen'
+    GROUP BY m.id
+    HAVING totalPaid < p.price
+    ORDER BY (p.price - totalPaid) DESC
+  `).all() as { clientId: string; clientName: string; phone: string; membershipId: string; planPrice: number; totalPaid: number }[]
+
+  return rows.map(r => ({
+    clientId: r.clientId,
+    clientName: r.clientName,
+    phone: r.phone,
+    balance: r.planPrice - r.totalPaid
+  }))
+}
+
 export function getExpiringMemberships(days: number): { clientId: string; clientName: string; phone: string; planName: string; endDate: string; daysLeft: number }[] {
   const db = getDatabase()
   const now = new Date()
@@ -257,12 +427,14 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     endDate: formatISO(endDate),
     status: isAfter(endDate, now) ? 'active' : 'expired',
     createdAt: formatISO(now),
-    frozenAt: null
+    frozenAt: null,
+    freezeReason: null,
+    freezeDays: null
   }
   
   const stmt = db.prepare(`
-    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at, frozen_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at, frozen_at, freeze_reason, freeze_days)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   
   stmt.run(
@@ -274,7 +446,9 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     newMembership.endDate,
     newMembership.status,
     newMembership.createdAt,
-    newMembership.frozenAt
+    newMembership.frozenAt,
+    null,
+    null
   )
   
   if (newMembership.status === 'active') {
@@ -284,7 +458,7 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   return newMembership
 }
 
-export function freezeMembership(membershipId: string): Membership | null {
+export function freezeMembership(membershipId: string, reason?: string, plannedDays?: number): Membership | null {
   const db = getDatabase()
   const now = formatISO(new Date())
   
@@ -301,13 +475,20 @@ export function freezeMembership(membershipId: string): Membership | null {
     return null
   }
   
-  const updateStmt = db.prepare(`
-    UPDATE memberships 
-    SET status = 'frozen', frozen_at = ?
-    WHERE id = ?
-  `)
+  const freezeOp = db.transaction(() => {
+    db.prepare(`
+      UPDATE memberships 
+      SET status = 'frozen', frozen_at = ?, freeze_reason = ?, freeze_days = ?
+      WHERE id = ?
+    `).run(now, reason || null, plannedDays || null, membershipId)
+
+    db.prepare(`
+      INSERT INTO freeze_history (id, membership_id, client_id, frozen_at, reason, planned_days)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(uuidv4(), membershipId, membership.client_id, now, reason || null, plannedDays || null)
+  })
   
-  updateStmt.run(now, membershipId)
+  freezeOp()
   
   const updatedMembership = getStmt.get(membershipId) as DbMembership | undefined
   
@@ -317,6 +498,7 @@ export function freezeMembership(membershipId: string): Membership | null {
 export function unfreezeMembership(membershipId: string): Membership | null {
   const db = getDatabase()
   const now = new Date()
+  const nowIso = formatISO(now)
   
   const getStmt = db.prepare('SELECT * FROM memberships WHERE id = ?')
   const membership = getStmt.get(membershipId) as DbMembership | undefined
@@ -339,33 +521,41 @@ export function unfreezeMembership(membershipId: string): Membership | null {
   const frozenDate = parseISO(membership.frozen_at)
   const frozenDays = Math.ceil((now.getTime() - frozenDate.getTime()) / (1000 * 60 * 60 * 24))
   
-  if (frozenDays > 0) {
-    const currentEndDate = parseISO(membership.end_date)
-    const newEndDate = addDays(currentEndDate, frozenDays)
-    
-    log.info(`Extending membership ${membershipId} by ${frozenDays} days (was frozen)`)
-    log.info(`  Old end date: ${membership.end_date}`)
-    log.info(`  New end date: ${formatISO(newEndDate)}`)
-    
-    const updateStmt = db.prepare(`
-      UPDATE memberships 
-      SET status = 'active', 
-          frozen_at = NULL,
-          end_date = ?
-      WHERE id = ?
-    `)
-    
-    updateStmt.run(formatISO(newEndDate), membershipId)
-  } else {
-    const updateStmt = db.prepare(`
-      UPDATE memberships 
-      SET status = 'active', 
-          frozen_at = NULL
-      WHERE id = ?
-    `)
-    
-    updateStmt.run(membershipId)
-  }
+  const unfreezeOp = db.transaction(() => {
+    if (frozenDays > 0) {
+      const currentEndDate = parseISO(membership.end_date)
+      const newEndDate = addDays(currentEndDate, frozenDays)
+      
+      log.info(`Extending membership ${membershipId} by ${frozenDays} days (was frozen)`)
+      
+      db.prepare(`
+        UPDATE memberships 
+        SET status = 'active', 
+            frozen_at = NULL,
+            freeze_reason = NULL,
+            freeze_days = NULL,
+            end_date = ?
+        WHERE id = ?
+      `).run(formatISO(newEndDate), membershipId)
+    } else {
+      db.prepare(`
+        UPDATE memberships 
+        SET status = 'active', 
+            frozen_at = NULL,
+            freeze_reason = NULL,
+            freeze_days = NULL
+        WHERE id = ?
+      `).run(membershipId)
+    }
+
+    db.prepare(`
+      UPDATE freeze_history 
+      SET unfrozen_at = ?, actual_days = ?
+      WHERE membership_id = ? AND unfrozen_at IS NULL
+    `).run(nowIso, frozenDays, membershipId)
+  })
+  
+  unfreezeOp()
   
   const updatedMembership = getStmt.get(membershipId) as DbMembership | undefined
   
@@ -441,13 +631,101 @@ export function updateExpiredMemberships(): number {
   return result.changes
 }
 
+export interface DbFreezeHistory {
+  id: string
+  membership_id: string
+  client_id: string
+  frozen_at: string
+  unfrozen_at: string | null
+  reason: string | null
+  planned_days: number | null
+  actual_days: number | null
+}
+
+function mapDbFreezeHistory(h: DbFreezeHistory): FreezeHistory {
+  return {
+    id: h.id,
+    membershipId: h.membership_id,
+    clientId: h.client_id,
+    frozenAt: h.frozen_at,
+    unfrozenAt: h.unfrozen_at || null,
+    reason: h.reason || null,
+    plannedDays: h.planned_days || null,
+    actualDays: h.actual_days || null
+  }
+}
+
+export function getFreezeHistory(membershipId: string): FreezeHistory[] {
+  const db = getDatabase()
+  const results = db.prepare('SELECT * FROM freeze_history WHERE membership_id = ? ORDER BY frozen_at DESC').all(membershipId) as DbFreezeHistory[]
+  return results.map(mapDbFreezeHistory)
+}
+
+export function getClientFreezeHistory(clientId: string): FreezeHistory[] {
+  const db = getDatabase()
+  const results = db.prepare('SELECT * FROM freeze_history WHERE client_id = ? ORDER BY frozen_at DESC').all(clientId) as DbFreezeHistory[]
+  return results.map(mapDbFreezeHistory)
+}
+
+export function getClientAttendanceStats(clientId: string): ClientAttendanceStats {
+  const db = getDatabase()
+  const now = new Date()
+  const startOfMonth = formatISO(new Date(now.getFullYear(), now.getMonth(), 1))
+  
+  const totalResult = db.prepare('SELECT COUNT(*) as count FROM access_logs WHERE client_id = ? AND result = ?').get(clientId, 'granted') as { count: number }
+  const lastResult = db.prepare('SELECT timestamp FROM access_logs WHERE client_id = ? AND result = ? ORDER BY timestamp DESC LIMIT 1').get(clientId, 'granted') as { timestamp: string } | undefined
+  const firstResult = db.prepare('SELECT timestamp FROM access_logs WHERE client_id = ? AND result = ? ORDER BY timestamp ASC LIMIT 1').get(clientId, 'granted') as { timestamp: string } | undefined
+  const monthResult = db.prepare('SELECT COUNT(*) as count FROM access_logs WHERE client_id = ? AND result = ? AND timestamp >= ?').get(clientId, 'granted', startOfMonth) as { count: number }
+
+  return {
+    totalVisits: totalResult.count,
+    lastVisit: lastResult?.timestamp || null,
+    firstVisit: firstResult?.timestamp || null,
+    daysAttendedThisMonth: monthResult.count
+  }
+}
+
+export function getInactiveClients(daysThreshold: number = 30): InactiveClient[] {
+  const db = getDatabase()
+  const cutoff = formatISO(new Date(Date.now() - daysThreshold * 24 * 60 * 60 * 1000))
+
+  const rows = db.prepare(`
+    SELECT 
+      c.id as clientId,
+      c.full_name as clientName,
+      c.phone,
+      m.plan_name as planName,
+      (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') as lastVisit
+    FROM clients c
+    JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
+    WHERE c.status = 'active'
+      AND (
+        (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') IS NULL
+        OR (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') < ?
+      )
+    ORDER BY lastVisit ASC
+  `).all(cutoff) as { clientId: string; clientName: string; phone: string; planName: string; lastVisit: string | null }[]
+
+  return rows.map(r => ({
+    clientId: r.clientId,
+    clientName: r.clientName,
+    phone: r.phone,
+    planName: r.planName,
+    lastVisit: r.lastVisit || null,
+    daysSinceLastVisit: r.lastVisit
+      ? Math.floor((Date.now() - new Date(r.lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+      : daysThreshold
+  }))
+}
+
 export function recordPayment(
   clientId: string,
   amount: number,
   method: PaymentMethod,
   description: string,
   membershipId?: string,
-  notes?: string
+  notes?: string,
+  discount?: number
 ): Payment {
   const db = getDatabase()
   
@@ -456,6 +734,7 @@ export function recordPayment(
     clientId,
     membershipId: membershipId || null,
     amount,
+    discount: discount || 0,
     method,
     description,
     date: formatISO(new Date()),
@@ -464,8 +743,8 @@ export function recordPayment(
   }
   
   const stmt = db.prepare(`
-    INSERT INTO payments (id, client_id, membership_id, amount, method, description, date, notes, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO payments (id, client_id, membership_id, amount, discount, method, description, date, notes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   
   stmt.run(
@@ -473,6 +752,7 @@ export function recordPayment(
     payment.clientId,
     payment.membershipId,
     payment.amount,
+    payment.discount,
     payment.method,
     payment.description,
     payment.date,
