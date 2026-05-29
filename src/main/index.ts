@@ -83,8 +83,19 @@ function createAdminWindow(): BrowserWindow {
     }
   })
 
+  const allowedExternalUrls = [
+    'https://wa.me/',
+    'https://api.whatsapp.com/',
+    'https://web.whatsapp.com/',
+    'mailto:'
+  ]
   window.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    const allowed = allowedExternalUrls.some(prefix => details.url.startsWith(prefix))
+    if (allowed) {
+      shell.openExternal(details.url)
+    } else {
+      log.warn(`Blocked external URL: ${details.url}`)
+    }
     return { action: 'deny' }
   })
 
@@ -123,10 +134,10 @@ function createKioskWindow(_displayIndex = 0): BrowserWindow {
   log.info('========================================')
 
   const window = new BrowserWindow({
-    x: displays.length > 1 ? x : 100,
-    y: displays.length > 1 ? y : 100,
-    width: displays.length > 1 ? width : 1000,
-    height: displays.length > 1 ? height : 700,
+    x,
+    y,
+    width,
+    height,
     frame: true,
     fullscreen: false,
     autoHideMenuBar: true,
@@ -136,13 +147,15 @@ function createKioskWindow(_displayIndex = 0): BrowserWindow {
        sandbox: false,
        contextIsolation: true,
        nodeIntegration: false,
-       devTools: true
+       devTools: !app.isPackaged
      },
     show: true,
     alwaysOnTop: displays.length > 1
   })
 
-  window.webContents.openDevTools({ mode: 'detach' })
+  if (!app.isPackaged) {
+    window.webContents.openDevTools({ mode: 'detach' })
+  }
 
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'] || 'http://localhost:5173'
   

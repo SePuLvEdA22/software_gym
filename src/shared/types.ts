@@ -86,6 +86,7 @@ export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen'
 export interface Payment {
   id: string
   clientId: string
+  clientName?: string
   membershipId: string | null
   amount: number
   discount: number

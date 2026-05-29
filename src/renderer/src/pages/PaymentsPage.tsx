@@ -286,10 +286,12 @@ export function PaymentsPage(): JSX.Element {
                           <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
                             {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
                           </td>
-                          <td>{payment.description || 'Pago'}</td>
+                          <td style={{ fontWeight: 500 }}>
+                            {payment.clientName || payment.description || 'Pago'}
+                          </td>
                           <td>
                             <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
-                              {payment.notes || '-'}
+                              {payment.description || '-'}
                             </span>
                           </td>
                           <td>{getPaymentMethodBadge(payment.method)}</td>

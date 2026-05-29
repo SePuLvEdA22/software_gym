@@ -193,22 +193,17 @@ export function searchClients(query: string): Client[] {
 export function deleteClient(id: string): boolean {
   const db = getDatabase()
   
-  const accessStmt = db.prepare('DELETE FROM access_logs WHERE client_id = ?')
-  accessStmt.run(id)
+  const op = db.transaction(() => {
+    db.prepare('DELETE FROM access_logs WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM payments WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM freeze_history WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM memberships WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM whatsapp_messages WHERE client_id = ?').run(id)
+    const result = db.prepare('DELETE FROM clients WHERE id = ?').run(id)
+    return result.changes > 0
+  })
   
-  const paymentsStmt = db.prepare('DELETE FROM payments WHERE client_id = ?')
-  paymentsStmt.run(id)
-  
-  const membershipsStmt = db.prepare('DELETE FROM memberships WHERE client_id = ?')
-  membershipsStmt.run(id)
-  
-  const messagesStmt = db.prepare('DELETE FROM whatsapp_messages WHERE client_id = ?')
-  messagesStmt.run(id)
-  
-  const stmt = db.prepare('DELETE FROM clients WHERE id = ?')
-  const result = stmt.run(id)
-  
-  return result.changes > 0
+  return op()
 }
 
 export function updateClientStatus(id: string, status: ClientStatus): Client | null {
@@ -222,15 +217,21 @@ export function updateClientStatus(id: string, status: ClientStatus): Client | n
 export function generateUniqueAccessCode(): string {
   const db = getDatabase()
   
-  for (let i = 0; i < 100; i++) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM clients WHERE access_code = ?')
-    const result = stmt.get(code) as { count: number }
-    
-    if (result.count === 0) {
-      return code
+  const findFreeCode = db.transaction((): string | null => {
+    for (let i = 0; i < 100; i++) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      const stmt = db.prepare('SELECT COUNT(*) as count FROM clients WHERE access_code = ?')
+      const result = stmt.get(code) as { count: number }
+      
+      if (result.count === 0) {
+        return code
+      }
     }
-  }
+    return null
+  })
+  
+  const code = findFreeCode()
+  if (code) return code
   
   return uuidv4().substring(0, 8)
 }

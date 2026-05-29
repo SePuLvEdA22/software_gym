@@ -90,7 +90,11 @@ function performMockOpen(trigger: DoorEventTrigger): boolean {
 
   const config = getDoorConfig()
   doorOpenTimer = setTimeout(() => {
-    closeDoor('auto_close')
+    try {
+      closeDoor('auto_close')
+    } catch (e) {
+      log.error('Auto-close failed:', e)
+    }
   }, config.openDuration)
 
   return true
@@ -110,7 +114,11 @@ async function performHttpOpen(trigger: DoorEventTrigger): Promise<boolean> {
       }
 
       doorOpenTimer = setTimeout(() => {
-        closeDoor('auto_close')
+        try {
+          closeDoor('auto_close')
+        } catch (e) {
+          log.error('Auto-close failed:', e)
+        }
       }, config.openDuration)
 
       return true

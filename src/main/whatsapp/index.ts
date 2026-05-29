@@ -1,9 +1,8 @@
 import { v4 as uuidv4 } from 'uuid'
-import { formatISO, differenceInDays } from 'date-fns'
+import { formatISO, differenceInDays, addDays } from 'date-fns'
 import log from 'electron-log'
 import { getDatabase } from '../database'
-import { getActiveMembership } from '../database/memberships'
-import { getAllClients } from '../database/clients'
+import { getClientById } from '../database/clients'
 import { WhatsappMessage, MessageType, MessageStatus } from '../../shared/types'
 
 interface WhatsappConfig {
@@ -268,44 +267,52 @@ export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
     return { sent: 0 }
   }
   
-  const clients = getAllClients('active')
-  let sentCount = 0
-  
+  const db = getDatabase()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const todayStr = formatISO(today)
+  const threeDaysFromNow = formatISO(addDays(today, 3))
   
-  for (const client of clients) {
-    const membership = getActiveMembership(client.id)
-    if (!membership) continue
-    
-    const endDate = new Date(membership.endDate)
+  const candidates = db.prepare(`
+    SELECT c.id, c.full_name, c.phone, m.plan_name, m.end_date
+    FROM clients c
+    JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
+    WHERE c.status = 'active'
+      AND m.end_date BETWEEN ? AND ?
+    ORDER BY m.end_date ASC
+  `).all(todayStr, threeDaysFromNow) as { id: string; full_name: string; phone: string; plan_name: string; end_date: string }[]
+  
+  let sentCount = 0
+  
+  for (const row of candidates) {
+    const endDate = new Date(row.end_date)
     endDate.setHours(0, 0, 0, 0)
     
     const daysLeft = differenceInDays(endDate, today)
     
-    const phone = formatPhoneNumber(client.phone)
+    const phone = formatPhoneNumber(row.phone)
     if (!phone) continue
     
     if (daysLeft === 3 && config.reminders.threeDays) {
-      if (!wasAlreadySentToday(client.id, 'expiry_reminder_3d')) {
-        const message = generateExpiryReminderMessage(client.fullName, 3, membership.planName)
-        await sendMessage(client.id, phone, 'expiry_reminder_3d', message)
+      if (!wasAlreadySentToday(row.id, 'expiry_reminder_3d')) {
+        const message = generateExpiryReminderMessage(row.full_name, 3, row.plan_name)
+        await sendMessage(row.id, phone, 'expiry_reminder_3d', message)
         sentCount++
       }
     }
     
     if (daysLeft === 1 && config.reminders.oneDay) {
-      if (!wasAlreadySentToday(client.id, 'expiry_reminder_1d')) {
-        const message = generateExpiryReminderMessage(client.fullName, 1, membership.planName)
-        await sendMessage(client.id, phone, 'expiry_reminder_1d', message)
+      if (!wasAlreadySentToday(row.id, 'expiry_reminder_1d')) {
+        const message = generateExpiryReminderMessage(row.full_name, 1, row.plan_name)
+        await sendMessage(row.id, phone, 'expiry_reminder_1d', message)
         sentCount++
       }
     }
     
     if (daysLeft === 0 && config.reminders.sameDay) {
-      if (!wasAlreadySentToday(client.id, 'expiry_reminder_same_day')) {
-        const message = generateExpiryReminderMessage(client.fullName, 0, membership.planName)
-        await sendMessage(client.id, phone, 'expiry_reminder_same_day', message)
+      if (!wasAlreadySentToday(row.id, 'expiry_reminder_same_day')) {
+        const message = generateExpiryReminderMessage(row.full_name, 0, row.plan_name)
+        await sendMessage(row.id, phone, 'expiry_reminder_same_day', message)
         sentCount++
       }
     }
@@ -320,8 +327,7 @@ export async function sendPaymentConfirmation(
   planName: string,
   endDate: string
 ): Promise<{ success: boolean }> {
-  const clients = getAllClients()
-  const client = clients.find(c => c.id === clientId)
+  const client = getClientById(clientId)
   
   if (!client) {
     log.error('Client not found for payment confirmation')
@@ -341,8 +347,7 @@ export async function sendPaymentConfirmation(
 }
 
 export async function sendWelcomeMessage(clientId: string): Promise<{ success: boolean }> {
-  const clients = getAllClients()
-  const client = clients.find(c => c.id === clientId)
+  const client = getClientById(clientId)
   
   if (!client) {
     log.error('Client not found for welcome message')

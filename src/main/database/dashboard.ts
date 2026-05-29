@@ -1,8 +1,7 @@
 import { getDatabase } from './index'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
-import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
-import { getAllClients } from './clients'
-import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, getHours, startOfYear, endOfYear } from 'date-fns'
+import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients, deactivateExpiredPromotions } from './memberships'
+import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear } from 'date-fns'
 
 export interface DbAccessLog {
   id: string
@@ -22,11 +21,18 @@ export function getDashboardMetrics(): DashboardMetrics {
   const endOfToday = formatISO(endOfDay(today))
   const startOfThisMonth = formatISO(startOfMonth(today))
   const endOfThisMonth = formatISO(endOfMonth(today))
+
+  deactivateExpiredPromotions()
   
-  const allClients = getAllClients()
-  const activeClients = allClients.filter(c => c.status === 'active').length
-  const expiredClients = allClients.filter(c => c.status === 'expired').length
-  const inactiveClients = allClients.filter(c => c.status === 'inactive' || c.status === 'suspended').length
+  const counts = db.prepare(`
+    SELECT status, COUNT(*) as count FROM clients GROUP BY status
+  `).all() as { status: string; count: number }[]
+  const countMap: Record<string, number> = {}
+  for (const row of counts) countMap[row.status] = row.count
+  const totalClients = counts.reduce((sum, r) => sum + r.count, 0)
+  const activeClients = countMap['active'] || 0
+  const expiredClients = countMap['expired'] || 0
+  const inactiveClients = (countMap['inactive'] || 0) + (countMap['suspended'] || 0)
   
   const newThisMonthStmt = db.prepare(`
     SELECT COUNT(*) as count FROM clients 
@@ -46,6 +52,7 @@ export function getDashboardMetrics(): DashboardMetrics {
   `)
   const monthRevenueResult = monthRevenueStmt.get(startOfThisMonth, endOfThisMonth) as { total: number }
   
+  const thirtyDaysAgo = formatISO(subMonths(today, 1))
   const topPlansStmt = db.prepare(`
     SELECT 
       plan_name,
@@ -61,8 +68,7 @@ export function getDashboardMetrics(): DashboardMetrics {
     ORDER BY count DESC
     LIMIT 5
   `)
-  const thirtyDaysAgo = formatISO(subMonths(today, 1))
-  const topPlansResults = topPlansStmt.all(startOfThisMonth, thirtyDaysAgo) as { plan_name: string; count: number; revenue: number }[]
+  const topPlansResults = topPlansStmt.all(thirtyDaysAgo, thirtyDaysAgo) as { plan_name: string; count: number; revenue: number }[]
   const topPlans: PlanStat[] = topPlansResults.map(r => ({
     planName: r.plan_name,
     count: r.count,
@@ -73,25 +79,16 @@ export function getDashboardMetrics(): DashboardMetrics {
     .sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime())
     .slice(0, 20)
   
-  const last30DaysAccessesStmt = db.prepare(`
-    SELECT timestamp FROM access_logs 
-    WHERE result = 'granted' 
-      AND timestamp >= ?
-  `)
-  const last30Days = formatISO(subMonths(today, 1))
-  const accessTimes = last30DaysAccessesStmt.all(last30Days) as { timestamp: string }[]
+  const hourCounts = db.prepare(`
+    SELECT CAST(strftime('%H', timestamp) AS INTEGER) as hour, COUNT(*) as count
+    FROM access_logs
+    WHERE result = 'granted' AND timestamp >= ?
+    GROUP BY hour
+    ORDER BY count DESC
+    LIMIT 5
+  `).all(thirtyDaysAgo) as { hour: number; count: number }[]
   
-  const hourCounts = new Array(24).fill(0)
-  for (const access of accessTimes) {
-    const hour = getHours(parseISO(access.timestamp))
-    hourCounts[hour]++
-  }
-  
-  const peakHours: PeakHour[] = hourCounts
-    .map((count, hour) => ({ hour, count }))
-    .filter(h => h.count > 0)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
+  const peakHours: PeakHour[] = hourCounts.map(h => ({ hour: h.hour, count: h.count }))
   
   const debtorsCount = db.prepare(`
     SELECT COUNT(DISTINCT m.client_id) as count
@@ -104,7 +101,7 @@ export function getDashboardMetrics(): DashboardMetrics {
   const inactiveClientsCount = getInactiveClients(30).length
 
   return {
-    totalClients: allClients.length,
+    totalClients,
     activeClients,
     expiredClients,
     inactiveClients,
@@ -121,7 +118,7 @@ export function getDashboardMetrics(): DashboardMetrics {
 }
 
 export function getClientsByStatus(): { [key: string]: number } {
-  const clients = getAllClients()
+  const db = getDatabase()
   const counts: { [key: string]: number } = {
     active: 0,
     expired: 0,
@@ -129,8 +126,9 @@ export function getClientsByStatus(): { [key: string]: number } {
     suspended: 0
   }
   
-  for (const client of clients) {
-    counts[client.status] = (counts[client.status] || 0) + 1
+  const rows = db.prepare('SELECT status, COUNT(*) as count FROM clients GROUP BY status').all() as { status: string; count: number }[]
+  for (const row of rows) {
+    counts[row.status] = row.count
   }
   
   return counts

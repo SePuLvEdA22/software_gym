@@ -59,58 +59,47 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
           setDiscount(result.data.discount)
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading promo info:', e) }
   }
 
    const handleRenew = async () => {
-     if (!selectedPlan) return
-     
-     setLoading(true)
-     
-     try {
-       const membershipResult = await window.electronAPI.membership.create(
-         client.id, 
-         selectedPlan,
-         startDate ? parseISO(startDate).toISOString() : undefined
-       )
-       
-        if (membershipResult.success && membershipResult.data) {
-          const paymentDesc = `Renovación membresía ${selectedPlanData?.name || ''}`
-          if (discount > 0) {
-            await window.electronAPI.payment.record(
-              client.id,
-              amount,
-              paymentMethod,
-              paymentDesc,
-              membershipResult.data.id,
-              `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}`,
-              discount
-            )
-          } else {
-            await window.electronAPI.payment.record(
-              client.id,
-              amount,
-              paymentMethod,
-              paymentDesc,
-              membershipResult.data.id
-            )
-          }
-          
-          showToast('success', 'Membresía renovada exitosamente', 'Éxito')
-          onSuccess()
-          onClose()
-        } else {
-          showToast(
-            'warning',
-            'Este cliente ya tiene una membresía activa o congelada. Descongela primero o espera a que venza.',
-            'No se puede renovar'
-          )
-        }
-      } catch (error: any) {
-        showToast('error', error?.message || 'Error desconocido', 'Error')
-      } finally {
-       setLoading(false)
-     }
+      if (!selectedPlan) return
+      
+      setLoading(true)
+      
+      try {
+        const notes = discount > 0
+          ? `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}`
+          : undefined
+
+        const startDateIso = startDate ? parseISO(startDate).toISOString() : undefined
+        
+        const result = await window.electronAPI.membership.createWithPayment(
+          client.id,
+          selectedPlan,
+          amount,
+          paymentMethod,
+          startDateIso,
+          notes,
+          discount > 0 ? discount : undefined
+        )
+        
+         if (result.success && result.data?.membership) {
+           showToast('success', 'Membresía renovada exitosamente', 'Éxito')
+           onSuccess()
+           onClose()
+         } else {
+           showToast(
+             'warning',
+             result.data?.membership === null ? (result.data as any)?.error || 'No se pudo crear la membresía' : 'Este cliente ya tiene una membresía activa o congelada. Descongela primero o espera a que venza.',
+             'No se puede renovar'
+           )
+         }
+       } catch (error: any) {
+         showToast('error', error?.message || 'Error desconocido', 'Error')
+       } finally {
+        setLoading(false)
+      }
    }
 
   const getEndDate = () => {
@@ -123,7 +112,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">Renovar Membresía</h2>
           <button type="button" className="modal-close" onClick={onClose}>
@@ -132,32 +121,26 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
         </div>
         
         <div className="modal-body">
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 16,
-            padding: 20,
-            backgroundColor: 'var(--color-surface-container-high)',
-            borderRadius: 12,
-            marginBottom: 28
-          }}>
-            <div className="avatar" style={{ width: 56, height: 56, fontSize: 20 }}>
-              {client.photo ? (
-                <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
-              ) : (
-                client.fullName.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{client.fullName}</div>
-              <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
-                Código: {client.accessCode}
+          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="avatar" style={{ width: 56, height: 56, fontSize: 20, flexShrink: 0 }}>
+                {client.photo ? (
+                  <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
+                ) : (
+                  client.fullName.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.fullName}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                  Código: {client.accessCode}
+                </div>
               </div>
             </div>
           </div>
 
            {activeMembership && (
-             <div className={`alert ${activeMembership.status === 'frozen' ? 'alert-warning' : 'alert-warning'}`} style={{ marginBottom: 28 }}>
+             <div className={`alert ${activeMembership.status === 'frozen' ? 'alert-warning' : 'alert-warning'}`} style={{ marginBottom: 20 }}>
                {activeMembership.status === 'frozen' ? <Icons.Snowflake /> : <Icons.Calendar />}
                <div>
                  <span style={{ fontWeight: 600 }}>
@@ -189,7 +172,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
             </select>
           </div>
 
-          <div className="form-row">
+          <div className="form-row" style={{ marginBottom: 20 }}>
             <div className="form-group">
               <label className="form-label">Fecha de Inicio</label>
               <input 
@@ -214,7 +197,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
           <div className="divider" />
 
           {promoInfo?.promotionName && (
-            <div className="alert alert-success" style={{ marginBottom: 16 }}>
+            <div className="alert alert-success" style={{ marginTop: 16, marginBottom: 16 }}>
               <Icons.Bell />
               <div>
                 <span style={{ fontWeight: 600 }}>Promoción activa: </span>
@@ -223,7 +206,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          <div className="form-row-3">
             <div className="form-group">
               <label className="form-label">Método de Pago</label>
               <select 
@@ -239,19 +222,28 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
             <div className="form-group">
               <label className="form-label">Monto a Pagar</label>
               <input 
-                type="number" 
+                type="text"
+                inputMode="numeric"
                 className="form-input"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                value={amount || ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '')
+                  setAmount(val ? Number(val) : 0)
+                }}
+                placeholder="0"
               />
             </div>
             <div className="form-group">
               <label className="form-label">Descuento</label>
               <input 
-                type="number" 
+                type="text"
+                inputMode="numeric"
                 className="form-input"
-                value={discount}
-                onChange={(e) => setDiscount(Number(e.target.value))}
+                value={discount || ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '')
+                  setDiscount(val ? Number(val) : 0)
+                }}
                 placeholder="0"
               />
             </div>

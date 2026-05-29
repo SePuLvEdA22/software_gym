@@ -5,6 +5,7 @@ import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types
 
 export function SettingsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
+  const confirm = useAppStore((state) => state.confirm)
   const [kioskOpen, setKioskOpen] = useState(false)
   const [doorConfig, setDoorConfig] = useState({
     connectionType: 'mock' as 'mock' | 'http' | 'serial',
@@ -97,12 +98,15 @@ export function SettingsPage(): JSX.Element {
   }
 
   const deletePlan = async (id: string) => {
-    if (!confirm('¿Eliminar este plan? Los clientes con este plan no se verán afectados.')) return
+    const ok = await confirm({ title: 'Eliminar plan', message: '¿Eliminar este plan?', variant: 'danger', confirmLabel: 'Eliminar' })
+    if (!ok) return
     try {
       const result = await window.electronAPI.plans.delete(id)
       if (result.success) {
         showToast('success', 'Plan eliminado', 'Eliminado')
         loadPlans()
+      } else {
+        showToast('error', result.error || 'Error al eliminar plan', 'Error')
       }
     } catch (e: any) {
       showToast('error', e.message || 'Error al eliminar plan', 'Error')
@@ -110,8 +114,19 @@ export function SettingsPage(): JSX.Element {
   }
 
   const togglePlanActive = async (plan: MembershipPlan) => {
+    if (!plan.isActive) {
+      try {
+        await window.electronAPI.plans.update(plan.id, { isActive: true })
+        loadPlans()
+      } catch (e: any) {
+        showToast('error', e.message || 'Error al cambiar estado', 'Error')
+      }
+      return
+    }
+    const ok = await confirm({ title: 'Desactivar plan', message: `¿Desactivar el plan "${plan.name}"? Los clientes con este plan no se verán afectados.`, variant: 'warning', confirmLabel: 'Desactivar' })
+    if (!ok) return
     try {
-      await window.electronAPI.plans.update(plan.id, { isActive: !plan.isActive })
+      await window.electronAPI.plans.update(plan.id, { isActive: false })
       loadPlans()
     } catch (e: any) {
       showToast('error', e.message || 'Error al cambiar estado', 'Error')
@@ -163,7 +178,8 @@ export function SettingsPage(): JSX.Element {
   }
 
   const deletePromo = async (id: string) => {
-    if (!confirm('¿Eliminar esta promoción?')) return
+    const ok = await confirm({ title: 'Eliminar promoción', message: '¿Eliminar esta promoción?', variant: 'danger', confirmLabel: 'Eliminar' })
+    if (!ok) return
     try {
       const result = await window.electronAPI.promotion.delete(id)
       if (result.success) {
@@ -188,14 +204,14 @@ export function SettingsPage(): JSX.Element {
     try {
       const result = await window.electronAPI.promotion.getAll(false)
       if (result.success && result.data) setPromotions(result.data as Promotion[])
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading promotions:', e) }
   }
 
   const loadPlans = async () => {
     try {
       const result = await window.electronAPI.plans.getAll(false)
       if (result.success && result.data) setPlans(result.data as MembershipPlan[])
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading plans:', e) }
   }
 
   const loadWhatsAppConfig = async () => {
@@ -206,16 +222,16 @@ export function SettingsPage(): JSX.Element {
           setWhatsappConfig(prev => ({ ...prev, ...result.data }))
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading WhatsApp config:', e) }
   }
 
   const loadAutoStart = async () => {
     try {
       if (window.electronAPI?.system) {
-        const result = await (window.electronAPI as any).system.getAutoStart()
-        if (result.success) setAutoStart(result.data)
+        const result = await window.electronAPI.system.getAutoStart()
+        if (result.success) setAutoStart(!!result.data)
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading auto-start:', e) }
   }
 
   const checkKioskStatus = async () => {
@@ -391,12 +407,26 @@ export function SettingsPage(): JSX.Element {
     }
   }
 
-  const handleSaveAdmin = () => {
-    if (adminUser.newPassword && adminUser.newPassword !== adminUser.confirmPassword) {
-      showToast('warning', 'Las contraseñas no coinciden', 'Verificación')
+  const handleSaveAdmin = async () => {
+    if (!adminUser.currentPassword) {
+      showToast('warning', 'Ingresa tu contraseña actual', 'Validación')
       return
     }
-    showToast('success', 'Configuración de administrador guardada correctamente', 'Guardado')
+    if (adminUser.newPassword && adminUser.newPassword !== adminUser.confirmPassword) {
+      showToast('warning', 'Las contraseñas nuevas no coinciden', 'Verificación')
+      return
+    }
+    const result = await window.electronAPI.system.updateAdmin({
+      username: adminUser.username,
+      currentPassword: adminUser.currentPassword,
+      newPassword: adminUser.newPassword || undefined
+    })
+    if (result.success) {
+      showToast('success', 'Configuración de administrador guardada correctamente', 'Guardado')
+      setAdminUser(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }))
+    } else {
+      showToast('error', result.error || 'Error al guardar', 'Error')
+    }
   }
 
   return (
@@ -1202,8 +1232,8 @@ export function SettingsPage(): JSX.Element {
                 onChange={async (e) => {
                   const enabled = e.target.checked
                   setAutoStart(enabled)
-                  if (window.electronAPI?.system) {
-                    await (window.electronAPI as any).system.setAutoStart(enabled)
+                  if (window.electronAPI?.system?.setAutoStart) {
+                    await window.electronAPI.system.setAutoStart(enabled)
                   }
                 }} />
               <span style={{ fontWeight: 500 }}>Iniciar automáticamente con Windows</span>
@@ -1232,7 +1262,7 @@ export function SettingsPage(): JSX.Element {
             </button>
             <button className="btn btn-secondary" onClick={async () => {
               if (window.electronAPI?.system?.restoreDb) {
-                const ok = confirm('¿Restaurar base de datos? Se perderán los cambios no respaldados.')
+                const ok = await confirm({ title: 'Restaurar base de datos', message: '¿Restaurar base de datos? Se perderán los cambios no respaldados.', variant: 'warning', confirmLabel: 'Restaurar' })
                 if (!ok) return
                 const result = await window.electronAPI.system.restoreDb()
                 if (result.success) {

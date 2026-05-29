@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
+import bcrypt from 'bcryptjs'
 import {
   createClient,
   getClientById,
@@ -40,7 +41,8 @@ import {
   getFreezeHistory,
   getClientFreezeHistory,
   getClientAttendanceStats,
-  getInactiveClients
+  getInactiveClients,
+  createMembershipWithPayment
 } from '../database/memberships'
 import {
   getDashboardMetrics,
@@ -71,6 +73,7 @@ import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/conf
 import { sendHttpCommand } from '../door/httpRelay'
 import { sendSerialCommand } from '../door/serialRelay'
 import { getDatabase } from '../database'
+import { sanitizeError } from '../helpers'
 
 export function setupIpcHandlers(): void {
   ipcMain.handle('client:create', async (_, data) => {
@@ -81,7 +84,7 @@ export function setupIpcHandlers(): void {
       if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe un cliente con ese número de documento' }
       }
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -94,7 +97,7 @@ export function setupIpcHandlers(): void {
       if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe otro cliente con ese número de documento' }
       }
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -104,7 +107,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: client }
     } catch (error: any) {
       log.error('Error getting client:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -114,7 +117,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: client }
     } catch (error: any) {
       log.error('Error getting client by access code:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -124,7 +127,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: client }
     } catch (error: any) {
       log.error('Error getting client by document:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -134,7 +137,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: clients }
     } catch (error: any) {
       log.error('Error getting all clients:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -144,7 +147,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: clients }
     } catch (error: any) {
       log.error('Error searching clients:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -154,7 +157,7 @@ export function setupIpcHandlers(): void {
       return { success, data: null }
     } catch (error: any) {
       log.error('Error deleting client:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -164,7 +167,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: code }
     } catch (error: any) {
       log.error('Error generating access code:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -174,7 +177,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: plans }
     } catch (error: any) {
       log.error('Error getting plans:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -184,7 +187,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: plan }
     } catch (error: any) {
       log.error('Error getting plan:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -194,7 +197,17 @@ export function setupIpcHandlers(): void {
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error creating membership:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('membership:createWithPayment', async (_, clientId, planId, amount, method, startDate, notes, discount) => {
+    try {
+      const result = createMembershipWithPayment(clientId, planId, amount, method, startDate, notes, discount)
+      return { success: !!result.membership, data: result, error: result.error }
+    } catch (error: any) {
+      log.error('Error creating membership with payment:', error)
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -204,7 +217,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: membership }
     } catch (error: any) {
       log.error('Error getting active membership:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -214,7 +227,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: memberships }
     } catch (error: any) {
       log.error('Error getting client memberships:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -224,7 +237,7 @@ export function setupIpcHandlers(): void {
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error freezing membership:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -234,7 +247,7 @@ export function setupIpcHandlers(): void {
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error unfreezing membership:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -244,7 +257,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: payment }
     } catch (error: any) {
       log.error('Error recording payment:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -254,7 +267,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting client payments:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -264,7 +277,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting payments by date:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -353,7 +366,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting access logs:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -363,7 +376,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting client access logs:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -373,7 +386,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting logs by date:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -384,7 +397,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: metrics }
     } catch (error: any) {
       log.error('Error getting dashboard metrics:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -394,7 +407,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data }
     } catch (error: any) {
       log.error('Error getting revenue by month:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -404,7 +417,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data }
     } catch (error: any) {
       log.error('Error getting clients by status:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -414,7 +427,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: result }
     } catch (error: any) {
       log.error('Error opening door:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -424,7 +437,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: status }
     } catch (error: any) {
       log.error('Error getting door status:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -434,7 +447,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: config }
     } catch (error: any) {
       log.error('Error getting door config:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -449,7 +462,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: null }
     } catch (error: any) {
       log.error('Error saving door config:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -467,7 +480,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: result }
     } catch (error: any) {
       log.error('Error testing connection:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -477,7 +490,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: count }
     } catch (error: any) {
       log.error('Error updating expired memberships:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -487,7 +500,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: promotions }
     } catch (error: any) {
       log.error('Error getting promotions:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -497,7 +510,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: promotion }
     } catch (error: any) {
       log.error('Error getting promotion:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -506,7 +519,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: createPromotion(data) }
     } catch (error: any) {
       log.error('Error creating promotion:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -516,7 +529,7 @@ export function setupIpcHandlers(): void {
       return { success: !!result, data: result }
     } catch (error: any) {
       log.error('Error updating promotion:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -525,7 +538,7 @@ export function setupIpcHandlers(): void {
       return { success: deletePromotion(id) }
     } catch (error: any) {
       log.error('Error deleting promotion:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -535,7 +548,7 @@ export function setupIpcHandlers(): void {
       if (!plan) return { success: false, error: 'Plan no encontrado' }
       return { success: true, data: getEffectivePrice(plan) }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -544,7 +557,7 @@ export function setupIpcHandlers(): void {
       const debts = getClientDebt(clientId)
       return { success: true, data: debts }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -553,7 +566,7 @@ export function setupIpcHandlers(): void {
       const debtors = getDebtors()
       return { success: true, data: debtors }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -562,7 +575,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getFreezeHistory(membershipId) }
     } catch (error: any) {
       log.error('Error getting freeze history:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -571,7 +584,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getClientFreezeHistory(clientId) }
     } catch (error: any) {
       log.error('Error getting client freeze history:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -580,7 +593,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getClientAttendanceStats(clientId) }
     } catch (error: any) {
       log.error('Error getting attendance stats:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -589,7 +602,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getInactiveClients(daysThreshold) }
     } catch (error: any) {
       log.error('Error getting inactive clients:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -598,7 +611,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getRevenueByYear(year) }
     } catch (error: any) {
       log.error('Error getting revenue by year:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -607,7 +620,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getRevenueByTimeOfDay(startDate, endDate) }
     } catch (error: any) {
       log.error('Error getting revenue by time of day:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -616,7 +629,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: createPlan(data) }
     } catch (error: any) {
       log.error('Error creating plan:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -626,16 +639,17 @@ export function setupIpcHandlers(): void {
       return { success: !!result, data: result }
     } catch (error: any) {
       log.error('Error updating plan:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
   ipcMain.handle('plans:delete', async (_, id) => {
     try {
-      return { success: deletePlan(id) }
+      const result = deletePlan(id)
+      return result.success ? { success: true } : { success: false, error: result.error }
     } catch (error: any) {
       log.error('Error deleting plan:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -644,7 +658,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getExpiringSoon(days) }
     } catch (error: any) {
       log.error('Error getting expiring memberships:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -653,7 +667,7 @@ export function setupIpcHandlers(): void {
       return { success: true, data: getBirthdaysThisMonth() }
     } catch (error: any) {
       log.error('Error getting birthdays:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -661,7 +675,7 @@ export function setupIpcHandlers(): void {
     try {
       return { success: true, data: getWhatsappConfig() }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -676,7 +690,7 @@ export function setupIpcHandlers(): void {
       return { success: true }
     } catch (error: any) {
       log.error('Error saving WhatsApp config:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -685,7 +699,7 @@ export function setupIpcHandlers(): void {
       const result = await sendWelcomeMessage(clientId)
       return result
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -694,7 +708,7 @@ export function setupIpcHandlers(): void {
       const result = await sendPaymentConfirmation(clientId, planName, endDate)
       return result
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -702,7 +716,7 @@ export function setupIpcHandlers(): void {
     try {
       return { success: true, data: getMessageHistory(clientId, limit) }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -711,7 +725,7 @@ export function setupIpcHandlers(): void {
       const result = await checkAndSendExpiryReminders()
       return { success: true, data: result }
     } catch (error: any) {
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -727,7 +741,7 @@ export function setupIpcHandlers(): void {
       return { success: ok, data: filePath }
     } catch (error: any) {
       log.error('Backup error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -743,7 +757,7 @@ export function setupIpcHandlers(): void {
       return { success: ok }
     } catch (error: any) {
       log.error('Restore error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
     }
   })
 
@@ -790,7 +804,33 @@ export function setupIpcHandlers(): void {
       return { success: true, data: filePath }
     } catch (error: any) {
       log.error('Export error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('system:updateAdmin', async (_, data: { username?: string; currentPassword: string; newPassword?: string }) => {
+    try {
+      const db = getDatabase()
+      const stored = db.prepare("SELECT value FROM settings WHERE key = 'admin_password'").get() as { value: string } | undefined
+      if (stored && !bcrypt.compareSync(data.currentPassword, stored.value)) {
+        return { success: false, error: 'La contraseña actual no es correcta' }
+      }
+      if (data.username) {
+        db.prepare(`INSERT INTO settings (key, value) VALUES ('admin_username', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
+          .run(data.username)
+      }
+      if (data.newPassword) {
+        const hashed = bcrypt.hashSync(data.newPassword, 10)
+        db.prepare(`INSERT INTO settings (key, value) VALUES ('admin_password', ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
+          .run(hashed)
+      }
+      log.info('Admin credentials updated')
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error updating admin credentials:', error)
+      return { success: false, error: sanitizeError(error) }
     }
   })
 

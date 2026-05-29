@@ -2,7 +2,7 @@ import { getDatabase } from './index'
 import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
-import { addDays, formatISO, isAfter, parseISO } from 'date-fns'
+import { addDays, formatISO, isAfter, parseISO, differenceInDays } from 'date-fns'
 import log from 'electron-log'
 
 export interface DbMembership {
@@ -62,6 +62,7 @@ function mapDbPlan(dbPlan: DbPlan): MembershipPlan {
 export interface DbPayment {
   id: string
   client_id: string
+  client_name?: string
   membership_id: string | null
   amount: number
   discount: number
@@ -76,6 +77,7 @@ function mapDbPayment(dbPayment: DbPayment): Payment {
   return {
     id: dbPayment.id,
     clientId: dbPayment.client_id,
+    clientName: dbPayment.client_name,
     membershipId: dbPayment.membership_id,
     amount: dbPayment.amount,
     discount: dbPayment.discount || 0,
@@ -185,10 +187,14 @@ export function updatePlan(id: string, data: Partial<MembershipPlan>): Membershi
   return getPlanById(id)
 }
 
-export function deletePlan(id: string): boolean {
+export function deletePlan(id: string): { success: boolean; error?: string } {
   const db = getDatabase()
+  const activeCount = db.prepare('SELECT COUNT(*) as count FROM memberships WHERE plan_id = ?').get(id) as { count: number }
+  if (activeCount.count > 0) {
+    return { success: false, error: `No se puede eliminar: ${activeCount.count} membresía(s) usan este plan. Desactívalo en su lugar.` }
+  }
   const result = db.prepare('DELETE FROM membership_plans WHERE id = ?').run(id)
-  return result.changes > 0
+  return { success: result.changes > 0 }
 }
 
 export interface DbPromotion {
@@ -269,6 +275,19 @@ export function updatePromotion(id: string, data: Partial<Promotion>): Promotion
 export function deletePromotion(id: string): boolean {
   const db = getDatabase()
   return db.prepare('DELETE FROM promotions WHERE id = ?').run(id).changes > 0
+}
+
+export function deactivateExpiredPromotions(): number {
+  const db = getDatabase()
+  const now = formatISO(new Date())
+  const result = db.prepare(`
+    UPDATE promotions SET is_active = 0
+    WHERE is_active = 1 AND end_date < ?
+  `).run(now)
+  if (result.changes > 0) {
+    log.info(`Deactivated ${result.changes} expired promotions`)
+  }
+  return result.changes
 }
 
 export function getActivePromotionForPlan(planId: string): Promotion | null {
@@ -376,7 +395,7 @@ export function getExpiringMemberships(days: number): { clientId: string; client
 
   return rows.map(r => ({
     ...r,
-    daysLeft: Math.ceil((new Date(r.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    daysLeft: differenceInDays(parseISO(r.endDate), now)
   }))
 }
 
@@ -408,6 +427,11 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     return null
   }
   
+  if (client.status === 'suspended') {
+    log.error(`Cannot create membership: Client ${clientId} is suspended`)
+    return null
+  }
+
   const existingMembership = getActiveOrFrozenMembership(clientId)
   if (existingMembership) {
     log.error(`Cannot create membership: Client ${clientId} already has an active or frozen membership`)
@@ -605,30 +629,35 @@ export function getClientMemberships(clientId: string): Membership[] {
 export function updateExpiredMemberships(): number {
   const db = getDatabase()
   const now = formatISO(new Date())
-  
-  const getExpired = db.prepare(`
-    SELECT DISTINCT client_id FROM memberships 
-    WHERE status = 'active' AND end_date < ?
-  `)
-  
-  const expiredClients = getExpired.all(now) as { client_id: string }[]
-  
-  const updateStmt = db.prepare(`
-    UPDATE memberships SET status = 'expired' 
-    WHERE status = 'active' AND end_date < ?
-  `)
-  
-  const result = updateStmt.run(now)
-  
-  for (const client of expiredClients) {
-    const activeMembership = getActiveMembership(client.client_id)
-    if (!activeMembership) {
-      updateClientStatus(client.client_id, 'expired')
+
+  const expiredOp = db.transaction(() => {
+    const getExpired = db.prepare(`
+      SELECT DISTINCT client_id FROM memberships 
+      WHERE status = 'active' AND end_date < ?
+    `)
+
+    const expiredClients = getExpired.all(now) as { client_id: string }[]
+
+    const updateStmt = db.prepare(`
+      UPDATE memberships SET status = 'expired' 
+      WHERE status = 'active' AND end_date < ?
+    `)
+
+    const result = updateStmt.run(now)
+
+    for (const client of expiredClients) {
+      const activeMembership = getActiveMembership(client.client_id)
+      if (!activeMembership) {
+        updateClientStatus(client.client_id, 'expired')
+      }
     }
-  }
-  
-  log.info(`Updated ${result.changes} expired memberships`)
-  return result.changes
+
+    return result.changes
+  })
+
+  const changes = expiredOp()
+  log.info(`Updated ${changes} expired memberships`)
+  return changes
 }
 
 export interface DbFreezeHistory {
@@ -718,6 +747,40 @@ export function getInactiveClients(daysThreshold: number = 30): InactiveClient[]
   }))
 }
 
+export function createMembershipWithPayment(
+  clientId: string,
+  planId: string,
+  amount: number,
+  method: PaymentMethod,
+  startDate?: string,
+  notes?: string,
+  discount?: number
+): { membership: Membership | null; payment: Payment | null; error?: string } {
+  const db = getDatabase()
+
+  const operation = db.transaction(() => {
+    const membership = createMembership(clientId, planId, startDate)
+    if (!membership) {
+      return { membership: null, payment: null, error: 'No se pudo crear la membresía' }
+    }
+
+    const paymentDesc = `Renovación membresía ${membership.planName}`
+    const payment = recordPayment(
+      clientId,
+      amount,
+      method,
+      paymentDesc,
+      membership.id,
+      notes,
+      discount
+    )
+
+    return { membership, payment }
+  })
+
+  return operation()
+}
+
 export function recordPayment(
   clientId: string,
   amount: number,
@@ -767,9 +830,11 @@ export function getClientPayments(clientId: string): Payment[] {
   const db = getDatabase()
   
   const stmt = db.prepare(`
-    SELECT * FROM payments 
-    WHERE client_id = ? 
-    ORDER BY date DESC
+    SELECT p.*, c.full_name as client_name
+    FROM payments p
+    LEFT JOIN clients c ON c.id = p.client_id
+    WHERE p.client_id = ?
+    ORDER BY p.date DESC
     LIMIT 100
   `)
   
@@ -782,9 +847,11 @@ export function getPaymentsByDateRange(startDate: string, endDate: string): Paym
   const db = getDatabase()
   
   const stmt = db.prepare(`
-    SELECT * FROM payments 
-    WHERE date >= ? AND date <= ?
-    ORDER BY date DESC
+    SELECT p.*, c.full_name as client_name
+    FROM payments p
+    LEFT JOIN clients c ON c.id = p.client_id
+    WHERE p.date >= ? AND p.date <= ?
+    ORDER BY p.date DESC
   `)
   
   const results = stmt.all(startDate, endDate) as DbPayment[]

@@ -286,6 +286,17 @@ p {
   color: var(--color-secondary);
 }
 
+.form-input-error {
+  border-color: var(--color-error) !important;
+}
+
+.form-error {
+  display: block;
+  font-size: 12px;
+  color: var(--color-error);
+  margin-top: 4px;
+}
+
 .form-select {
   padding: 12px 16px;
   font-family: 'Montserrat', sans-serif;

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Icons } from '@/components/Icons'
 import { parseISO, differenceInDays } from 'date-fns'
+import { Client, Membership } from '../../../shared/types'
 
 type AccessState = 'idle' | 'granted' | 'denied' | 'checking'
 
 interface ValidationResult {
   valid: boolean
-  client?: any
-  membership?: any
+  client?: Client
+  membership?: Membership
   message: string
   code: string
 }
@@ -168,8 +169,8 @@ export function KioskPage(): JSX.Element {
   const [accessCode, setAccessCode] = useState('')
   const [accessState, setAccessState] = useState<AccessState>('idle')
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
-  const [client, setClient] = useState<any>(null)
-  const [membership, setMembership] = useState<any>(null)
+  const [client, setClient] = useState<Client | null>(null)
+  const [membership, setMembership] = useState<Membership | null>(null)
   const [showAdminButton, setShowAdminButton] = useState(false)
 
   const resetAll = useCallback(() => {

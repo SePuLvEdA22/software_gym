@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { AccessPage } from '@/pages/AccessPage'
@@ -69,6 +70,7 @@ export function App(): JSX.Element {
           <>
             <AdminLayout />
             <ToastContainer />
+            <ConfirmDialog />
           </>
         } />
       </Routes>

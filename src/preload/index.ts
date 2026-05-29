@@ -73,6 +73,8 @@ const electronAPI = {
   membership: {
     create: (clientId: string, planId: string, startDate?: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:create', clientId, planId, startDate),
+    createWithPayment: (clientId: string, planId: string, amount: number, method: PaymentMethod, startDate?: string, notes?: string, discount?: number): Promise<IpcResult<{ membership: Membership | null; payment: Payment | null }>> =>
+      ipcRenderer.invoke('membership:createWithPayment', clientId, planId, amount, method, startDate, notes, discount),
     getActive: (clientId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:getActive', clientId),
     getByClient: (clientId: string): Promise<IpcResult<Membership[]>> =>
@@ -181,7 +183,13 @@ const electronAPI = {
     restoreDb: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('system:restoreDb'),
     exportCsv: (type: string, filters?: any): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('system:exportCsv', type, filters)
+      ipcRenderer.invoke('system:exportCsv', type, filters),
+    getAutoStart: (): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('system:get-auto-start'),
+    setAutoStart: (enabled: boolean): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('system:set-auto-start', enabled),
+    updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('system:updateAdmin', data)
   },
 
   window: {

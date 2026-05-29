@@ -18,7 +18,7 @@ export function sendSerialCommand(): Promise<boolean> {
 
     log.info(`[Serial Relay] Opening ${portName} at ${config.baudRate} baud`)
 
-    open(portName, 'wx+', (err, fd) => {
+    open(portName, 'w', (err, fd) => {
       if (err) {
         log.error(`[Serial Relay] Failed to open ${portName}: ${err.message}`)
         log.info('[Serial Relay] On Windows, use COM ports like \\\\.\\COM3 for high-numbered ports')

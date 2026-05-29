@@ -10,6 +10,14 @@ export interface Toast {
   title?: string
 }
 
+export interface ConfirmDialogOptions {
+  title: string
+  message: string
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: 'danger' | 'warning' | 'info'
+}
+
 interface AppState {
   clients: Client[]
   plans: MembershipPlan[]
@@ -20,6 +28,8 @@ interface AppState {
   sidebarCollapsed: boolean
   triggerNewClientModal: boolean
   toasts: Toast[]
+  confirmDialog: ConfirmDialogOptions | null
+  confirmResolve: ((value: boolean) => void) | null
 
   setLoading: (loading: boolean) => void
   setSearchQuery: (query: string) => void
@@ -34,6 +44,8 @@ interface AppState {
   setTriggerNewClientModal: (value: boolean) => void
   showToast: (type: ToastType, message: string, title?: string) => void
   removeToast: (id: string) => void
+  confirm: (options: ConfirmDialogOptions) => Promise<boolean>
+  resolveConfirm: (value: boolean) => void
 }
 
 const initialMetrics: DashboardMetrics = {
@@ -66,6 +78,8 @@ export const useAppStore = create<AppState>((set) => ({
   sidebarCollapsed: false,
   triggerNewClientModal: false,
   toasts: [],
+  confirmDialog: null,
+  confirmResolve: null,
 
   setLoading: (loading) => set({ loading }),
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -98,5 +112,14 @@ export const useAppStore = create<AppState>((set) => ({
 
   removeToast: (id) => set((state) => ({
     toasts: state.toasts.filter(t => t.id !== id)
-  }))
+  })),
+
+  confirm: (options) => new Promise<boolean>((resolve) => {
+    set({ confirmDialog: options, confirmResolve: resolve })
+  }),
+
+  resolveConfirm: (value) => set((state) => {
+    state.confirmResolve?.(value)
+    return { confirmDialog: null, confirmResolve: null }
+  })
 }))

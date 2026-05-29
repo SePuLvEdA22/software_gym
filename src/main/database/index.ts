@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
 import { existsSync, mkdirSync, copyFileSync } from 'fs'
+import bcrypt from 'bcryptjs'
 import log from 'electron-log'
 
 let db: Database.Database | null = null
@@ -169,6 +170,8 @@ function runMigrations(db: Database.Database): void {
       CREATE INDEX IF NOT EXISTS idx_memberships_end_date ON memberships(end_date);
       CREATE INDEX IF NOT EXISTS idx_access_logs_timestamp ON access_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(date);
+      CREATE INDEX IF NOT EXISTS idx_payments_client_id ON payments(client_id);
+      CREATE INDEX IF NOT EXISTS idx_freeze_history_membership ON freeze_history(membership_id);
      `)
    })
    
@@ -256,7 +259,7 @@ function insertSeedData(db: Database.Database): void {
     insertSettings.run('reminder_1day', '1')
     insertSettings.run('reminder_sameday', '1')
     insertSettings.run('admin_username', 'admin')
-    insertSettings.run('admin_password', 'admin123')
+    insertSettings.run('admin_password', bcrypt.hashSync('admin123', 10))
   })
 
   seed()
@@ -272,33 +275,33 @@ export function getDatabase(): Database.Database {
 
 export function backupDatabase(destPath: string): boolean {
   try {
-    if (db) db.close()
-    const srcPath = getDatabasePath()
-    if (existsSync(srcPath)) {
-      copyFileSync(srcPath, destPath)
-      log.info(`Database backed up to: ${destPath}`)
+    if (!db) {
+      log.error('Database not initialized for backup')
+      return false
     }
-    db = new Database(getDatabasePath())
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
+    db.pragma('wal_checkpoint(TRUNCATE)')
+    db.exec(`VACUUM INTO '${destPath.replace(/'/g, "''")}'`)
+    log.info(`Database backed up to: ${destPath}`)
     return true
   } catch (error: any) {
     log.error('Backup error:', error)
-    if (!db) {
-      db = new Database(getDatabasePath())
-      db.pragma('journal_mode = WAL')
-      db.pragma('foreign_keys = ON')
-    }
     return false
   }
 }
 
 export function restoreDatabase(srcPath: string): boolean {
   try {
-    if (db) db.close()
     const destPath = getDatabasePath()
+    if (!existsSync(srcPath)) {
+      log.error('Restore error: source file not found')
+      return false
+    }
+    if (db) {
+      db.close()
+      db = null
+    }
     if (existsSync(destPath)) {
-      const backupPath = destPath + '.backup'
+      const backupPath = destPath + '.backup.' + Date.now()
       copyFileSync(destPath, backupPath)
       log.info(`Existing database backed up to: ${backupPath}`)
     }
@@ -312,9 +315,13 @@ export function restoreDatabase(srcPath: string): boolean {
   } catch (error: any) {
     log.error('Restore error:', error)
     if (!db) {
-      db = new Database(getDatabasePath())
-      db.pragma('journal_mode = WAL')
-      db.pragma('foreign_keys = ON')
+      try {
+        db = new Database(getDatabasePath())
+        db.pragma('journal_mode = WAL')
+        db.pragma('foreign_keys = ON')
+      } catch (e) {
+        log.error('Failed to reopen database after restore error:', e)
+      }
     }
     return false
   }

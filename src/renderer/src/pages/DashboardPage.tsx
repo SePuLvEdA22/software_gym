@@ -313,6 +313,7 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
 export function DashboardPage(): JSX.Element {
   const navigate = useNavigate()
   const { dashboardMetrics, setDashboardMetrics, setTriggerNewClientModal } = useAppStore()
+  const [localLoading, setLocalLoading] = useState(true)
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([])
   const [expiringSoon, setExpiringSoon] = useState<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>([])
   const [birthdays, setBirthdays] = useState<{ clientId: string; clientName: string; day: number }[]>([])
@@ -343,6 +344,7 @@ export function DashboardPage(): JSX.Element {
     if (inactiveResult.success && inactiveResult.data) {
       setInactiveClients(inactiveResult.data)
     }
+    setLocalLoading(false)
   }
 
   useEffect(() => {
@@ -383,6 +385,20 @@ export function DashboardPage(): JSX.Element {
     peakHours: [],
     topPlans: [],
     recentAccesses: []
+  }
+
+  if (localLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{
+          width: 40, height: 40,
+          border: '4px solid rgba(255,107,0,0.2)',
+          borderTopColor: '#ff6b00',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+      </div>
+    )
   }
 
   return (

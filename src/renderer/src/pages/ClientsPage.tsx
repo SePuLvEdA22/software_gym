@@ -71,8 +71,23 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
     }
   }
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+    if (formData.phone && !/^\+?[\d\s\-()]{7,20}$/.test(formData.phone)) {
+      errors.phone = 'El teléfono no es válido'
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'El email no es válido'
+    }
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!validateForm()) return
     
     const submitData: Omit<Client, 'id' | 'registrationDate'> = {
       ...formData,
@@ -222,11 +237,12 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                 <label className="form-label">Teléfono</label>
                 <input 
                   type="tel" 
-                  className="form-input" 
+                  className={`form-input ${fieldErrors.phone ? 'form-input-error' : ''}`} 
                   value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) => { setFormData(prev => ({ ...prev, phone: e.target.value })); setFieldErrors(prev => ({ ...prev, phone: '' })) }}
                   placeholder="Número de teléfono"
                 />
+                {fieldErrors.phone && <span className="form-error">{fieldErrors.phone}</span>}
               </div>
             </div>
             
@@ -235,11 +251,12 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                 <label className="form-label">Correo Electrónico</label>
                 <input 
                   type="email" 
-                  className="form-input" 
+                  className={`form-input ${fieldErrors.email ? 'form-input-error' : ''}`} 
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => { setFormData(prev => ({ ...prev, email: e.target.value })); setFieldErrors(prev => ({ ...prev, email: '' })) }}
                   placeholder="correo@ejemplo.com"
                 />
+                {fieldErrors.email && <span className="form-error">{fieldErrors.email}</span>}
               </div>
               <div className="form-group">
                 <label className="form-label">Dirección</label>
@@ -405,7 +422,7 @@ function AttendanceStatsModal({ client, onClose }: { client: Client; onClose: ()
 }
 
 export function ClientsPage(): JSX.Element {
-  const { clients, setClients, addClient, updateClientInState, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast } = useAppStore()
+  const { clients, setClients, addClient, updateClientInState, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast, confirm } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -431,7 +448,7 @@ export function ClientsPage(): JSX.Element {
         }
         setDebtorsMap(map)
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('Error loading debtors:', e) }
   }
 
   useEffect(() => {
@@ -470,11 +487,11 @@ export function ClientsPage(): JSX.Element {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Está seguro de eliminar este cliente?')) {
-      await window.electronAPI.client.delete(id)
-      removeClient(id)
-      loadClients()
-    }
+    const ok = await confirm({ title: 'Eliminar cliente', message: '¿Está seguro de eliminar este cliente?', variant: 'danger', confirmLabel: 'Eliminar' })
+    if (!ok) return
+    await window.electronAPI.client.delete(id)
+    removeClient(id)
+    loadClients()
   }
 
   const handleEdit = (client: Client) => {
