@@ -465,6 +465,15 @@ function AccessDeniedView({
             Por favor renueve su membresía en recepción
           </p>
         )}
+        {result.code === 'denied_frozen' && (
+          <p style={{ 
+            fontSize: 14, 
+            marginTop: 8,
+            color: 'var(--color-secondary)'
+          }}>
+            Visite recepción para reactivar su membresía congelada
+          </p>
+        )}
       </div>
     </div>
   )

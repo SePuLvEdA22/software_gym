@@ -330,6 +330,8 @@ export function SettingsPage(): JSX.Element {
   }
 
   const handleCloseKiosk = async () => {
+    const ok = await confirm({ title: 'Cerrar kiosco', message: '¿Estás seguro de cerrar la ventana del kiosco?', variant: 'warning', confirmLabel: 'Cerrar kiosco' })
+    if (!ok) return
     const result = await window.electronAPI.window.closeKiosk()
     if (result.success) {
       setKioskOpen(false)

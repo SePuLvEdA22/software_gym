@@ -2,15 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Gender, ClientStatus, EmergencyContact, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
+import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(value)
-}
 
 const statusBadge = (status: ClientStatus) => {
   switch (status) {
@@ -431,10 +424,16 @@ export function ClientsPage(): JSX.Element {
   const [showStatsModal, setShowStatsModal] = useState(false)
   const [statsClient, setStatsClient] = useState<Client | null>(null)
 
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize] = useState(50)
+
   const loadClients = async () => {
-    const result = await window.electronAPI.client.getAll()
+    const statusParam = filterStatus === 'all' ? undefined : filterStatus
+    const result = await window.electronAPI.client.getAll({ status: statusParam, page, pageSize })
     if (result.success && result.data) {
-      setClients(result.data)
+      setClients(result.data.data)
+      setTotalPages(result.data.totalPages)
     }
   }
 
@@ -454,7 +453,7 @@ export function ClientsPage(): JSX.Element {
   useEffect(() => {
     loadClients()
     loadDebtors()
-  }, [])
+  }, [page, filterStatus])
 
   useEffect(() => {
     if (triggerNewClientModal) {
@@ -510,18 +509,15 @@ export function ClientsPage(): JSX.Element {
     }
   }
 
-  const filteredClients = clients.filter(c => {
-    const matchesStatus = filterStatus === 'all' || c.status === filterStatus
-    const matchesSearch = !searchQuery || 
-      c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.documentId.includes(searchQuery) ||
-      c.accessCode.includes(searchQuery)
-    return matchesStatus && matchesSearch
-  })
-
   const handleNewClient = () => {
     setSelectedClient(null)
     setShowForm(true)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage)
+    }
   }
 
   return (
@@ -553,7 +549,10 @@ export function ClientsPage(): JSX.Element {
           <select 
             className="form-select"
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as ClientStatus | 'all')}
+            onChange={(e) => {
+              setFilterStatus(e.target.value as ClientStatus | 'all')
+              setPage(1)
+            }}
             style={{ width: 150 }}
           >
             <option value="all">Todos</option>
@@ -574,7 +573,7 @@ export function ClientsPage(): JSX.Element {
       </div>
 
       <div className="card" style={{ flex: 1 }}>
-        {filteredClients.length === 0 ? (
+        {clients.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
               <Icons.Users />
@@ -598,7 +597,7 @@ export function ClientsPage(): JSX.Element {
                 </tr>
               </thead>
               <tbody>
-                {filteredClients.map((client) => (
+                {clients.map((client) => (
                   <tr key={client.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -665,6 +664,33 @@ export function ClientsPage(): JSX.Element {
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+          <button className="btn btn-secondary" disabled={page <= 1}
+            onClick={() => handlePageChange(page - 1)} style={{ opacity: page <= 1 ? 0.5 : 1 }}>
+            <Icons.ChevronLeft />
+            Anterior
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+            .map((p, idx, arr) => (
+              <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
+                <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => handlePageChange(p)}
+                  style={{ minWidth: 36, padding: '4px 8px' }}>
+                  {p}
+                </button>
+              </span>
+            ))}
+          <button className="btn btn-secondary" disabled={page >= totalPages}
+            onClick={() => handlePageChange(page + 1)} style={{ opacity: page >= totalPages ? 0.5 : 1 }}>
+            Siguiente
+            <Icons.ChevronRight />
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <ClientForm 

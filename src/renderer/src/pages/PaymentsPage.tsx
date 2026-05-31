@@ -2,15 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Payment, PaymentMethod, RevenueByPeriod } from '../../../shared/types'
+import { formatCurrency } from '@/utils/format'
 import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(value)
-}
 
 const paymentMethods: { value: PaymentMethod; label: string; color: string }[] = [
   { value: 'cash', label: 'Efectivo', color: '#4ade80' },

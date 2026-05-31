@@ -42,7 +42,8 @@ import {
   getClientFreezeHistory,
   getClientAttendanceStats,
   getInactiveClients,
-  createMembershipWithPayment
+  createMembershipWithPayment,
+  deactivateExpiredPromotions
 } from '../database/memberships'
 import {
   getDashboardMetrics,
@@ -67,7 +68,7 @@ import {
   checkAndSendExpiryReminders
 } from '../whatsapp/index'
 import { backupDatabase, restoreDatabase } from '../database/index'
-import { AccessValidation } from '../../shared/types'
+import { AccessValidation, ClientStatus } from '../../shared/types'
 import { openDoor, getDoorStatus } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
 import { sendHttpCommand } from '../door/httpRelay'
@@ -131,10 +132,10 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('client:getAll', async (_, status) => {
+  ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number }) => {
     try {
-      const clients = getAllClients(status)
-      return { success: true, data: clients }
+      const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status)
+      return { success: true, data: result }
     } catch (error: any) {
       log.error('Error getting all clients:', error)
       return { success: false, error: sanitizeError(error) }
@@ -392,6 +393,7 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('dashboard:getMetrics', async () => {
     try {
+      deactivateExpiredPromotions()
       updateExpiredMemberships()
       const metrics = getDashboardMetrics()
       return { success: true, data: metrics }
@@ -683,10 +685,11 @@ export function setupIpcHandlers(): void {
     try {
       updateWhatsappConfig(config)
       const db = getDatabase()
+      const savedConfig = getWhatsappConfig()
       db.prepare(`INSERT INTO settings (key, value) VALUES ('whatsapp_config', ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-        .run(JSON.stringify(getWhatsappConfig()))
-      log.info('WhatsApp config saved to database')
+        .run(JSON.stringify(savedConfig))
+      log.info('WhatsApp config saved:', { ...savedConfig, apiKey: '***' })
       return { success: true }
     } catch (error: any) {
       log.error('Error saving WhatsApp config:', error)

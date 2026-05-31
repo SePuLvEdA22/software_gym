@@ -336,6 +336,7 @@ export function KioskPage(): JSX.Element {
     const getTitle = () => {
       switch (validationResult.code) {
         case 'denied_expired': return 'MEMBRESÍA VENCIDA'
+        case 'denied_frozen': return 'MEMBRESÍA CONGELADA'
         case 'denied_inactive': return 'CUENTA INACTIVA'
         default: return 'ACCESO DENEGADO'
       }
@@ -388,6 +389,11 @@ export function KioskPage(): JSX.Element {
               Renueva tu membresía en recepción
             </p>
           )}
+          {validationResult.code === 'denied_frozen' && (
+            <p style={{ fontSize: 14, color: '#a98a7d', margin: 0 }}>
+              Visita recepción para reactivar tu membresía
+            </p>
+          )}
         </div>
         <span style={{ color: '#606060', fontSize: 13 }}>
           Volviendo al inicio...
@@ -434,11 +440,6 @@ export function KioskPage(): JSX.Element {
         onEnter={validateAccess}
         disabled={false}
       />
-
-      <div style={{ display: 'flex', gap: 24, opacity: 0.4 }}>
-        <span style={{ fontSize: 12, color: '#606060' }}>Pulsa 'A' para Admin</span>
-        <span style={{ fontSize: 12, color: '#606060' }}>ESC para limpiar</span>
-      </div>
 
       <style>{`
         @keyframes spin {

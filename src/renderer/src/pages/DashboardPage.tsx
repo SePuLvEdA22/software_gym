@@ -4,17 +4,10 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { AccessLog, PeakHour, PlanStat, InactiveClient } from '../../../shared/types'
+import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 
 const COLORS = ['#ff6b00', '#4ade80', '#ffb4ab', '#60a5fa', '#f472b6', '#a78bfa']
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(value)
-}
 
 interface KpiCardProps {
   label: string
@@ -320,27 +313,26 @@ export function DashboardPage(): JSX.Element {
   const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([])
 
   const loadMetrics = async () => {
-    const result = await window.electronAPI.dashboard.getMetrics()
+    const [result, revenueResult, expiringResult, birthdayResult, inactiveResult] = await Promise.all([
+      window.electronAPI.dashboard.getMetrics(),
+      window.electronAPI.dashboard.getRevenueByMonth(6),
+      window.electronAPI.dashboard.getExpiringSoon(7),
+      window.electronAPI.dashboard.getBirthdays(),
+      window.electronAPI.client.getInactive(30)
+    ])
+
     if (result.success && result.data) {
       setDashboardMetrics(result.data)
     }
-    
-    const revenueResult = await window.electronAPI.dashboard.getRevenueByMonth(6)
     if (revenueResult.success && revenueResult.data) {
       setRevenueData(revenueResult.data)
     }
-
-    const expiringResult = await window.electronAPI.dashboard.getExpiringSoon(7)
     if (expiringResult.success && expiringResult.data) {
       setExpiringSoon(expiringResult.data as any[])
     }
-
-    const birthdayResult = await window.electronAPI.dashboard.getBirthdays()
     if (birthdayResult.success && birthdayResult.data) {
       setBirthdays(birthdayResult.data as any[])
     }
-
-    const inactiveResult = await window.electronAPI.client.getInactive(30)
     if (inactiveResult.success && inactiveResult.data) {
       setInactiveClients(inactiveResult.data)
     }

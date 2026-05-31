@@ -319,26 +319,27 @@ export function getClientDebt(clientId: string): ClientDebt[] {
       p.price as planPrice,
       m.end_date as endDate,
       m.status,
-      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid
+      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid,
+      COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalDiscount
     FROM memberships m
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE m.client_id = ?
     ORDER BY m.created_at DESC
-  `).all(clientId) as { membershipId: string; planName: string; planPrice: number; endDate: string; status: string; totalPaid: number }[]
+  `).all(clientId) as { membershipId: string; planName: string; planPrice: number; endDate: string; status: string; totalPaid: number; totalDiscount: number }[]
 
   const debts: ClientDebt[] = []
   for (const row of rows) {
-    const actualPrice = row.planPrice
-    if (row.totalPaid < actualPrice) {
+    const effectiveDue = row.planPrice - row.totalDiscount
+    if (row.totalPaid < effectiveDue) {
       debts.push({
         clientId,
         clientName: '',
         clientPhone: '',
         membershipId: row.membershipId,
         planName: row.planName,
-        totalDue: actualPrice,
+        totalDue: row.planPrice,
         totalPaid: row.totalPaid,
-        balance: actualPrice - row.totalPaid,
+        balance: effectiveDue - row.totalPaid,
         endDate: row.endDate,
         status: row.status
       })
@@ -356,21 +357,22 @@ export function getDebtors(): DebtorSummary[] {
       c.phone,
       m.id as membershipId,
       p.price as planPrice,
-      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid
+      COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid,
+      COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalDiscount
     FROM memberships m
     JOIN clients c ON c.id = m.client_id
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE m.status = 'active' OR m.status = 'frozen'
     GROUP BY m.id
-    HAVING totalPaid < p.price
-    ORDER BY (p.price - totalPaid) DESC
-  `).all() as { clientId: string; clientName: string; phone: string; membershipId: string; planPrice: number; totalPaid: number }[]
+    HAVING totalPaid < (p.price - totalDiscount)
+    ORDER BY ((p.price - totalDiscount) - totalPaid) DESC
+  `).all() as { clientId: string; clientName: string; phone: string; membershipId: string; planPrice: number; totalPaid: number; totalDiscount: number }[]
 
   return rows.map(r => ({
     clientId: r.clientId,
     clientName: r.clientName,
     phone: r.phone,
-    balance: r.planPrice - r.totalPaid
+    balance: r.planPrice - r.totalPaid - r.totalDiscount
   }))
 }
 
@@ -407,7 +409,7 @@ export function getActiveOrFrozenMembership(clientId: string): Membership | null
     SELECT * FROM memberships 
     WHERE client_id = ? 
       AND (status = 'active' OR status = 'frozen')
-      AND end_date > ?
+      AND end_date >= ?
     ORDER BY end_date DESC
     LIMIT 1
   `)
@@ -602,7 +604,7 @@ export function getActiveMembership(clientId: string): Membership | null {
     SELECT * FROM memberships 
     WHERE client_id = ? 
       AND status = 'active' 
-      AND end_date > ?
+      AND end_date >= ?
     ORDER BY end_date DESC
     LIMIT 1
   `)
@@ -759,6 +761,42 @@ export function createMembershipWithPayment(
   const db = getDatabase()
 
   const operation = db.transaction(() => {
+    const plan = getPlanById(planId)
+    if (!plan) {
+      return { membership: null, payment: null, error: 'Plan no encontrado' }
+    }
+
+    const existingMembership = getActiveOrFrozenMembership(clientId)
+    if (existingMembership) {
+      const currentEndDate = parseISO(existingMembership.endDate)
+      const newEndDate = addDays(currentEndDate, plan.durationDays)
+
+      db.prepare(`UPDATE memberships SET end_date = ?, plan_name = ?, plan_id = ? WHERE id = ?`)
+        .run(formatISO(newEndDate), plan.name, planId, existingMembership.id)
+
+      db.prepare(`UPDATE memberships SET status = 'active' WHERE id = ? AND status = 'frozen'`)
+        .run(existingMembership.id)
+
+      const extendedMembership = mapDbMembership(
+        db.prepare('SELECT * FROM memberships WHERE id = ?').get(existingMembership.id) as DbMembership
+      )
+
+      updateClientStatus(clientId, 'active')
+
+      const paymentDesc = `Renovación membresía ${plan.name}`
+      const payment = recordPayment(
+        clientId,
+        amount,
+        method,
+        paymentDesc,
+        existingMembership.id,
+        notes,
+        discount
+      )
+
+      return { membership: extendedMembership, payment }
+    }
+
     const membership = createMembership(clientId, planId, startDate)
     if (!membership) {
       return { membership: null, payment: null, error: 'No se pudo crear la membresía' }

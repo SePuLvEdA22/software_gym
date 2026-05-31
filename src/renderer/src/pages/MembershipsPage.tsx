@@ -2,15 +2,8 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, PaymentMethod, FreezeHistory } from '../../../shared/types'
+import { formatCurrency } from '@/utils/format'
 import { format, parseISO, differenceInDays, addDays } from 'date-fns'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(value)
-}
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
@@ -461,9 +454,9 @@ export function MembershipsPage(): JSX.Element {
   }
 
   const loadClients = async () => {
-    const result = await window.electronAPI.client.getAll()
+    const result = await window.electronAPI.client.getAll({ page: 1, pageSize: 1000 })
     if (result.success && result.data) {
-      setClients(result.data)
+      setClients(result.data.data)
     }
   }
 

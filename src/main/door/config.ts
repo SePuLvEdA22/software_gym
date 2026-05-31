@@ -32,7 +32,8 @@ export function getDoorConfig(): DoorConfig {
 
 export function updateDoorConfig(newConfig: Partial<DoorConfig>): void {
   config = { ...config, ...newConfig }
-  log.info('Door config updated:', config)
+  const safeConfig = { ...config, httpHeaders: config.httpHeaders ? '***' : '' }
+  log.info('Door config updated:', safeConfig)
 }
 
 export function setDoorConfig(raw: string): void {

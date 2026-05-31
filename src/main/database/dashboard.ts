@@ -1,6 +1,6 @@
 import { getDatabase } from './index'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
-import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients, deactivateExpiredPromotions } from './memberships'
+import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
 import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear } from 'date-fns'
 
 export interface DbAccessLog {
@@ -22,8 +22,6 @@ export function getDashboardMetrics(): DashboardMetrics {
   const startOfThisMonth = formatISO(startOfMonth(today))
   const endOfThisMonth = formatISO(endOfMonth(today))
 
-  deactivateExpiredPromotions()
-  
   const counts = db.prepare(`
     SELECT status, COUNT(*) as count FROM clients GROUP BY status
   `).all() as { status: string; count: number }[]
@@ -95,7 +93,8 @@ export function getDashboardMetrics(): DashboardMetrics {
     FROM memberships m
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE (m.status = 'active' OR m.status = 'frozen')
-      AND (SELECT COALESCE(SUM(pm.amount), 0) FROM payments pm WHERE pm.membership_id = m.id) < p.price
+      AND (SELECT COALESCE(SUM(pm.amount), 0) FROM payments pm WHERE pm.membership_id = m.id) 
+          < (p.price - (SELECT COALESCE(SUM(pm2.discount), 0) FROM payments pm2 WHERE pm2.membership_id = m.id))
   `).get() as { count: number }
 
   const inactiveClientsCount = getInactiveClients(30).length
@@ -180,6 +179,10 @@ export function getRevenueByMonth(months: number = 6): { month: string; revenue:
   const db = getDatabase()
   const today = new Date()
   const results: { month: string; revenue: number }[] = []
+  const stmt = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total FROM payments 
+    WHERE date >= ? AND date <= ?
+  `)
   
   for (let i = months - 1; i >= 0; i--) {
     const date = subMonths(today, i)
@@ -187,10 +190,6 @@ export function getRevenueByMonth(months: number = 6): { month: string; revenue:
     const monthEnd = formatISO(endOfMonth(date))
     const monthLabel = date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })
     
-    const stmt = db.prepare(`
-      SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-      WHERE date >= ? AND date <= ?
-    `)
     const result = stmt.get(monthStart, monthEnd) as { total: number }
     
     results.push({

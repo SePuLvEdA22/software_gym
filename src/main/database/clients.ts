@@ -152,23 +152,34 @@ export function getClientByDocumentId(documentId: string): Client | null {
   return result ? mapDbClient(result) : null
 }
 
-export function getAllClients(status?: ClientStatus): Client[] {
+export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): { data: Client[]; total: number; page: number; totalPages: number } {
   const db = getDatabase()
   
+  let countQuery = 'SELECT COUNT(*) as total FROM clients WHERE 1=1'
   let query = 'SELECT * FROM clients WHERE 1=1'
   const params: string[] = []
   
   if (status) {
+    countQuery += ' AND status = ?'
     query += ' AND status = ?'
     params.push(status)
   }
   
-  query += ' ORDER BY full_name ASC'
+  const { total } = db.prepare(countQuery).get(...params) as { total: number }
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
   
+  query += ' ORDER BY full_name ASC LIMIT ? OFFSET ?'
   const stmt = db.prepare(query)
-  const results = stmt.all(...params) as DbClient[]
+  const results = stmt.all(...params, pageSize, offset) as DbClient[]
   
-  return results.map(mapDbClient)
+  return {
+    data: results.map(mapDbClient),
+    total,
+    page: safePage,
+    totalPages
+  }
 }
 
 export function searchClients(query: string): Client[] {
