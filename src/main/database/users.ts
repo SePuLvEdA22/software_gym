@@ -1,0 +1,160 @@
+import { getDatabase } from './index'
+import { User, UserRole, ChangeLog } from '../../shared/types'
+import { v4 as uuidv4 } from 'uuid'
+import bcrypt from 'bcryptjs'
+import { formatISO } from 'date-fns'
+
+export interface DbUser {
+  id: string
+  username: string
+  full_name: string
+  password_hash: string
+  role: string
+  permissions: string
+  is_active: number
+  last_login: string | null
+  created_at: string
+  updated_at: string
+}
+
+function mapDbUser(dbUser: DbUser): User {
+  return {
+    id: dbUser.id,
+    username: dbUser.username,
+    fullName: dbUser.full_name,
+    role: dbUser.role as UserRole,
+    permissions: JSON.parse(dbUser.permissions || '[]'),
+    isActive: dbUser.is_active === 1,
+    lastLogin: dbUser.last_login || null,
+    createdAt: dbUser.created_at,
+    updatedAt: dbUser.updated_at
+  }
+}
+
+let currentSessionUser: User | null = null
+
+export function setSessionUser(user: User | null): void {
+  currentSessionUser = user
+}
+
+export function getSessionUser(): User | null {
+  return currentSessionUser
+}
+
+export function authenticateUser(username: string, password: string): { success: boolean; user?: User; error?: string } {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username) as DbUser | undefined
+  if (!row) return { success: false, error: 'Usuario o contraseña incorrectos' }
+  if (!bcrypt.compareSync(password, row.password_hash)) return { success: false, error: 'Usuario o contraseña incorrectos' }
+  const user = mapDbUser(row)
+  db.prepare('UPDATE users SET last_login = ? WHERE id = ?').run(formatISO(new Date()), user.id)
+  currentSessionUser = user
+  return { success: true, user }
+}
+
+export function getAllUsers(): User[] {
+  const db = getDatabase()
+  const rows = db.prepare('SELECT * FROM users ORDER BY full_name ASC').all() as DbUser[]
+  return rows.map(mapDbUser)
+}
+
+export function getUserById(id: string): User | null {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as DbUser | undefined
+  return row ? mapDbUser(row) : null
+}
+
+export function createUser(data: { username: string; fullName: string; password: string; role: UserRole; permissions?: string[] }): { success: boolean; user?: User; error?: string } {
+  const db = getDatabase()
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(data.username)
+  if (existing) return { success: false, error: 'Ya existe un usuario con ese nombre de usuario' }
+  const id = uuidv4()
+  const passwordHash = bcrypt.hashSync(data.password, 10)
+  const permissions = JSON.stringify(data.permissions || [])
+  db.prepare(`
+    INSERT INTO users (id, username, full_name, password_hash, role, permissions, is_active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `).run(id, data.username, data.fullName, passwordHash, data.role, permissions, formatISO(new Date()), formatISO(new Date()))
+  const user = getUserById(id)
+  return { success: true, user: user || undefined }
+}
+
+export function updateUser(id: string, data: Partial<{ username: string; fullName: string; role: UserRole; permissions: string[]; isActive: boolean; password: string }>): { success: boolean; user?: User; error?: string } {
+  const db = getDatabase()
+  const existing = getUserById(id)
+  if (!existing) return { success: false, error: 'Usuario no encontrado' }
+  const fields: string[] = []
+  const params: (string | number)[] = []
+  if (data.username !== undefined) { fields.push('username = ?'); params.push(data.username) }
+  if (data.fullName !== undefined) { fields.push('full_name = ?'); params.push(data.fullName) }
+  if (data.role !== undefined) { fields.push('role = ?'); params.push(data.role) }
+  if (data.permissions !== undefined) { fields.push('permissions = ?'); params.push(JSON.stringify(data.permissions)) }
+  if (data.isActive !== undefined) { fields.push('is_active = ?'); params.push(data.isActive ? 1 : 0) }
+  if (data.password) { fields.push('password_hash = ?'); params.push(bcrypt.hashSync(data.password, 10)) }
+  if (fields.length === 0) return { success: true, user: existing }
+  fields.push('updated_at = ?')
+  params.push(formatISO(new Date()))
+  params.push(id)
+  db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+  return { success: true, user: getUserById(id) || undefined }
+}
+
+export function deleteUser(id: string): { success: boolean; error?: string } {
+  if (id === 'user_admin') return { success: false, error: 'No se puede eliminar el usuario administrador principal' }
+  const db = getDatabase()
+  const result = db.prepare('DELETE FROM users WHERE id = ?').run(id)
+  return { success: result.changes > 0 }
+}
+
+export function getNextClientNumber(): number {
+  const db = getDatabase()
+  const result = db.transaction(() => {
+    const row = db.prepare('SELECT last_number FROM client_number_seq WHERE id = 1').get() as { last_number: number }
+    const nextNum = row.last_number + 1
+    db.prepare('UPDATE client_number_seq SET last_number = ? WHERE id = 1').run(nextNum)
+    return nextNum
+  })()
+  return result
+}
+
+export function logChange(
+  tableName: string,
+  recordId: string,
+  action: 'create' | 'update' | 'delete',
+  oldValues?: Record<string, unknown> | null,
+  newValues?: Record<string, unknown> | null
+): void {
+  const db = getDatabase()
+  const user = getSessionUser()
+  db.prepare(`
+    INSERT INTO change_log (id, user_id, user_name, table_name, record_id, action, old_values, new_values, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    uuidv4(),
+    user?.id || null,
+    user?.fullName || 'Sistema',
+    tableName,
+    recordId,
+    action,
+    oldValues ? JSON.stringify(oldValues) : null,
+    newValues ? JSON.stringify(newValues) : null,
+    formatISO(new Date())
+  )
+}
+
+export function getChangeLogs(limit = 100, tableName?: string): ChangeLog[] {
+  const db = getDatabase()
+  let query = `SELECT id, user_id AS userId, user_name AS userName, table_name AS tableName, record_id AS recordId, action, old_values AS oldValues, new_values AS newValues, timestamp FROM change_log WHERE 1=1`
+  const params: (string | number)[] = []
+  if (tableName) { query += ' AND table_name = ?'; params.push(tableName) }
+  query += ' ORDER BY timestamp DESC LIMIT ?'
+  params.push(limit)
+  const rows = db.prepare(query).all(...params) as ChangeLog[]
+  return rows
+}
+
+export function getUserByUsername(username: string): User | null {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as DbUser | undefined
+  return row ? mapDbUser(row) : null
+}

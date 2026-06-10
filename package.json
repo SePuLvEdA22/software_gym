@@ -6,6 +6,31 @@
   "author": "BodyFitGym",
   "license": "MIT",
   "type": "module",
+  "build": {
+    "appId": "com.bodyfitgym.app",
+    "productName": "BodyFitGym",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "resources/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -39,7 +64,7 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^31.3.1",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "typescript": "~5.5.3",
     "vite": "^5.3.4"

@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import bcrypt from 'bcryptjs'
 import {
   createClient,
   getClientById,
@@ -43,6 +42,7 @@ import {
   getClientAttendanceStats,
   getInactiveClients,
   createMembershipWithPayment,
+  getMembershipPayments,
   deactivateExpiredPromotions
 } from '../database/memberships'
 import {
@@ -67,23 +67,166 @@ import {
   getMessageHistory,
   checkAndSendExpiryReminders
 } from '../whatsapp/index'
+import {
+  getAllProducts, getProductById, createProduct, updateProduct, deleteProduct,
+  registerMovement, getMovements, getLowStockProducts
+} from '../database/inventory'
+import {
+  getMeasurements, saveMeasurement, getGoals, saveGoal
+} from '../database/bodyTracking'
+import {
+  getTemplates, getTemplateById, createTemplate, updateTemplate, deleteTemplate,
+  sendTemplateToClient, sendTemplateToAll
+} from '../database/messageTemplates'
 import { backupDatabase, restoreDatabase } from '../database/index'
-import { AccessValidation, ClientStatus } from '../../shared/types'
+import { AccessValidation, ClientStatus, UserRole } from '../../shared/types'
 import { openDoor, getDoorStatus } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
 import { sendHttpCommand } from '../door/httpRelay'
 import { sendSerialCommand } from '../door/serialRelay'
 import { getDatabase } from '../database'
 import { sanitizeError } from '../helpers'
+import {
+  authenticateUser,
+  getSessionUser,
+  setSessionUser,
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  logChange,
+  getChangeLogs,
+  getNextClientNumber
+} from '../database/users'
+function requireRole(...roles: UserRole[]): { success: false; error: string } | null {
+  const user = getSessionUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (!roles.includes(user.role)) return { success: false, error: 'No autorizado' }
+  return null
+}
 
 export function setupIpcHandlers(): void {
+  ipcMain.handle('auth:login', async (_, username: string, password: string) => {
+    try {
+      const result = authenticateUser(username, password)
+      if (result.success) {
+        logChange('users', result.user!.id, 'update', null, { lastLogin: new Date().toISOString() })
+      }
+      return result
+    } catch (error: any) {
+      log.error('Error during login:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('auth:logout', async () => {
+    setSessionUser(null)
+    return { success: true }
+  })
+
+  ipcMain.handle('auth:checkSession', async () => {
+    const user = getSessionUser()
+    return { success: true, data: user }
+  })
+
+  ipcMain.handle('user:getAll', async () => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      return { success: true, data: getAllUsers() }
+    } catch (error: any) {
+      log.error('Error getting users:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('user:getById', async (_, id: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      return { success: true, data: getUserById(id) }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('user:create', async (_, data: { username: string; fullName: string; password: string; role: UserRole; permissions?: string[] }) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const result = createUser(data)
+      if (result.success && result.user) {
+        logChange('users', result.user.id, 'create', null, result.user as unknown as Record<string, unknown>)
+      }
+      return result
+    } catch (error: any) {
+      log.error('Error creating user:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('user:update', async (_, id: string, data: any) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const oldUser = getUserById(id)
+      const result = updateUser(id, data)
+      if (result.success && oldUser) {
+        logChange('users', id, 'update', oldUser as unknown as Record<string, unknown>, { ...oldUser, ...data } as unknown as Record<string, unknown>)
+      }
+      return result
+    } catch (error: any) {
+      log.error('Error updating user:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('user:delete', async (_, id: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const oldUser = getUserById(id)
+      const result = deleteUser(id)
+      if (result.success && oldUser) {
+        logChange('users', id, 'delete', { ...oldUser }, null)
+      }
+      return result
+    } catch (error: any) {
+      log.error('Error deleting user:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('user:getChangeLogs', async (_, limit?: number, tableName?: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      return { success: true, data: getChangeLogs(limit, tableName) }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('client:getNextNumber', async () => {
+    try {
+      return { success: true, data: getNextClientNumber() }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
   ipcMain.handle('client:create', async (_, data) => {
     try {
-      return { success: true, data: createClient(data) }
+      const client = createClient(data)
+      logChange('clients', client.id, 'create', null, client as unknown as Record<string, unknown>)
+      return { success: true, data: client }
     } catch (error: any) {
       log.error('Error creating client:', error)
       if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe un cliente con ese número de documento' }
+      }
+      if (error.message?.includes('UNIQUE constraint failed: clients.access_code')) {
+        return { success: false, error: 'Ya existe otro cliente con ese código de acceso' }
       }
       return { success: false, error: sanitizeError(error) }
     }
@@ -91,12 +234,19 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('client:update', async (_, id, data) => {
     try {
+      const oldClient = getClientById(id)
       const result = updateClient(id, data)
+      if (result && oldClient) {
+        logChange('clients', id, 'update', oldClient as unknown as Record<string, unknown>, result as unknown as Record<string, unknown>)
+      }
       return { success: !!result, data: result }
     } catch (error: any) {
       log.error('Error updating client:', error)
       if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe otro cliente con ese número de documento' }
+      }
+      if (error.message?.includes('UNIQUE constraint failed: clients.access_code')) {
+        return { success: false, error: 'Ya existe otro cliente con ese código de acceso' }
       }
       return { success: false, error: sanitizeError(error) }
     }
@@ -154,7 +304,11 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('client:delete', async (_, id) => {
     try {
+      const oldClient = getClientById(id)
       const success = deleteClient(id)
+      if (success && oldClient) {
+        logChange('clients', id, 'delete', oldClient as unknown as Record<string, unknown>, null)
+      }
       return { success, data: null }
     } catch (error: any) {
       log.error('Error deleting client:', error)
@@ -278,6 +432,15 @@ export function setupIpcHandlers(): void {
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting payments by date:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('payment:getByMembership', async (_, membershipId: string) => {
+    try {
+      return { success: true, data: getMembershipPayments(membershipId) }
+    } catch (error: any) {
+      log.error('Error getting membership payments:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -454,6 +617,8 @@ export function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('door:saveConfig', async (_, config) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       updateDoorConfig(config)
       const db = getDatabase()
@@ -682,6 +847,8 @@ export function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('whatsapp:saveConfig', async (_, config) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       updateWhatsappConfig(config)
       const db = getDatabase()
@@ -733,6 +900,8 @@ export function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('system:backupDb', async () => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       const { canceled, filePath } = await require('electron').dialog.showSaveDialog({
         title: 'Guardar copia de seguridad',
@@ -749,6 +918,8 @@ export function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('system:restoreDb', async () => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       const { canceled, filePaths } = await require('electron').dialog.showOpenDialog({
         title: 'Restaurar copia de seguridad',
@@ -765,6 +936,8 @@ export function setupIpcHandlers(): void {
   })
 
   ipcMain.handle('system:exportCsv', async (_, type: string, filters?: any) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       const db = getDatabase()
       let rows: any[] = []
@@ -813,28 +986,132 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('system:updateAdmin', async (_, data: { username?: string; currentPassword: string; newPassword?: string }) => {
     try {
-      const db = getDatabase()
-      const stored = db.prepare("SELECT value FROM settings WHERE key = 'admin_password'").get() as { value: string } | undefined
-      if (stored && !bcrypt.compareSync(data.currentPassword, stored.value)) {
-        return { success: false, error: 'La contraseña actual no es correcta' }
+      const user = getSessionUser()
+      if (!user || user.role !== 'admin') {
+        return { success: false, error: 'No autorizado' }
       }
-      if (data.username) {
-        db.prepare(`INSERT INTO settings (key, value) VALUES ('admin_username', ?)
-          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-          .run(data.username)
-      }
-      if (data.newPassword) {
-        const hashed = bcrypt.hashSync(data.newPassword, 10)
-        db.prepare(`INSERT INTO settings (key, value) VALUES ('admin_password', ?)
-          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-          .run(hashed)
-      }
-      log.info('Admin credentials updated')
-      return { success: true }
+      const result = updateUser('user_admin', {
+        username: data.username,
+        password: data.newPassword
+      })
+      return result.success
+        ? { success: true }
+        : { success: false, error: result.error || 'Error al actualizar' }
     } catch (error: any) {
       log.error('Error updating admin credentials:', error)
       return { success: false, error: sanitizeError(error) }
     }
+  })
+
+  ipcMain.handle('inventory:getAllProducts', async (_, activeOnly) => {
+    try { return { success: true, data: getAllProducts(activeOnly) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:getProductById', async (_, id) => {
+    try { return { success: true, data: getProductById(id) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:createProduct', async (_, data) => {
+    try { return { success: true, data: createProduct(data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:updateProduct', async (_, id, data) => {
+    try { return { success: true, data: updateProduct(id, data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:deleteProduct', async (_, id) => {
+    try { return { success: deleteProduct(id) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:registerMovement', async (_, productId, type, quantity, price, description) => {
+    try {
+      const result = registerMovement(productId, type, quantity, price, description)
+      return { success: !!result, data: result, error: result ? undefined : 'Producto no encontrado' }
+    } catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:getMovements', async (_, productId, limit) => {
+    try { return { success: true, data: getMovements(productId, limit) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:getLowStock', async (_, threshold) => {
+    try { return { success: true, data: getLowStockProducts(threshold) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('bodyTracking:getMeasurements', async (_, clientId: string, limit?: number) => {
+    try { return { success: true, data: getMeasurements(clientId, limit) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('bodyTracking:saveMeasurement', async (_, clientId: string, data: any) => {
+    try { return { success: true, data: saveMeasurement(clientId, data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('bodyTracking:getGoals', async (_, clientId: string) => {
+    try { return { success: true, data: getGoals(clientId) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('bodyTracking:saveGoal', async (_, clientId: string, data: any) => {
+    try { return { success: true, data: saveGoal(clientId, data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:getAll', async () => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: getTemplates() } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:getById', async (_, id: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: getTemplateById(id) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:create', async (_, data: any) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: createTemplate(data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:update', async (_, id: string, data: any) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: updateTemplate(id, data) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:delete', async (_, id: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: deleteTemplate(id) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:sendToClient', async (_, templateId: string, clientId: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: sendTemplateToClient(templateId, clientId) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:sendToAll', async (_, templateId: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: sendTemplateToAll(templateId) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
   log.info('IPC handlers registered')

@@ -1,9 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { CameraCapture } from '@/components/CameraCapture'
 import { Client, Gender, ClientStatus, EmergencyContact, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
+
+function calculateAge(birthDate: string): number | null {
+  if (!birthDate) return null
+  try {
+    const birth = parseISO(birthDate)
+    const today = new Date()
+    let age = today.getFullYear() - birth.getFullYear()
+    const monthDiff = today.getMonth() - birth.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--
+    }
+    return age
+  } catch {
+    return null
+  }
+}
 
 const statusBadge = (status: ClientStatus) => {
   switch (status) {
@@ -36,6 +53,7 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
     photo: client?.photo || null,
     accessCode: client?.accessCode || '',
     status: (client?.status || 'inactive') as ClientStatus,
+    notes: '',
     emergencyContact: {
       name: client?.emergencyContact.name || '',
       phone: client?.emergencyContact.phone || '',
@@ -44,13 +62,7 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
     }
   })
 
-  const generateCode = async () => {
-    const result = await window.electronAPI.client.generateCode()
-    if (result.success && result.data) {
-      const newCode = result.data as string
-      setFormData(prev => ({ ...prev, accessCode: newCode }))
-    }
-  }
+  const age = calculateAge(formData.birthDate)
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -64,7 +76,17 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
     }
   }
 
+  const handleCameraCapture = (base64: string) => {
+    setFormData(prev => ({ ...prev, photo: base64 }))
+    setShowCamera(false)
+  }
+
+  const handleRemovePhoto = () => {
+    setFormData(prev => ({ ...prev, photo: null }))
+  }
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [showCamera, setShowCamera] = useState(false)
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
@@ -110,18 +132,48 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
           
           <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, marginBottom: 28 }}>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                 <div 
                   className="photo-upload" 
                   onClick={() => document.getElementById('photo-upload')?.click()}
+                  title="Click para subir foto desde archivos"
                 >
                   {formData.photo ? (
                     <img src={`data:image/jpeg;base64,${formData.photo}`} alt="Client" />
                   ) : (
                     <div className="photo-upload-placeholder">
                       <Icons.Camera />
-                      <span>Click para agregar foto</span>
+                      <span>Agregar foto</span>
                     </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => document.getElementById('photo-upload')?.click()}
+                    title="Subir foto desde archivos"
+                  >
+                    <Icons.Upload />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => setShowCamera(true)}
+                    title="Tomar foto con la cámara"
+                  >
+                    <Icons.Camera />
+                  </button>
+                  {formData.photo && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={handleRemovePhoto}
+                      title="Eliminar foto"
+                      style={{ color: 'var(--color-error)' }}
+                    >
+                      <Icons.Trash />
+                    </button>
                   )}
                 </div>
                 <input 
@@ -131,6 +183,12 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                   style={{ display: 'none' }}
                   onChange={handlePhotoChange}
                 />
+                {showCamera && (
+                  <CameraCapture
+                    onCapture={handleCameraCapture}
+                    onClose={() => setShowCamera(false)}
+                  />
+                )}
               </div>
               
               <div style={{ flex: 1 }}>
@@ -160,7 +218,7 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                 
                 <div className="form-row">
                    <div className="form-group">
-                    <label className="form-label">Código de Acceso (1-20 dígitos)</label>
+                    <label className="form-label">Código de Acceso</label>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <input 
                         type="text" 
@@ -173,15 +231,11 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                         placeholder="Ingrese código numérico"
                         maxLength={20}
                         style={{ fontFamily: 'monospace' }}
+                        required
                       />
-                      <button 
-                        type="button" 
-                        className="btn btn-secondary"
-                        onClick={generateCode}
-                        title="Generar código aleatorio de 6 dígitos"
-                      >
-                        <Icons.Refresh />
-                      </button>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+                      El cliente usará este código para ingresar al gimnasio. Máximo 20 dígitos.
                     </div>
                   </div>
                   <div className="form-group">
@@ -212,6 +266,11 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                   value={formData.birthDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, birthDate: e.target.value }))}
                 />
+                {age !== null && (
+                  <div style={{ fontSize: 13, color: 'var(--color-secondary)', marginTop: 4 }}>
+                    Edad: <strong>{age} años</strong>
+                  </div>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Género</label>
@@ -261,6 +320,17 @@ function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
                   placeholder="Dirección completa"
                 />
               </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Observaciones</label>
+              <textarea 
+                className="form-input" 
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Notas u observaciones del cliente"
+                rows={3}
+                style={{ resize: 'vertical' }}
+              />
             </div>
             
             <div className="divider" />

@@ -16,7 +16,15 @@ import {
   FreezeHistory,
   ClientAttendanceStats,
   InactiveClient,
-  RevenueByPeriod
+  RevenueByPeriod,
+  User,
+  ChangeLog,
+  UserRole,
+  Product,
+  InventoryMovement,
+  BodyMeasurement,
+  ClientGoal,
+  MessageTemplate
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -54,7 +62,9 @@ const electronAPI = {
     getAttendanceStats: (clientId: string): Promise<IpcResult<ClientAttendanceStats>> =>
       ipcRenderer.invoke('client:getAttendanceStats', clientId),
     getInactive: (daysThreshold?: number): Promise<IpcResult<InactiveClient[]>> =>
-      ipcRenderer.invoke('client:getInactive', daysThreshold)
+      ipcRenderer.invoke('client:getInactive', daysThreshold),
+    getNextNumber: (): Promise<IpcResult<number>> =>
+      ipcRenderer.invoke('client:getNextNumber')
   },
 
   plans: {
@@ -101,7 +111,9 @@ const electronAPI = {
     getByClient: (clientId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByClient', clientId),
     getByDateRange: (startDate: string, endDate: string): Promise<IpcResult<Payment[]>> =>
-      ipcRenderer.invoke('payment:getByDateRange', startDate, endDate)
+      ipcRenderer.invoke('payment:getByDateRange', startDate, endDate),
+    getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
+      ipcRenderer.invoke('payment:getByMembership', membershipId)
   },
 
   access: {
@@ -130,6 +142,30 @@ const electronAPI = {
       ipcRenderer.invoke('dashboard:getRevenueByYear', year),
     getRevenueByTimeOfDay: (startDate: string, endDate: string): Promise<IpcResult<RevenueByPeriod>> =>
       ipcRenderer.invoke('dashboard:getRevenueByTimeOfDay', startDate, endDate)
+  },
+
+  auth: {
+    login: (username: string, password: string): Promise<IpcResult<{ user: User }>> =>
+      ipcRenderer.invoke('auth:login', username, password),
+    logout: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('auth:logout'),
+    checkSession: (): Promise<IpcResult<User | null>> =>
+      ipcRenderer.invoke('auth:checkSession')
+  },
+
+  user: {
+    getAll: (): Promise<IpcResult<User[]>> =>
+      ipcRenderer.invoke('user:getAll'),
+    getById: (id: string): Promise<IpcResult<User | null>> =>
+      ipcRenderer.invoke('user:getById', id),
+    create: (data: { username: string; fullName: string; password: string; role: UserRole; permissions?: string[] }): Promise<IpcResult<{ user: User }>> =>
+      ipcRenderer.invoke('user:create', data),
+    update: (id: string, data: Partial<{ username: string; fullName: string; role: UserRole; permissions: string[]; isActive: boolean; password: string }>): Promise<IpcResult<{ user: User }>> =>
+      ipcRenderer.invoke('user:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('user:delete', id),
+    getChangeLogs: (limit?: number, tableName?: string): Promise<IpcResult<ChangeLog[]>> =>
+      ipcRenderer.invoke('user:getChangeLogs', limit, tableName)
   },
 
   door: {
@@ -190,6 +226,53 @@ const electronAPI = {
       ipcRenderer.invoke('system:set-auto-start', enabled),
     updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:updateAdmin', data)
+  },
+
+  inventory: {
+    getAllProducts: (activeOnly = true): Promise<IpcResult<Product[]>> =>
+      ipcRenderer.invoke('inventory:getAllProducts', activeOnly),
+    getProductById: (id: string): Promise<IpcResult<Product | null>> =>
+      ipcRenderer.invoke('inventory:getProductById', id),
+    createProduct: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<IpcResult<Product>> =>
+      ipcRenderer.invoke('inventory:createProduct', data),
+    updateProduct: (id: string, data: Partial<Product>): Promise<IpcResult<Product | null>> =>
+      ipcRenderer.invoke('inventory:updateProduct', id, data),
+    deleteProduct: (id: string): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('inventory:deleteProduct', id),
+    registerMovement: (productId: string, type: 'in' | 'out', quantity: number, price: number, description: string): Promise<IpcResult<InventoryMovement | null>> =>
+      ipcRenderer.invoke('inventory:registerMovement', productId, type, quantity, price, description),
+    getMovements: (productId?: string, limit?: number): Promise<IpcResult<InventoryMovement[]>> =>
+      ipcRenderer.invoke('inventory:getMovements', productId, limit),
+    getLowStock: (threshold?: number): Promise<IpcResult<Product[]>> =>
+      ipcRenderer.invoke('inventory:getLowStock', threshold)
+  },
+
+  bodyTracking: {
+    getMeasurements: (clientId: string, limit?: number): Promise<IpcResult<BodyMeasurement[]>> =>
+      ipcRenderer.invoke('bodyTracking:getMeasurements', clientId, limit),
+    saveMeasurement: (clientId: string, data: { date: string; notes?: string } & Partial<BodyMeasurement>): Promise<IpcResult<BodyMeasurement>> =>
+      ipcRenderer.invoke('bodyTracking:saveMeasurement', clientId, data),
+    getGoals: (clientId: string): Promise<IpcResult<ClientGoal[]>> =>
+      ipcRenderer.invoke('bodyTracking:getGoals', clientId),
+    saveGoal: (clientId: string, data: { goal: 'lose_weight' | 'gain_muscle' | 'define' | 'maintain'; startDate: string; targetDate?: string; notes?: string }): Promise<IpcResult<ClientGoal>> =>
+      ipcRenderer.invoke('bodyTracking:saveGoal', clientId, data)
+  },
+
+  messageTemplates: {
+    getAll: (): Promise<IpcResult<MessageTemplate[]>> =>
+      ipcRenderer.invoke('messageTemplates:getAll'),
+    getById: (id: string): Promise<IpcResult<MessageTemplate | null>> =>
+      ipcRenderer.invoke('messageTemplates:getById', id),
+    create: (data: { name: string; type: 'email' | 'whatsapp'; subject: string; content: string; variables?: string[] }): Promise<IpcResult<MessageTemplate>> =>
+      ipcRenderer.invoke('messageTemplates:create', data),
+    update: (id: string, data: { name: string; type: 'email' | 'whatsapp'; subject: string; content: string; variables?: string[] }): Promise<IpcResult<MessageTemplate | null>> =>
+      ipcRenderer.invoke('messageTemplates:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('messageTemplates:delete', id),
+    sendToClient: (templateId: string, clientId: string): Promise<IpcResult<{ sent: boolean; message?: string }>> =>
+      ipcRenderer.invoke('messageTemplates:sendToClient', templateId, clientId),
+    sendToAll: (templateId: string): Promise<IpcResult<{ sent: number; failed: number }>> =>
+      ipcRenderer.invoke('messageTemplates:sendToAll', templateId)
   },
 
   window: {

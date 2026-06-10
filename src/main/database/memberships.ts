@@ -766,35 +766,14 @@ export function createMembershipWithPayment(
       return { membership: null, payment: null, error: 'Plan no encontrado' }
     }
 
-    const existingMembership = getActiveOrFrozenMembership(clientId)
-    if (existingMembership) {
-      const currentEndDate = parseISO(existingMembership.endDate)
-      const newEndDate = addDays(currentEndDate, plan.durationDays)
-
-      db.prepare(`UPDATE memberships SET end_date = ?, plan_name = ?, plan_id = ? WHERE id = ?`)
-        .run(formatISO(newEndDate), plan.name, planId, existingMembership.id)
-
-      db.prepare(`UPDATE memberships SET status = 'active' WHERE id = ? AND status = 'frozen'`)
-        .run(existingMembership.id)
-
-      const extendedMembership = mapDbMembership(
-        db.prepare('SELECT * FROM memberships WHERE id = ?').get(existingMembership.id) as DbMembership
-      )
-
-      updateClientStatus(clientId, 'active')
-
-      const paymentDesc = `Renovación membresía ${plan.name}`
-      const payment = recordPayment(
-        clientId,
-        amount,
-        method,
-        paymentDesc,
-        existingMembership.id,
-        notes,
-        discount
-      )
-
-      return { membership: extendedMembership, payment }
+    const existing = getActiveOrFrozenMembership(clientId)
+    if (existing) {
+      if (existing.status === 'active') {
+        return { membership: null, payment: null, error: 'El cliente ya tiene una membresía activa. No puede renovar hasta que venza.' }
+      }
+      if (existing.status === 'frozen') {
+        return { membership: null, payment: null, error: 'El cliente tiene una membresía congelada. Descongélela primero.' }
+      }
     }
 
     const membership = createMembership(clientId, planId, startDate)
@@ -802,7 +781,7 @@ export function createMembershipWithPayment(
       return { membership: null, payment: null, error: 'No se pudo crear la membresía' }
     }
 
-    const paymentDesc = `Renovación membresía ${membership.planName}`
+    const paymentDesc = `Pago membresía ${membership.planName}`
     const payment = recordPayment(
       clientId,
       amount,
@@ -817,6 +796,18 @@ export function createMembershipWithPayment(
   })
 
   return operation()
+}
+
+export function getMembershipPayments(membershipId: string): Payment[] {
+  const db = getDatabase()
+  const results = db.prepare(`
+    SELECT p.*, c.full_name as client_name
+    FROM payments p
+    LEFT JOIN clients c ON c.id = p.client_id
+    WHERE p.membership_id = ?
+    ORDER BY p.date DESC
+  `).all(membershipId) as DbPayment[]
+  return results.map(mapDbPayment)
 }
 
 export function recordPayment(

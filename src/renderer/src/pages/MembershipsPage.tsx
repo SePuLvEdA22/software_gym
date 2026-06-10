@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Client, Membership, MembershipPlan, PaymentMethod, FreezeHistory } from '../../../shared/types'
+import { Client, Membership, MembershipPlan, PaymentMethod, FreezeHistory, Payment, ClientDebt } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO, differenceInDays, addDays } from 'date-fns'
 
@@ -61,9 +61,11 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
       setLoading(true)
       
       try {
-        const notes = discount > 0
-          ? `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}`
-          : undefined
+        const pendingBalance = selectedPlanData ? (selectedPlanData.price - discount) - amount : 0
+        const notes = [
+          discount > 0 ? `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}` : '',
+          pendingBalance > 0 ? `Pago parcial. Saldo pendiente: $${pendingBalance.toLocaleString('es-CO')}` : ''
+        ].filter(Boolean).join(' | ') || undefined
 
         const startDateIso = startDate ? parseISO(startDate).toISOString() : undefined
         
@@ -84,7 +86,7 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
          } else {
            showToast(
              'warning',
-             result.data?.membership === null ? (result.data as any)?.error || 'No se pudo crear la membresía' : 'Este cliente ya tiene una membresía activa o congelada. Descongela primero o espera a que venza.',
+             (result.data as any)?.error || result.error || 'No se pudo crear la membresía',
              'No se puede renovar'
            )
          }
@@ -201,34 +203,18 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
 
           <div className="form-row-3">
             <div className="form-group">
-              <label className="form-label">Método de Pago</label>
-              <select 
-                className="form-select"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              >
-                {paymentMethods.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Monto a Pagar</label>
-              <input 
+              <label className="form-label">Valor Membresía</label>
+              <input
                 type="text"
-                inputMode="numeric"
                 className="form-input"
-                value={amount || ''}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '')
-                  setAmount(val ? Number(val) : 0)
-                }}
-                placeholder="0"
+                value={selectedPlanData ? formatCurrency(selectedPlanData.price) : ''}
+                disabled
+                style={{ backgroundColor: 'var(--color-surface-container-low)', fontWeight: 600 }}
               />
             </div>
             <div className="form-group">
               <label className="form-label">Descuento</label>
-              <input 
+              <input
                 type="text"
                 inputMode="numeric"
                 className="form-input"
@@ -240,6 +226,56 @@ function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: Ren
                 placeholder="0"
               />
             </div>
+            <div className="form-group">
+              <label className="form-label">Método de Pago</label>
+              <select
+                className="form-select"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              >
+                {paymentMethods.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 16, backgroundColor: 'var(--color-surface-container-high)', marginTop: 16 }}>
+            <div className="form-row-2">
+              <div className="form-group">
+                <label className="form-label">Total a Pagar</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={selectedPlanData ? formatCurrency(Math.max(0, selectedPlanData.price - discount)) : ''}
+                  disabled
+                  style={{ backgroundColor: 'var(--color-surface-container-low)', fontWeight: 600 }}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Monto Pagado</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="form-input"
+                  value={amount || ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '')
+                    setAmount(val ? Number(val) : 0)
+                  }}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            {selectedPlanData && amount < (selectedPlanData.price - discount) && (
+              <div className="alert alert-warning" style={{ marginTop: 8, marginBottom: 0, padding: '8px 12px' }}>
+                <Icons.Bell />
+                <div>
+                  <strong>Saldo Pendiente: {formatCurrency((selectedPlanData.price - discount) - amount)}</strong>
+                  <div style={{ fontSize: 12 }}>Este saldo quedará registrado como deuda del cliente</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
@@ -434,6 +470,245 @@ function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModalProps):
   )
 }
 
+interface AbonoModalProps {
+  client: Client
+  membership: Membership
+  balance: number
+  onClose: () => void
+  onSuccess: () => void
+}
+
+function AbonoModal({ client, membership, balance, onClose, onSuccess }: AbonoModalProps): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
+  const [amount, setAmount] = useState<number>(balance)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    if (amount <= 0) {
+      showToast('warning', 'Ingrese un monto válido', 'Atención')
+      return
+    }
+    setLoading(true)
+    try {
+      const result = await window.electronAPI.payment.record(
+        client.id,
+        amount,
+        paymentMethod,
+        `Abono membresía ${membership.planName}`,
+        membership.id,
+        notes || undefined
+      )
+      if (result.success) {
+        showToast('success', 'Abono registrado exitosamente', 'Éxito')
+        onSuccess()
+        onClose()
+      } else {
+        showToast('error', result.error || 'No se pudo registrar el abono', 'Error')
+      }
+    } catch (error: any) {
+      showToast('error', error?.message || 'Error desconocido', 'Error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Registrar Abono</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        <div className="modal-body">
+          <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="avatar" style={{ width: 48, height: 48, fontSize: 18, flexShrink: 0 }}>
+                {client.photo ? (
+                  <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
+                ) : (
+                  client.fullName.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <div style={{ fontWeight: 600 }}>{client.fullName}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{membership.planName}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="alert alert-warning" style={{ marginBottom: 20 }}>
+            <Icons.Bell />
+            <div>
+              <strong>Saldo Pendiente: {formatCurrency(balance)}</strong>
+            </div>
+          </div>
+
+          <div className="form-row-2" style={{ marginBottom: 20 }}>
+            <div className="form-group">
+              <label className="form-label">Monto a Abonar</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                className="form-input"
+                value={amount || ''}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '')
+                  setAmount(val ? Number(val) : 0)
+                }}
+                placeholder="0"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Método de Pago</label>
+              <select
+                className="form-select"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              >
+                {paymentMethods.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">Notas (opcional)</label>
+            <textarea
+              className="form-input"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ej: Abono parcial"
+              rows={2}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleConfirm}
+            disabled={loading || amount <= 0}
+          >
+            {loading ? 'Registrando...' : 'Confirmar Abono'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface PaymentHistoryModalProps {
+  membershipId: string
+  onClose: () => void
+}
+
+function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryModalProps): JSX.Element {
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadPayments()
+  }, [])
+
+  const loadPayments = async () => {
+    const result = await window.electronAPI.payment.getByMembership(membershipId)
+    if (result.success && result.data) {
+      setPayments(result.data)
+    }
+    setLoading(false)
+  }
+
+  if (!payments || payments.length === 0) {
+    return (
+      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+        <div className="modal" style={{ maxWidth: 500 }}>
+          <div className="modal-header">
+            <h2 className="modal-title">Historial de Pagos</h2>
+            <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
+          </div>
+          <div className="modal-body">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: 20 }}>Cargando...</div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: 20, color: 'var(--color-secondary)' }}>
+                No hay pagos registrados para esta membresía
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const totalPagado = payments.reduce((sum, p) => sum + p.amount, 0)
+  const totalDescuento = payments.reduce((sum, p) => sum + (p.discount || 0), 0)
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-lg" style={{ maxWidth: 500 }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Historial de Pagos</h2>
+          <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
+        </div>
+        <div className="modal-body">
+          <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+            <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Total Pagado</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalPagado)}</div>
+            </div>
+            <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Descuentos</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-warning)' }}>{formatCurrency(totalDescuento)}</div>
+            </div>
+            <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Pagos</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>{payments.length}</div>
+            </div>
+          </div>
+
+          <div className="table-container" style={{ border: 'none' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                  <th>Método</th>
+                  <th>Desc.</th>
+                  <th>Notas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map(p => (
+                  <tr key={p.id}>
+                    <td>{format(parseISO(p.date), 'dd/MM/yyyy')}</td>
+                    <td style={{ fontWeight: 600 }}>{formatCurrency(p.amount)}</td>
+                    <td>{p.method}</td>
+                    <td>{p.discount ? formatCurrency(p.discount) : '-'}</td>
+                    <td style={{ fontSize: 12, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.notes || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MembershipsPage(): JSX.Element {
   const { clients, setClients, plans, setPlans, showToast } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
@@ -443,6 +718,11 @@ export function MembershipsPage(): JSX.Element {
   const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
   const [selectedMembershipForFreeze, setSelectedMembershipForFreeze] = useState<Membership | null>(null)
   const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(null)
+  const [showAbonoModal, setShowAbonoModal] = useState(false)
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false)
+  const [selectedMembershipForAbono, setSelectedMembershipForAbono] = useState<{ membership: Membership; balance: number } | null>(null)
+  const [selectedMembershipForPayments, setSelectedMembershipForPayments] = useState<string | null>(null)
+  const [clientDebts, setClientDebts] = useState<ClientDebt[]>([])
   const [clientMemberships, setClientMemberships] = useState<Membership[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'all'>('active')
 
@@ -482,6 +762,10 @@ export function MembershipsPage(): JSX.Element {
     const result = await window.electronAPI.membership.getByClient(client.id)
     if (result.success && result.data) {
       setClientMemberships(result.data)
+    }
+    const debtResult = await window.electronAPI.client.getDebt(client.id)
+    if (debtResult.success && debtResult.data) {
+      setClientDebts(debtResult.data)
     }
   }
 
@@ -640,6 +924,8 @@ export function MembershipsPage(): JSX.Element {
               <button 
                 className="btn btn-primary btn-sm"
                 onClick={() => handleRenew(selectedClient)}
+                disabled={clientMemberships.some(m => m.status === 'active')}
+                title={clientMemberships.some(m => m.status === 'active') ? 'El cliente ya tiene una membresía activa' : 'Renovar membresía'}
               >
                 <Icons.Plus />
                 Renovar
@@ -662,65 +948,100 @@ export function MembershipsPage(): JSX.Element {
                  <p>Este cliente no tiene membresías registradas</p>
                </div>
              ) : (
-               <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
-                 <table>
-                   <thead>
-                     <tr>
-                       <th>Plan</th>
-                       <th>Inicio</th>
-                       <th>Vence</th>
-                       <th>Estado</th>
-                       <th style={{ width: 140 }}>Acciones</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {clientMemberships.map(membership => (
-                       <tr key={membership.id}>
-                         <td style={{ fontWeight: 500 }}>{membership.planName}</td>
-                         <td>{format(parseISO(membership.startDate), 'dd/MM/yyyy')}</td>
-                         <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
-                         <td>{getStatusBadge(membership)}</td>
-                         <td>
-                            {membership.status === 'active' && (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  onClick={() => handleFreezeClick(membership)}
-                                  title="Congelar membresía"
-                                >
-                                  <Icons.Snowflake />
-                                  Congelar
-                                </button>
-                              </div>
+                <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Plan</th>
+                        <th>Inicio</th>
+                        <th>Vence</th>
+                        <th>Estado</th>
+                        <th>Saldo</th>
+                        <th style={{ width: 160 }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {clientMemberships.map(membership => {
+                        const debt = clientDebts.find(d => d.membershipId === membership.id)
+                        return (
+                        <tr key={membership.id}>
+                          <td style={{ fontWeight: 500 }}>{membership.planName}</td>
+                          <td>{format(parseISO(membership.startDate), 'dd/MM/yyyy')}</td>
+                          <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
+                          <td>{getStatusBadge(membership)}</td>
+                          <td>
+                            {debt && debt.balance > 0 ? (
+                              <span className="badge badge-error">${debt.balance.toLocaleString('es-CO')}</span>
+                            ) : (
+                              <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>Al día</span>
                             )}
-                            {membership.status === 'frozen' && (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => handleUnfreeze(membership.id)}
-                                  title="Descongelar membresía"
-                                >
-                                  <Icons.Play />
-                                  Descongelar
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  onClick={() => {
-                                    setSelectedMembershipForHistory(membership.id)
-                                    setShowFreezeHistoryModal(true)
-                                  }}
-                                  title="Historial de congelaciones"
-                                >
-                                  <Icons.Clock />
-                                </button>
-                              </div>
-                            )}
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                             {membership.status === 'active' && (
+                                 <button
+                                   className="btn btn-secondary btn-sm"
+                                   onClick={() => handleFreezeClick(membership)}
+                                   title="Congelar membresía"
+                                   style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                 >
+                                   <Icons.Snowflake />
+                                 </button>
+                             )}
+                             {membership.status === 'frozen' && (
+                                 <button
+                                   className="btn btn-primary btn-sm"
+                                   onClick={() => handleUnfreeze(membership.id)}
+                                   title="Descongelar membresía"
+                                   style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                 >
+                                   <Icons.Play />
+                                 </button>
+                             )}
+                             {debt && debt.balance > 0 && (
+                               <button
+                                 className="btn btn-primary btn-sm"
+                                 onClick={() => {
+                                   setSelectedMembershipForAbono({ membership, balance: debt.balance })
+                                   setShowAbonoModal(true)
+                                 }}
+                                 title="Registrar abono"
+                                 style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                               >
+                                 <Icons.Plus />
+                               </button>
+                             )}
+                             <button
+                               className="btn btn-secondary btn-sm"
+                               onClick={() => {
+                                 setSelectedMembershipForPayments(membership.id)
+                                 setShowPaymentHistoryModal(true)
+                               }}
+                               title="Ver pagos"
+                               style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                             >
+                               <Icons.Search />
+                             </button>
+                             {membership.status === 'frozen' && (
+                                 <button
+                                   className="btn btn-secondary btn-sm"
+                                   onClick={() => {
+                                     setSelectedMembershipForHistory(membership.id)
+                                     setShowFreezeHistoryModal(true)
+                                   }}
+                                   title="Historial de congelaciones"
+                                   style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                 >
+                                   <Icons.Clock />
+                                 </button>
+                             )}
+                            </div>
+                          </td>
+                        </tr>
+                      )})}
+                    </tbody>
+                  </table>
+                </div>
              )}
           </div>
         </div>
@@ -794,6 +1115,34 @@ export function MembershipsPage(): JSX.Element {
             onClose={() => {
               setShowFreezeHistoryModal(false)
               setSelectedMembershipForHistory(null)
+            }}
+          />
+        )}
+
+        {showAbonoModal && selectedMembershipForAbono && (
+          <AbonoModal
+            client={selectedClient!}
+            membership={selectedMembershipForAbono.membership}
+            balance={selectedMembershipForAbono.balance}
+            onClose={() => {
+              setShowAbonoModal(false)
+              setSelectedMembershipForAbono(null)
+            }}
+            onSuccess={() => {
+              loadClients()
+              if (selectedClient) {
+                handleClientSelect(selectedClient)
+              }
+            }}
+          />
+        )}
+
+        {showPaymentHistoryModal && selectedMembershipForPayments && (
+          <PaymentHistoryModal
+            membershipId={selectedMembershipForPayments}
+            onClose={() => {
+              setShowPaymentHistoryModal(false)
+              setSelectedMembershipForPayments(null)
             }}
           />
         )}

@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, copyFileSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync, unlinkSync } from 'fs'
 import bcrypt from 'bcryptjs'
 import log from 'electron-log'
 
@@ -24,9 +24,43 @@ export function initDatabase(): Database.Database {
     mkdirSync(dbDir, { recursive: true })
   }
 
-  db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
+  try {
+    db = new Database(dbPath)
+    db.pragma('journal_mode = WAL')
+    db.pragma('foreign_keys = ON')
+  } catch (err: any) {
+    if (err?.message?.includes('malformed') || err?.code === 'SQLITE_CORRUPT') {
+      log.warn('Database corrupted, attempting recovery by deleting and recreating...')
+
+      if (db) {
+        try { db.close() } catch { log.error('Error closing corrupted database') }
+        db = null
+      }
+
+      const walPath = dbPath + '-wal'
+      const shmPath = dbPath + '-shm'
+      try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
+      try { unlinkSync(walPath) } catch {}
+      try { unlinkSync(shmPath) } catch {}
+
+      if (existsSync(dbPath)) {
+        log.warn('Db file still exists after deletion attempt, renaming...')
+        try {
+          const renamedPath = dbPath + '.old.' + Date.now()
+          copyFileSync(dbPath, renamedPath)
+          unlinkSync(dbPath)
+        } catch (e) {
+          log.error('Could not remove corrupted database file:', e)
+        }
+      }
+
+      db = new Database(dbPath)
+      db.pragma('journal_mode = WAL')
+      db.pragma('foreign_keys = ON')
+    } else {
+      throw err
+    }
+  }
 
   runMigrations(db)
 
@@ -195,6 +229,129 @@ function runMigrations(db: Database.Database): void {
         insertSettings.run('admin_username', 'admin')
         insertSettings.run('admin_password', bcrypt.hashSync('admin123', 10))
       }
+    },
+    {
+      name: '007_add_users_and_change_log',
+      run: (db) => {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            full_name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'reception',
+            permissions TEXT DEFAULT '[]',
+            is_active INTEGER DEFAULT 1,
+            last_login TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS change_log (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            user_name TEXT NOT NULL,
+            table_name TEXT NOT NULL,
+            record_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            old_values TEXT,
+            new_values TEXT,
+            timestamp TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS client_number_seq (
+            id INTEGER PRIMARY KEY,
+            last_number INTEGER NOT NULL DEFAULT 1000
+          );
+          CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            price REAL NOT NULL DEFAULT 0,
+            cost REAL NOT NULL DEFAULT 0,
+            stock INTEGER NOT NULL DEFAULT 0,
+            min_stock INTEGER NOT NULL DEFAULT 5,
+            barcode TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS inventory_movements (
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price REAL DEFAULT 0,
+            total REAL DEFAULT 0,
+            description TEXT,
+            user_id TEXT,
+            user_name TEXT,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          );
+          CREATE TABLE IF NOT EXISTS body_measurements (
+            id TEXT PRIMARY KEY,
+            client_id TEXT NOT NULL,
+            date TEXT NOT NULL,
+            weight REAL,
+            height REAL,
+            neck REAL,
+            shoulders REAL,
+            chest REAL,
+            left_arm REAL,
+            right_arm REAL,
+            waist REAL,
+            hips REAL,
+            left_thigh REAL,
+            right_thigh REAL,
+            left_calf REAL,
+            right_calf REAL,
+            body_fat REAL,
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+          );
+          CREATE TABLE IF NOT EXISTS client_goals (
+            id TEXT PRIMARY KEY,
+            client_id TEXT NOT NULL,
+            goal TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            target_date TEXT,
+            notes TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
+          );
+          CREATE TABLE IF NOT EXISTS message_templates (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            subject TEXT DEFAULT '',
+            content TEXT NOT NULL,
+            variables TEXT DEFAULT '[]',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE INDEX IF NOT EXISTS idx_change_log_timestamp ON change_log(timestamp);
+          CREATE INDEX IF NOT EXISTS idx_change_log_table ON change_log(table_name);
+          CREATE INDEX IF NOT EXISTS idx_inventory_movements_product ON inventory_movements(product_id);
+          CREATE INDEX IF NOT EXISTS idx_body_measurements_client ON body_measurements(client_id);
+          CREATE INDEX IF NOT EXISTS idx_client_goals_client ON client_goals(client_id);
+        `)
+
+        const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count
+        if (userCount === 0) {
+          const oldAdmin = db.prepare("SELECT value FROM settings WHERE key = 'admin_password'").get() as { value: string } | undefined
+          const passwordHash = oldAdmin ? oldAdmin.value : bcrypt.hashSync('admin123', 10)
+          db.prepare(`
+            INSERT INTO users (id, username, full_name, password_hash, role, permissions, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+          `).run('user_admin', 'admin', 'Administrador', passwordHash, 'admin', '["*"]')
+        }
+
+        const seqCount = (db.prepare('SELECT COUNT(*) as count FROM client_number_seq').get() as { count: number }).count
+        if (seqCount === 0) {
+          db.prepare('INSERT INTO client_number_seq (id, last_number) VALUES (1, 1000)').run()
+        }
+      }
     }
   ]
 
@@ -242,15 +399,28 @@ export function restoreDatabase(srcPath: string): boolean {
       log.error('Restore error: source file not found')
       return false
     }
+
     if (db) {
+      db.pragma('wal_checkpoint(TRUNCATE)')
       db.close()
       db = null
     }
+
     if (existsSync(destPath)) {
       const backupPath = destPath + '.backup.' + Date.now()
       copyFileSync(destPath, backupPath)
+      const walPath = destPath + '-wal'
+      const shmPath = destPath + '-shm'
+      try { copyFileSync(walPath, backupPath + '-wal') } catch {}
+      try { copyFileSync(shmPath, backupPath + '-shm') } catch {}
       log.info(`Existing database backed up to: ${backupPath}`)
     }
+
+    const walPath = destPath + '-wal'
+    const shmPath = destPath + '-shm'
+    try { unlinkSync(walPath) } catch {}
+    try { unlinkSync(shmPath) } catch {}
+
     copyFileSync(srcPath, destPath)
     db = new Database(getDatabasePath())
     db.pragma('journal_mode = WAL')
@@ -262,6 +432,10 @@ export function restoreDatabase(srcPath: string): boolean {
     log.error('Restore error:', error)
     if (!db) {
       try {
+        const walPath = getDatabasePath() + '-wal'
+        const shmPath = getDatabasePath() + '-shm'
+        try { unlinkSync(walPath) } catch {}
+        try { unlinkSync(shmPath) } catch {}
         db = new Database(getDatabasePath())
         db.pragma('journal_mode = WAL')
         db.pragma('foreign_keys = ON')

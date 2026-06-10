@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage, session } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -389,6 +389,15 @@ app.whenReady().then(async () => {
   log.info('Initializing database...')
   initDatabase()
   log.info('Database initialized')
+
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    log.info(`[PERMISSION] Request: ${permission}, type: ${(details as any)?.mediaType || 'unknown'}, mediaTypes: ${(details as any)?.mediaTypes || 'none'}`)
+    callback(true)
+  })
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'media') return true
+    return false
+  })
 
   const savedDoorConfig = getDatabase().prepare("SELECT value FROM settings WHERE key = 'door_config'").get() as { value: string } | undefined
   if (savedDoorConfig) {
