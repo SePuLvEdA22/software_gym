@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
@@ -46,6 +46,9 @@ function RoleGuard({ roles, currentUser, children }: { roles?: UserRole[]; curre
 function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
   const location = useLocation()
   const title = getPageTitle(location.pathname)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
 
   const handleLogout = async () => {
     await window.electronAPI.auth.logout()
@@ -54,9 +57,9 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
 
   return (
     <div className="app-container">
-      <Sidebar currentUser={currentUser} />
+      <Sidebar currentUser={currentUser} collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       <main className="main-content">
-        <Header title={title} onLogout={handleLogout} />
+        <Header title={title} onLogout={handleLogout} onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
         <div className="page-content">
           <Routes>
             <Route path="/" element={

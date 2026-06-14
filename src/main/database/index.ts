@@ -1,11 +1,133 @@
-import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, copyFileSync, unlinkSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync, unlinkSync, writeFileSync, readFileSync } from 'fs'
 import bcrypt from 'bcryptjs'
 import log from 'electron-log'
+import initSqlJs from 'sql.js'
 
-let db: Database.Database | null = null
+type SqlJsDb = Awaited<ReturnType<typeof initSqlJs>> extends { Database: infer D } ? D : never
+
+interface StatementWrapper {
+  run(...params: unknown[]): { changes: number }
+  get(...params: unknown[]): Record<string, unknown> | undefined
+  all(...params: unknown[]): Record<string, unknown>[]
+}
+
+class SqlJsDatabase {
+  private db: InstanceType<SqlJsDb>
+  private filePath: string
+  private batchSaving = false
+
+  constructor(data: ArrayLike<number> | Buffer | null, filePath: string, Sql: Awaited<ReturnType<typeof initSqlJs>>) {
+    this.db = new Sql.Database(data)
+    this.filePath = filePath
+  }
+
+  prepare(sql: string): StatementWrapper {
+    const self = this
+
+    return {
+      run(...params: unknown[]): { changes: number } {
+        const stmt = self.db.prepare(sql)
+        stmt.bind(params)
+        stmt.step()
+        stmt.free()
+        const changes = self.db.getRowsModified()
+        self.save()
+        return { changes }
+      },
+
+      get(...params: unknown[]): Record<string, unknown> | undefined {
+        const stmt = self.db.prepare(sql)
+        stmt.bind(params)
+        if (stmt.step()) {
+          const row = stmt.getAsObject() as Record<string, unknown>
+          stmt.free()
+          return row
+        }
+        stmt.free()
+        return undefined
+      },
+
+      all(...params: unknown[]): Record<string, unknown>[] {
+        const stmt = self.db.prepare(sql)
+        stmt.bind(params)
+        const rows: Record<string, unknown>[] = []
+        while (stmt.step()) {
+          rows.push(stmt.getAsObject() as Record<string, unknown>)
+        }
+        stmt.free()
+        return rows
+      }
+    }
+  }
+
+  exec(sql: string): void {
+    this.db.exec(sql)
+    this.save()
+  }
+
+  run(sql: string, params?: unknown[]): void {
+    if (params) {
+      const stmt = this.db.prepare(sql)
+      stmt.bind(params)
+      stmt.step()
+      stmt.free()
+    } else {
+      this.db.run(sql)
+    }
+    this.save()
+  }
+
+  close(): void {
+    this.save()
+    this.db.close()
+  }
+
+  transaction<T>(fn: (...args: unknown[]) => T): (...args: unknown[]) => T {
+    const self = this
+    return (...args: unknown[]) => {
+      this.batchSaving = true
+      self.run('BEGIN')
+      try {
+        const result = fn(...args)
+        self.run('COMMIT')
+        this.batchSaving = false
+        self.save()
+        return result
+      } catch (e) {
+        self.run('ROLLBACK')
+        this.batchSaving = false
+        self.save()
+        throw e
+      }
+    }
+  }
+
+  export(): Buffer {
+    return Buffer.from(this.db.export())
+  }
+
+  private save(): void {
+    if (this.batchSaving) return
+    try {
+      const data = this.db.export()
+      writeFileSync(this.filePath, Buffer.from(data))
+    } catch (err) {
+      log.error('Failed to save database:', err)
+    }
+  }
+}
+
+let db: SqlJsDatabase | null = null
+let sqlInitPromise: Promise<Awaited<ReturnType<typeof initSqlJs>>> | null = null
+
+function getSqlJs(): Promise<Awaited<ReturnType<typeof initSqlJs>>> {
+  if (!sqlInitPromise) {
+    sqlInitPromise = initSqlJs()
+  }
+  return sqlInitPromise
+}
 
 export function getDatabasePath(): string {
   const userDataPath = app.getPath('userData')
@@ -14,52 +136,52 @@ export function getDatabasePath(): string {
   return dbPath
 }
 
-export function initDatabase(): Database.Database {
+export async function initDatabase(): Promise<SqlJsDatabase> {
   if (db) return db
 
   const dbPath = getDatabasePath()
   const dbDir = join(dbPath, '..')
-  
+
   if (!existsSync(dbDir)) {
     mkdirSync(dbDir, { recursive: true })
   }
 
+  const Sql = await getSqlJs()
+
   try {
-    db = new Database(dbPath)
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
-  } catch (err: any) {
-    if (err?.message?.includes('malformed') || err?.code === 'SQLITE_CORRUPT') {
-      log.warn('Database corrupted, attempting recovery by deleting and recreating...')
-
-      if (db) {
-        try { db.close() } catch { log.error('Error closing corrupted database') }
-        db = null
-      }
-
-      const walPath = dbPath + '-wal'
-      const shmPath = dbPath + '-shm'
-      try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
-      try { unlinkSync(walPath) } catch {}
-      try { unlinkSync(shmPath) } catch {}
-
-      if (existsSync(dbPath)) {
-        log.warn('Db file still exists after deletion attempt, renaming...')
-        try {
-          const renamedPath = dbPath + '.old.' + Date.now()
-          copyFileSync(dbPath, renamedPath)
-          unlinkSync(dbPath)
-        } catch (e) {
-          log.error('Could not remove corrupted database file:', e)
-        }
-      }
-
-      db = new Database(dbPath)
-      db.pragma('journal_mode = WAL')
-      db.pragma('foreign_keys = ON')
-    } else {
-      throw err
+    let buffer: Buffer | null = null
+    if (existsSync(dbPath)) {
+      buffer = readFileSync(dbPath)
     }
+    db = new SqlJsDatabase(buffer, dbPath, Sql)
+    db.run('PRAGMA foreign_keys = ON')
+  } catch (err: any) {
+    log.warn('Database error, attempting recovery by recreating...', err)
+
+    if (db) {
+      try { db.close() } catch { log.error('Error closing corrupted database') }
+      db = null
+    }
+
+    const walPath = dbPath + '-wal'
+    const shmPath = dbPath + '-shm'
+    try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
+    try { unlinkSync(walPath) } catch {}
+    try { unlinkSync(shmPath) } catch {}
+
+    if (existsSync(dbPath)) {
+      log.warn('Db file still exists after deletion attempt, renaming...')
+      try {
+        const renamedPath = dbPath + '.old.' + Date.now()
+        copyFileSync(dbPath, renamedPath)
+        unlinkSync(dbPath)
+      } catch (e) {
+        log.error('Could not remove corrupted database file:', e)
+      }
+    }
+
+    db = new SqlJsDatabase(null, dbPath, Sql)
+    db.run('PRAGMA foreign_keys = ON')
   }
 
   runMigrations(db)
@@ -67,19 +189,19 @@ export function initDatabase(): Database.Database {
   return db
 }
 
-function runMigrations(db: Database.Database): void {
+function runMigrations(db: SqlJsDatabase): void {
   db.exec(`CREATE TABLE IF NOT EXISTS _migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`)
 
-  const applied = db.prepare('SELECT name FROM _migrations').all() as { name: string }[]
-  const appliedSet = new Set(applied.map(r => r.name))
+  const appliedRows = db.prepare('SELECT name FROM _migrations').all() as { name: string }[]
+  const appliedSet = new Set(appliedRows.map(r => r.name))
 
   interface Migration {
     name: string
-    run: (db: Database.Database) => void
+    run: (db: SqlJsDatabase) => void
   }
 
   const migrations: Migration[] = [
@@ -200,7 +322,7 @@ function runMigrations(db: Database.Database): void {
     {
       name: '006_seed_default_data',
       run: (db) => {
-        const count = (db.prepare('SELECT COUNT(*) as count FROM membership_plans').get() as { count: number }).count
+        const count = (db.prepare('SELECT COUNT(*) as count FROM membership_plans').get() as { count: number })?.count ?? 0
         if (count > 0) return
 
         const insertPlan = db.prepare(`
@@ -337,7 +459,7 @@ function runMigrations(db: Database.Database): void {
           CREATE INDEX IF NOT EXISTS idx_client_goals_client ON client_goals(client_id);
         `)
 
-        const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count
+        const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number })?.count ?? 0
         if (userCount === 0) {
           const oldAdmin = db.prepare("SELECT value FROM settings WHERE key = 'admin_password'").get() as { value: string } | undefined
           const passwordHash = oldAdmin ? oldAdmin.value : bcrypt.hashSync('admin123', 10)
@@ -347,9 +469,44 @@ function runMigrations(db: Database.Database): void {
           `).run('user_admin', 'admin', 'Administrador', passwordHash, 'admin', '["*"]')
         }
 
-        const seqCount = (db.prepare('SELECT COUNT(*) as count FROM client_number_seq').get() as { count: number }).count
+        const seqCount = (db.prepare('SELECT COUNT(*) as count FROM client_number_seq').get() as { count: number })?.count ?? 0
         if (seqCount === 0) {
           db.prepare('INSERT INTO client_number_seq (id, last_number) VALUES (1, 1000)').run()
+        }
+      }
+    },
+    {
+      name: '008_migrate_photos_to_files',
+      run: (db) => {
+        const columns = db.prepare('PRAGMA table_info(clients)').all() as Array<{ name: string }>
+        const hasPhoto = columns.some(c => c.name === 'photo')
+        const hasPhotoPath = columns.some(c => c.name === 'photo_path')
+
+        if (!hasPhotoPath) {
+          db.exec('ALTER TABLE clients ADD COLUMN photo_path TEXT')
+        }
+
+        if (hasPhoto && hasPhotoPath) {
+          const photosDir = join(app.getPath('userData'), 'photos')
+          if (!existsSync(photosDir)) {
+            mkdirSync(photosDir, { recursive: true })
+          }
+
+          const clientsWithPhoto = db.prepare("SELECT id, photo FROM clients WHERE photo IS NOT NULL").all() as Array<{ id: string; photo: Buffer }>
+
+          for (const client of clientsWithPhoto) {
+            try {
+              const fileName = `${client.id}.jpg`
+              const filePath = join(photosDir, fileName)
+              writeFileSync(filePath, client.photo)
+              db.prepare('UPDATE clients SET photo_path = ? WHERE id = ?').run(filePath, client.id)
+            } catch (err) {
+              log.error(`Failed to export photo for client ${client.id}:`, err)
+            }
+          }
+
+          const photoCount = clientsWithPhoto.length
+          log.info(`Exported ${photoCount} client photos to ${photosDir}`)
         }
       }
     }
@@ -369,7 +526,7 @@ function runMigrations(db: Database.Database): void {
   log.info('Database migrations completed')
 }
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): SqlJsDatabase {
   if (!db) {
     throw new Error('Database not initialized')
   }
@@ -382,8 +539,8 @@ export function backupDatabase(destPath: string): boolean {
       log.error('Database not initialized for backup')
       return false
     }
-    db.pragma('wal_checkpoint(TRUNCATE)')
-    db.exec(`VACUUM INTO '${destPath.replace(/'/g, "''")}'`)
+    const data = db.export()
+    writeFileSync(destPath, data)
     log.info(`Database backed up to: ${destPath}`)
     return true
   } catch (error: any) {
@@ -392,7 +549,7 @@ export function backupDatabase(destPath: string): boolean {
   }
 }
 
-export function restoreDatabase(srcPath: string): boolean {
+export async function restoreDatabase(srcPath: string): Promise<boolean> {
   try {
     const destPath = getDatabasePath()
     if (!existsSync(srcPath)) {
@@ -401,7 +558,6 @@ export function restoreDatabase(srcPath: string): boolean {
     }
 
     if (db) {
-      db.pragma('wal_checkpoint(TRUNCATE)')
       db.close()
       db = null
     }
@@ -421,10 +577,11 @@ export function restoreDatabase(srcPath: string): boolean {
     try { unlinkSync(walPath) } catch {}
     try { unlinkSync(shmPath) } catch {}
 
+    const srcData = readFileSync(srcPath)
+    const Sql = await getSqlJs()
     copyFileSync(srcPath, destPath)
-    db = new Database(getDatabasePath())
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
+    db = new SqlJsDatabase(srcData, destPath, Sql)
+    db.run('PRAGMA foreign_keys = ON')
     runMigrations(db)
     log.info('Database restored successfully')
     return true
@@ -432,13 +589,14 @@ export function restoreDatabase(srcPath: string): boolean {
     log.error('Restore error:', error)
     if (!db) {
       try {
-        const walPath = getDatabasePath() + '-wal'
-        const shmPath = getDatabasePath() + '-shm'
-        try { unlinkSync(walPath) } catch {}
-        try { unlinkSync(shmPath) } catch {}
-        db = new Database(getDatabasePath())
-        db.pragma('journal_mode = WAL')
-        db.pragma('foreign_keys = ON')
+        const Sql = await getSqlJs()
+        const destPath = getDatabasePath()
+        let buffer: Buffer | null = null
+        if (existsSync(destPath)) {
+          buffer = readFileSync(destPath)
+        }
+        db = new SqlJsDatabase(buffer, destPath, Sql)
+        db.run('PRAGMA foreign_keys = ON')
       } catch (e) {
         log.error('Failed to reopen database after restore error:', e)
       }

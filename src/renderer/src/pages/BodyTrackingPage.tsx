@@ -75,7 +75,7 @@ export function BodyTrackingPage(): JSX.Element {
       </div>
 
       {selectedClientData && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="grid grid-2" style={{ gap: 20 }}>
           <MeasurementsPanel clientId={selectedClient} clientName={selectedClientData.fullName} />
           <GoalsPanel clientId={selectedClient} clientName={selectedClientData.fullName} />
         </div>
@@ -133,7 +133,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
       </div>
 
       {latest && (
-        <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div className="grid grid-3" style={{ padding: 16, gap: 12 }}>
           <MeasurementItem label="Peso" value={latest.weight} unit="kg" />
           <MeasurementItem label="Altura" value={latest.height} unit="cm" />
           <MeasurementItem label="Cuello" value={latest.neck} unit="cm" />
@@ -198,7 +198,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
                 <input type="date" className="form-input" value={form.date}
                   onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div className="grid grid-3" style={{ gap: 12 }}>
                 {[
                   ['weight', 'Peso (kg)'], ['height', 'Altura (cm)'], ['neck', 'Cuello (cm)'],
                   ['shoulders', 'Hombros (cm)'], ['chest', 'Pecho (cm)'], ['leftArm', 'Brazo Izq (cm)'],

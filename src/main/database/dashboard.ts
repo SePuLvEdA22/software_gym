@@ -73,7 +73,7 @@ export function getDashboardMetrics(): DashboardMetrics {
     revenue: r.revenue
   }))
   
-  const recentAccesses = getAccessLogsByDate(startOfToday, endOfToday)
+  const recentAccesses = getAccessLogsByDate(startOfToday, endOfToday).data
     .sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime())
     .slice(0, 20)
   

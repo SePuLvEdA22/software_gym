@@ -24,7 +24,8 @@ import {
   InventoryMovement,
   BodyMeasurement,
   ClientGoal,
-  MessageTemplate
+  MessageTemplate,
+  PageResponse
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -108,10 +109,10 @@ const electronAPI = {
       discount?: number
     ): Promise<IpcResult<Payment>> =>
       ipcRenderer.invoke('payment:record', clientId, amount, method, description, membershipId, notes, discount),
-    getByClient: (clientId: string): Promise<IpcResult<Payment[]>> =>
-      ipcRenderer.invoke('payment:getByClient', clientId),
-    getByDateRange: (startDate: string, endDate: string): Promise<IpcResult<Payment[]>> =>
-      ipcRenderer.invoke('payment:getByDateRange', startDate, endDate),
+    getByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Payment>>> =>
+      ipcRenderer.invoke('payment:getByClient', clientId, options),
+    getByDateRange: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Payment>>> =>
+      ipcRenderer.invoke('payment:getByDateRange', startDate, endDate, options),
     getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByMembership', membershipId)
   },
@@ -119,12 +120,12 @@ const electronAPI = {
   access: {
     validate: (accessCode: string): Promise<IpcResult<AccessValidation>> =>
       ipcRenderer.invoke('access:validate', accessCode),
-    getLogs: (limit?: number): Promise<IpcResult<AccessLog[]>> =>
-      ipcRenderer.invoke('access:getLogs', limit),
-    getLogsByDate: (startDate: string, endDate: string): Promise<IpcResult<AccessLog[]>> =>
-      ipcRenderer.invoke('access:getLogsByDate', startDate, endDate),
-    getLogsByClient: (clientId: string, limit?: number): Promise<IpcResult<AccessLog[]>> =>
-      ipcRenderer.invoke('access:getLogsByClient', clientId, limit)
+    getLogs: (options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+      ipcRenderer.invoke('access:getLogs', options),
+    getLogsByDate: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+      ipcRenderer.invoke('access:getLogsByDate', startDate, endDate, options),
+    getLogsByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+      ipcRenderer.invoke('access:getLogsByClient', clientId, options)
   },
 
   dashboard: {
@@ -229,8 +230,8 @@ const electronAPI = {
   },
 
   inventory: {
-    getAllProducts: (activeOnly = true): Promise<IpcResult<Product[]>> =>
-      ipcRenderer.invoke('inventory:getAllProducts', activeOnly),
+    getAllProducts: (activeOnly = true, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Product>>> =>
+      ipcRenderer.invoke('inventory:getAllProducts', activeOnly, options),
     getProductById: (id: string): Promise<IpcResult<Product | null>> =>
       ipcRenderer.invoke('inventory:getProductById', id),
     createProduct: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<IpcResult<Product>> =>
@@ -241,8 +242,8 @@ const electronAPI = {
       ipcRenderer.invoke('inventory:deleteProduct', id),
     registerMovement: (productId: string, type: 'in' | 'out', quantity: number, price: number, description: string): Promise<IpcResult<InventoryMovement | null>> =>
       ipcRenderer.invoke('inventory:registerMovement', productId, type, quantity, price, description),
-    getMovements: (productId?: string, limit?: number): Promise<IpcResult<InventoryMovement[]>> =>
-      ipcRenderer.invoke('inventory:getMovements', productId, limit),
+    getMovements: (productId?: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<InventoryMovement>>> =>
+      ipcRenderer.invoke('inventory:getMovements', productId, options),
     getLowStock: (threshold?: number): Promise<IpcResult<Product[]>> =>
       ipcRenderer.invoke('inventory:getLowStock', threshold)
   },
@@ -286,6 +287,45 @@ const electronAPI = {
       ipcRenderer.invoke('window:minimize-admin'),
     maximize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:maximize-admin')
+  },
+
+  update: {
+    check: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('update:check'),
+    download: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('update:download'),
+    install: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('update:install'),
+    onChecking: (callback: () => void): () => void => {
+      const handler = () => callback()
+      ipcRenderer.on('update:checking', handler)
+      return () => ipcRenderer.removeListener('update:checking', handler)
+    },
+    onAvailable: (callback: (info: any) => void): () => void => {
+      const handler = (_: any, info: any) => callback(info)
+      ipcRenderer.on('update:available', handler)
+      return () => ipcRenderer.removeListener('update:available', handler)
+    },
+    onNotAvailable: (callback: (info: any) => void): () => void => {
+      const handler = (_: any, info: any) => callback(info)
+      ipcRenderer.on('update:not-available', handler)
+      return () => ipcRenderer.removeListener('update:not-available', handler)
+    },
+    onError: (callback: (error: string) => void): () => void => {
+      const handler = (_: any, error: string) => callback(error)
+      ipcRenderer.on('update:error', handler)
+      return () => ipcRenderer.removeListener('update:error', handler)
+    },
+    onDownloadProgress: (callback: (progress: any) => void): () => void => {
+      const handler = (_: any, progress: any) => callback(progress)
+      ipcRenderer.on('update:download-progress', handler)
+      return () => ipcRenderer.removeListener('update:download-progress', handler)
+    },
+    onDownloaded: (callback: (info: any) => void): () => void => {
+      const handler = (_: any, info: any) => callback(info)
+      ipcRenderer.on('update:downloaded', handler)
+      return () => ipcRenderer.removeListener('update:downloaded', handler)
+    }
   }
 }
 

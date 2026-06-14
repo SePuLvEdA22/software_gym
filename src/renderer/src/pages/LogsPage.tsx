@@ -37,6 +37,9 @@ export function LogsPage(): JSX.Element {
   const [logs, setLogs] = useState<AccessLog[]>([])
   const [filterResult, setFilterResult] = useState<string>('all')
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('today')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize] = useState(50)
   const [stats, setStats] = useState({
     total: 0,
     granted: 0,
@@ -48,7 +51,7 @@ export function LogsPage(): JSX.Element {
 
   const loadLogs = async () => {
     const result = dateRange === 'all'
-      ? await window.electronAPI.access.getLogs(500)
+      ? await window.electronAPI.access.getLogs({ page, pageSize })
       : await (() => {
           const now = new Date()
           let startDate: Date
@@ -70,12 +73,14 @@ export function LogsPage(): JSX.Element {
 
           return window.electronAPI.access.getLogsByDate(
             startDate.toISOString(),
-            endDate.toISOString()
+            endDate.toISOString(),
+            { page, pageSize }
           )
         })()
 
     if (result.success && result.data) {
-      const logsData = result.data as AccessLog[]
+      const logsData = result.data.data
+      setTotalPages(result.data.totalPages)
       let filteredLogs = logsData
       
       if (filterResult !== 'all') {
@@ -101,18 +106,18 @@ export function LogsPage(): JSX.Element {
   }
 
   useEffect(() => {
+    setPage(1)
+  }, [filterResult, dateRange])
+
+  useEffect(() => {
     loadLogs()
     const interval = setInterval(loadLogs, 10000)
     return () => clearInterval(interval)
-  }, [filterResult, dateRange])
+  }, [filterResult, dateRange, page])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(5, 1fr)', 
-        gap: 16 
-      }}>
+      <div className="grid grid-5" style={{ gap: 16 }}>
         <div className="kpi-card">
           <p className="kpi-label">Total Accesos</p>
           <p className="kpi-value" style={{ fontSize: 28 }}>{stats.total}</p>
@@ -248,6 +253,27 @@ export function LogsPage(): JSX.Element {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                Página {page} de {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Siguiente
+              </button>
             </div>
           )}
         </div>

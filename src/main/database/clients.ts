@@ -1,6 +1,9 @@
 import { getDatabase } from './index'
 import { Client, Gender, ClientStatus } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
+import { app } from 'electron'
+import { join } from 'path'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
 
 export interface DbClient {
   id: string
@@ -11,7 +14,7 @@ export interface DbClient {
   phone: string
   email: string
   address: string
-  photo: Buffer | null
+  photo_path: string | null
   registration_date: string
   access_code: string
   status: string
@@ -19,6 +22,35 @@ export interface DbClient {
   emergency_phone: string
   emergency_relationship: string
   emergency_notes: string
+}
+
+function getPhotosDir(): string {
+  const dir = join(app.getPath('userData'), 'photos')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
+function savePhotoFile(clientId: string, base64Data: string | null): string | null {
+  if (!base64Data) return null
+  const dir = getPhotosDir()
+  const fileName = `${clientId}.jpg`
+  const filePath = join(dir, fileName)
+  const buffer = Buffer.from(base64Data, 'base64')
+  writeFileSync(filePath, buffer)
+  return filePath
+}
+
+function readPhotoFile(filePath: string | null): string | null {
+  if (!filePath) return null
+  try {
+    if (!existsSync(filePath)) return null
+    const buffer = readFileSync(filePath)
+    return buffer.toString('base64')
+  } catch {
+    return null
+  }
 }
 
 function mapDbClient(dbClient: DbClient): Client {
@@ -31,7 +63,7 @@ function mapDbClient(dbClient: DbClient): Client {
     phone: dbClient.phone,
     email: dbClient.email,
     address: dbClient.address,
-    photo: dbClient.photo ? dbClient.photo.toString('base64') : null,
+    photo: readPhotoFile(dbClient.photo_path),
     registrationDate: dbClient.registration_date,
     accessCode: dbClient.access_code,
     status: dbClient.status as ClientStatus,
@@ -48,11 +80,12 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
   const db = getDatabase()
   const id = uuidv4()
   const registrationDate = new Date().toISOString()
+  const photoPath = savePhotoFile(id, data.photo)
 
   const stmt = db.prepare(`
     INSERT INTO clients (
       id, full_name, document_id, birth_date, gender, phone, email, address,
-      photo, registration_date, access_code, status,
+      photo_path, registration_date, access_code, status,
       emergency_name, emergency_phone, emergency_relationship, emergency_notes
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
@@ -66,7 +99,7 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
     data.phone,
     data.email,
     data.address,
-    data.photo ? Buffer.from(data.photo, 'base64') : null,
+    photoPath,
     registrationDate,
     data.accessCode,
     data.status,
@@ -98,32 +131,32 @@ export function updateClient(id: string, data: Partial<Client>): Client | null {
     }
   }
 
-  const stmt = db.prepare(`
-    UPDATE clients SET
-      full_name = ?, document_id = ?, birth_date = ?, gender = ?, phone = ?,
-      email = ?, address = ?, photo = ?, access_code = ?, status = ?,
-      emergency_name = ?, emergency_phone = ?, emergency_relationship = ?, 
-      emergency_notes = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `)
+  let photoPath: string | null = undefined
+  if (data.photo !== undefined) {
+    photoPath = savePhotoFile(id, data.photo)
+  }
 
-  stmt.run(
-    updated.fullName,
-    updated.documentId,
-    updated.birthDate,
-    updated.gender,
-    updated.phone,
-    updated.email,
-    updated.address,
-    updated.photo ? Buffer.from(updated.photo, 'base64') : null,
-    updated.accessCode,
-    updated.status,
-    updated.emergencyContact.name,
-    updated.emergencyContact.phone,
-    updated.emergencyContact.relationship,
-    updated.emergencyContact.notes,
-    id
-  )
+  const fields: string[] = [
+    'full_name = ?', 'document_id = ?', 'birth_date = ?', 'gender = ?', 'phone = ?',
+    'email = ?', 'address = ?', 'access_code = ?', 'status = ?',
+    'emergency_name = ?', 'emergency_phone = ?', 'emergency_relationship = ?',
+    'emergency_notes = ?', 'updated_at = CURRENT_TIMESTAMP'
+  ]
+  const params: (string | number | null)[] = [
+    updated.fullName, updated.documentId, updated.birthDate,
+    updated.gender, updated.phone, updated.email, updated.address,
+    updated.accessCode, updated.status,
+    updated.emergencyContact.name, updated.emergencyContact.phone,
+    updated.emergencyContact.relationship, updated.emergencyContact.notes
+  ]
+
+  if (photoPath !== undefined) {
+    fields.push('photo_path = ?')
+    params.push(photoPath)
+  }
+
+  params.push(id)
+  db.prepare(`UPDATE clients SET ${fields.join(', ')} WHERE id = ?`).run(...params)
 
   return getClientById(id)
 }

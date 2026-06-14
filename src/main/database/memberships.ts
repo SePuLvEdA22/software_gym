@@ -1,5 +1,5 @@
 import { getDatabase } from './index'
-import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient } from '../../shared/types'
+import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
 import { addDays, formatISO, isAfter, parseISO, differenceInDays } from 'date-fns'
@@ -855,37 +855,50 @@ export function recordPayment(
   return payment
 }
 
-export function getClientPayments(clientId: string): Payment[] {
+export function getClientPayments(clientId: string, page = 1, pageSize = 50): PageResponse<Payment> {
   const db = getDatabase()
   
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM payments WHERE client_id = ?').get(clientId) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+
   const stmt = db.prepare(`
     SELECT p.*, c.full_name as client_name
     FROM payments p
     LEFT JOIN clients c ON c.id = p.client_id
     WHERE p.client_id = ?
     ORDER BY p.date DESC
-    LIMIT 100
+    LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(clientId) as DbPayment[]
+  const results = stmt.all(clientId, pageSize, offset) as DbPayment[]
   
-  return results.map(mapDbPayment)
+  return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
 
-export function getPaymentsByDateRange(startDate: string, endDate: string): Payment[] {
+export function getPaymentsByDateRange(startDate: string, endDate: string, page = 1, pageSize = 50): PageResponse<Payment> {
   const db = getDatabase()
   
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM payments WHERE date >= ? AND date <= ?').get(startDate, endDate) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+
   const stmt = db.prepare(`
     SELECT p.*, c.full_name as client_name
     FROM payments p
     LEFT JOIN clients c ON c.id = p.client_id
     WHERE p.date >= ? AND p.date <= ?
     ORDER BY p.date DESC
+    LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(startDate, endDate) as DbPayment[]
+  const results = stmt.all(startDate, endDate, pageSize, offset) as DbPayment[]
   
-  return results.map(mapDbPayment)
+  return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
 
 export function logAccess(
@@ -927,47 +940,66 @@ export function logAccess(
   return log
 }
 
-export function getAccessLogs(limit = 100): AccessLog[] {
+export function getAccessLogs(page = 1, pageSize = 50): PageResponse<AccessLog> {
   const db = getDatabase()
   
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM access_logs').get() as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+
   const stmt = db.prepare(`
     SELECT * FROM access_logs 
     ORDER BY timestamp DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(limit) as DbAccessLog[]
+  const results = stmt.all(pageSize, offset) as DbAccessLog[]
   
-  return results.map(mapDbAccessLog)
+  return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }
 
-export function getAccessLogsByDate(startDate: string, endDate: string): AccessLog[] {
+export function getAccessLogsByDate(startDate: string, endDate: string, page = 1, pageSize = 50): PageResponse<AccessLog> {
   const db = getDatabase()
   
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM access_logs WHERE timestamp >= ? AND timestamp <= ?').get(startDate, endDate) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+
   const stmt = db.prepare(`
     SELECT * FROM access_logs 
     WHERE timestamp >= ? AND timestamp <= ?
     ORDER BY timestamp DESC
+    LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(startDate, endDate) as DbAccessLog[]
+  const results = stmt.all(startDate, endDate, pageSize, offset) as DbAccessLog[]
   
-  return results.map(mapDbAccessLog)
+  return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }
 
-export function getClientAccessLogs(clientId: string, limit = 50): AccessLog[] {
+export function getClientAccessLogs(clientId: string, page = 1, pageSize = 50): PageResponse<AccessLog> {
   const db = getDatabase()
   
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM access_logs WHERE client_id = ?').get(clientId) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+
   const stmt = db.prepare(`
     SELECT * FROM access_logs 
     WHERE client_id = ?
     ORDER BY timestamp DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(clientId, limit) as DbAccessLog[]
+  const results = stmt.all(clientId, pageSize, offset) as DbAccessLog[]
   
-  return results.map(mapDbAccessLog)
+  return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }
 
 export function getTodayAccessCount(): number {

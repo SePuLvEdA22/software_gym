@@ -1,5 +1,15 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
+import { CreateClientSchema, UpdateClientSchema, CreateUserSchema, RecordPaymentSchema } from '../../shared/schemas'
+import { ZodError } from 'zod'
+
+function validateOrThrow(schema: import('zod').ZodType, data: unknown): void {
+  const result = schema.safeParse(data)
+  if (!result.success) {
+    const messages = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+    throw new Error(`Datos inválidos: ${messages}`)
+  }
+}
 import {
   createClient,
   getClientById,
@@ -155,6 +165,7 @@ export function setupIpcHandlers(): void {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
+      validateOrThrow(CreateUserSchema, data)
       const result = createUser(data)
       if (result.success && result.user) {
         logChange('users', result.user.id, 'create', null, result.user as unknown as Record<string, unknown>)
@@ -217,6 +228,7 @@ export function setupIpcHandlers(): void {
   })
   ipcMain.handle('client:create', async (_, data) => {
     try {
+      validateOrThrow(CreateClientSchema, data)
       const client = createClient(data)
       logChange('clients', client.id, 'create', null, client as unknown as Record<string, unknown>)
       return { success: true, data: client }
@@ -234,8 +246,12 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('client:update', async (_, id, data) => {
     try {
+      const cleaned = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== '')
+      )
+      validateOrThrow(UpdateClientSchema, cleaned)
       const oldClient = getClientById(id)
-      const result = updateClient(id, data)
+      const result = updateClient(id, cleaned)
       if (result && oldClient) {
         logChange('clients', id, 'update', oldClient as unknown as Record<string, unknown>, result as unknown as Record<string, unknown>)
       }
@@ -408,6 +424,7 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes, discount) => {
     try {
+      validateOrThrow(RecordPaymentSchema, { clientId, amount, method, description, membershipId, notes, discount })
       const payment = recordPayment(clientId, amount, method, description, membershipId, notes, discount)
       return { success: true, data: payment }
     } catch (error: any) {
@@ -416,9 +433,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('payment:getByClient', async (_, clientId) => {
+  ipcMain.handle('payment:getByClient', async (_, clientId, options?: { page?: number; pageSize?: number }) => {
     try {
-      const payments = getClientPayments(clientId)
+      const payments = getClientPayments(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting client payments:', error)
@@ -426,9 +443,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate) => {
+  ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate, options?: { page?: number; pageSize?: number }) => {
     try {
-      const payments = getPaymentsByDateRange(startDate, endDate)
+      const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting payments by date:', error)
@@ -524,9 +541,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('access:getLogs', async (_, limit) => {
+  ipcMain.handle('access:getLogs', async (_, options?: { page?: number; pageSize?: number }) => {
     try {
-      const logs = getAccessLogs(limit)
+      const logs = getAccessLogs(options?.page || 1, options?.pageSize || 50)
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting access logs:', error)
@@ -534,9 +551,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('access:getLogsByClient', async (_, clientId, limit) => {
+  ipcMain.handle('access:getLogsByClient', async (_, clientId, options?: { page?: number; pageSize?: number }) => {
     try {
-      const logs = getClientAccessLogs(clientId, limit)
+      const logs = getClientAccessLogs(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting client access logs:', error)
@@ -544,9 +561,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate) => {
+  ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate, options?: { page?: number; pageSize?: number }) => {
     try {
-      const logs = getAccessLogsByDate(startDate, endDate)
+      const logs = getAccessLogsByDate(startDate, endDate, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting logs by date:', error)
@@ -927,7 +944,7 @@ export function setupIpcHandlers(): void {
         properties: ['openFile']
       })
       if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelado' }
-      const ok = restoreDatabase(filePaths[0])
+      const ok = await restoreDatabase(filePaths[0])
       return { success: ok }
     } catch (error: any) {
       log.error('Restore error:', error)
@@ -1003,8 +1020,8 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('inventory:getAllProducts', async (_, activeOnly) => {
-    try { return { success: true, data: getAllProducts(activeOnly) } }
+  ipcMain.handle('inventory:getAllProducts', async (_, activeOnly, options?: { page?: number; pageSize?: number }) => {
+    try { return { success: true, data: getAllProducts(activeOnly, options?.page || 1, options?.pageSize || 50) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
@@ -1035,8 +1052,8 @@ export function setupIpcHandlers(): void {
     } catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
-  ipcMain.handle('inventory:getMovements', async (_, productId, limit) => {
-    try { return { success: true, data: getMovements(productId, limit) } }
+  ipcMain.handle('inventory:getMovements', async (_, productId, options?: { page?: number; pageSize?: number }) => {
+    try { return { success: true, data: getMovements(productId, options?.page || 1, options?.pageSize || 50) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 

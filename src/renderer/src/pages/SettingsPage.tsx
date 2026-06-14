@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { UpdateChecker } from '@/components/UpdateChecker'
 import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types'
 
 export function SettingsPage(): JSX.Element {
@@ -452,12 +453,7 @@ export function SettingsPage(): JSX.Element {
             </div>
           </div>
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: 24,
-            marginTop: 24
-          }}>
+          <div className="grid grid-2" style={{ marginTop: 24 }}>
             <div className="kpi-card" style={{ 
               borderColor: kioskOpen ? 'var(--color-success)' : 'var(--color-surface-container-highest)',
               background: kioskOpen 
@@ -515,11 +511,7 @@ export function SettingsPage(): JSX.Element {
 
           <div className="divider" />
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: 24
-          }}>
+          <div className="grid grid-2">
             <div className="alert" style={{ 
               backgroundColor: 'rgba(255, 107, 0, 0.08)',
               borderColor: 'rgba(255, 107, 0, 0.3)'
@@ -1282,6 +1274,8 @@ export function SettingsPage(): JSX.Element {
             La base de datos contiene clientes, membresías, pagos, accesos y configuración.
           </p>
         </div>
+
+        <UpdateChecker />
       </div>
     </div>
   )

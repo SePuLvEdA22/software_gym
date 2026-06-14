@@ -228,18 +228,35 @@ export function InventoryPage(): JSX.Element {
   const [tab, setTab] = useState<'products' | 'movements'>('products')
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [movementsPage, setMovementsPage] = useState(1)
+  const [movementsTotalPages, setMovementsTotalPages] = useState(1)
+  const [pageSize] = useState(50)
 
   const loadProducts = async () => {
-    const r = await window.electronAPI.inventory.getAllProducts(false)
-    if (r.success) setProducts(r.data)
+    const r = await window.electronAPI.inventory.getAllProducts(false, { page, pageSize })
+    if (r.success && r.data) {
+      setProducts(r.data.data)
+      setTotalPages(r.data.totalPages)
+      setTotalCount(r.data.total)
+    }
   }
 
   const loadMovements = async () => {
-    const r = await window.electronAPI.inventory.getMovements()
-    if (r.success) setMovements(r.data)
+    const r = await window.electronAPI.inventory.getMovements(undefined, { page: movementsPage, pageSize })
+    if (r.success && r.data) {
+      setMovements(r.data.data)
+      setMovementsTotalPages(r.data.totalPages)
+    }
   }
 
+  useEffect(() => { loadProducts() }, [page])
+  useEffect(() => { loadMovements() }, [movementsPage])
   useEffect(() => { loadProducts(); loadMovements() }, [])
+
+  useEffect(() => { setPage(1) }, [search, selectedCategory])
 
   const handleDelete = async (product: Product) => {
     const ok = await confirm({
@@ -254,7 +271,7 @@ export function InventoryPage(): JSX.Element {
     else showToast('error', r.error)
   }
 
-  const lowStockProducts = products.filter(p => p.stock <= p.minStock)
+  const lowStockProducts: Product[] = []
 
   const filteredProducts = products.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.barcode.toLowerCase().includes(search.toLowerCase())) return false
@@ -351,6 +368,15 @@ export function InventoryPage(): JSX.Element {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
+                <button className="btn btn-secondary btn-sm" disabled={page <= 1}
+                  onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
+                <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Página {page} de {totalPages} ({totalCount} productos)</span>
+                <button className="btn btn-secondary btn-sm" disabled={page >= totalPages}
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Siguiente</button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -387,6 +413,15 @@ export function InventoryPage(): JSX.Element {
               </tbody>
             </table>
           </div>
+          {movementsTotalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
+              <button className="btn btn-secondary btn-sm" disabled={movementsPage <= 1}
+                onClick={() => setMovementsPage(p => Math.max(1, p - 1))}>Anterior</button>
+              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Página {movementsPage} de {movementsTotalPages}</span>
+              <button className="btn btn-secondary btn-sm" disabled={movementsPage >= movementsTotalPages}
+                onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))}>Siguiente</button>
+            </div>
+          )}
         </div>
       )}
 

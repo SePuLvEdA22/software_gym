@@ -28,29 +28,18 @@ function KpiCard({ label, value, icon, trend, trendUp, color = 'primary' }: KpiC
   }[color]
 
   return (
-    <div className="kpi-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+    <div className={`kpi-card kpi-card--${color}`}>
+      <div className="kpi-card-inner">
+        <div className="kpi-card-info">
           <p className="kpi-label">{label}</p>
           <p className="kpi-value" style={{ color: colorClass }}>{value}</p>
         </div>
-        <div 
-          style={{ 
-            width: 40, 
-            height: 40, 
-            borderRadius: 8, 
-            background: `${colorClass}20`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: colorClass
-          }}
-        >
+        <div className="kpi-card-icon" style={{ color: colorClass, background: `${colorClass}20` }}>
           <IconComponent />
         </div>
       </div>
       {trend && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: trendUp ? '#4ade80' : '#ffb4ab' }}>
+        <div className="kpi-card-trend" style={{ color: trendUp ? '#4ade80' : '#ffb4ab' }}>
           {trendUp ? <Icons.TrendingUp /> : null}
           <span>{trend}</span>
         </div>
@@ -111,7 +100,7 @@ function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
   }
 
   return (
-    <div className="card" style={{ flex: 1, minHeight: 300 }}>
+    <div className="card chart-card">
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: 16, fontWeight: 600 }}>Accesos Recientes</h3>
         <Icons.History />
@@ -155,11 +144,11 @@ function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
 
 function RevenueChart({ data }: { data: { month: string; revenue: number }[] }): JSX.Element {
   return (
-    <div className="card" style={{ flex: 1, minHeight: 300 }}>
+    <div className="card chart-card">
       <div className="card-header">
         <h3 style={{ fontSize: 16, fontWeight: 600 }}>Ingresos Mensuales</h3>
       </div>
-      <div className="card-body" style={{ height: 250 }}>
+      <div className="card-body chart-body">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
@@ -202,11 +191,11 @@ function PeakHoursChart({ data }: { data: PeakHour[] }): JSX.Element {
   }))
 
   return (
-    <div className="card" style={{ flex: 1, minHeight: 300 }}>
+    <div className="card chart-card">
       <div className="card-header">
         <h3 style={{ fontSize: 16, fontWeight: 600 }}>Horas Pico</h3>
       </div>
-      <div className="card-body" style={{ height: 250 }}>
+      <div className="card-body chart-body">
         {data.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -244,11 +233,11 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
   }))
 
   return (
-    <div className="card" style={{ flex: 1, minHeight: 300 }}>
+    <div className="card chart-card">
       <div className="card-header">
         <h3 style={{ fontSize: 16, fontWeight: 600 }}>Planes Más Vendidos</h3>
       </div>
-      <div className="card-body" style={{ height: 250 }}>
+      <div className="card-body chart-body">
         {data.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -397,11 +386,7 @@ export function DashboardPage(): JSX.Element {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <QuickActions onAction={handleQuickAction} />
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(6, 1fr)', 
-        gap: 24 
-      }}>
+      <div className="grid grid-6">
         <KpiCard
           label="Clientes Totales"
           value={metrics.totalClients}
@@ -440,17 +425,17 @@ export function DashboardPage(): JSX.Element {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+      <div className="grid grid-2">
         <RevenueChart data={revenueData} />
         <PeakHoursChart data={metrics.peakHours} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+      <div className="grid grid-2">
         <TopPlansChart data={metrics.topPlans} />
         <RecentAccesses accesses={metrics.recentAccesses} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+      <div className="grid grid-3">
         <div className="card">
           <div className="card-header">
             <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -466,11 +451,7 @@ export function DashboardPage(): JSX.Element {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {expiringSoon.map((item, i) => (
-                  <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)',
-                    borderRadius: 8, border: item.daysLeft <= 1 ? '1px solid var(--color-error)' : 'none'
-                  }}>
+                  <div key={i} className={`dashboard-list-item${item.daysLeft <= 1 ? ' dashboard-list-item--urgent' : ''}`}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>
@@ -538,10 +519,7 @@ export function DashboardPage(): JSX.Element {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {inactiveClients.map((item, i) => (
-                  <div key={i} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)', borderRadius: 8
-                  }}>
+                  <div key={i} className="dashboard-list-item">
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>

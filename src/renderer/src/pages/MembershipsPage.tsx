@@ -841,7 +841,7 @@ export function MembershipsPage(): JSX.Element {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div className="grid grid-2">
         <div className="card">
           <div className="card-header">
             <h3 style={{ fontSize: 16, fontWeight: 600 }}>Clientes</h3>
@@ -1052,7 +1052,7 @@ export function MembershipsPage(): JSX.Element {
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>Planes Disponibles</h3>
         </div>
         <div className="card-body">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+          <div className="grid grid-4" style={{ gap: 20 }}>
             {plans.map(plan => (
               <div 
                 key={plan.id} 

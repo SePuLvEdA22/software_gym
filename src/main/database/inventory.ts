@@ -1,5 +1,5 @@
 import { getDatabase } from './index'
-import { Product, InventoryMovement } from '../../shared/types'
+import { Product, InventoryMovement, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { formatISO } from 'date-fns'
 import { getSessionUser } from './users'
@@ -66,14 +66,25 @@ function mapDbMovement(m: DbMovement): InventoryMovement {
   }
 }
 
-export function getAllProducts(activeOnly = true): Product[] {
+export function getAllProducts(activeOnly = true, page = 1, pageSize = 50): PageResponse<Product> {
   const db = getDatabase()
+  let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1'
   let query = 'SELECT * FROM products WHERE 1=1'
   const params: (string | number)[] = []
-  if (activeOnly) { query += ' AND is_active = ?'; params.push(1) }
-  query += ' ORDER BY name ASC'
-  const rows = db.prepare(query).all(...params) as DbProduct[]
-  return rows.map(mapDbProduct)
+  if (activeOnly) {
+    const clause = ' AND is_active = ?'
+    countQuery += clause
+    query += clause
+    params.push(1)
+  }
+  const countRow = db.prepare(countQuery).get(...params) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+  query += ' ORDER BY name ASC LIMIT ? OFFSET ?'
+  const rows = db.prepare(query).all(...params, pageSize, offset) as DbProduct[]
+  return { data: rows.map(mapDbProduct), total, page: safePage, totalPages }
 }
 
 export function getProductById(id: string): Product | null {
@@ -151,18 +162,28 @@ export function registerMovement(
   return row ? mapDbMovement(row) : null
 }
 
-export function getMovements(productId?: string, limit = 100): InventoryMovement[] {
+export function getMovements(productId?: string, page = 1, pageSize = 50): PageResponse<InventoryMovement> {
   const db = getDatabase()
+  let countQuery = 'SELECT COUNT(*) as total FROM inventory_movements WHERE 1=1'
   let query = 'SELECT * FROM inventory_movements WHERE 1=1'
   const params: (string | number)[] = []
-  if (productId) { query += ' AND product_id = ?'; params.push(productId) }
-  query += ' ORDER BY timestamp DESC LIMIT ?'
-  params.push(limit)
-  const rows = db.prepare(query).all(...params) as DbMovement[]
-  return rows.map(mapDbMovement)
+  if (productId) {
+    const clause = ' AND product_id = ?'
+    countQuery += clause
+    query += clause
+    params.push(productId)
+  }
+  const countRow = db.prepare(countQuery).get(...params) as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+  query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?'
+  const rows = db.prepare(query).all(...params, pageSize, offset) as DbMovement[]
+  return { data: rows.map(mapDbMovement), total, page: safePage, totalPages }
 }
 
 export function getLowStockProducts(threshold?: number): Product[] {
-  const all = getAllProducts(true)
-  return all.filter(p => p.stock <= (threshold || p.minStock))
+  const result = getAllProducts(true, 1, 10000)
+  return result.data.filter(p => p.stock <= (threshold || p.minStock))
 }

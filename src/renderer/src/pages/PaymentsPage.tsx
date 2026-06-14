@@ -42,6 +42,9 @@ export function PaymentsPage(): JSX.Element {
   const [filterMethod, setFilterMethod] = useState<string>('all')
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month')
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize] = useState(50)
   const [revenueByTime, setRevenueByTime] = useState<RevenueByPeriod>({ morning: 0, afternoon: 0, total: 0 })
   const [yearRevenue, setYearRevenue] = useState<number>(0)
   const [summary, setSummary] = useState({
@@ -76,11 +79,13 @@ export function PaymentsPage(): JSX.Element {
 
     const result = await window.electronAPI.payment.getByDateRange(
       startDate.toISOString(),
-      endDate.toISOString()
+      endDate.toISOString(),
+      { page, pageSize }
     )
 
     if (result.success && result.data) {
-      let filteredPayments = result.data
+      let filteredPayments = result.data.data
+      setTotalPages(result.data.totalPages)
       
       if (filterMethod !== 'all') {
         filteredPayments = filteredPayments.filter(p => p.method === filterMethod)
@@ -119,16 +124,16 @@ export function PaymentsPage(): JSX.Element {
   }
 
   useEffect(() => {
-    loadPayments()
+    setPage(1)
   }, [filterMethod, dateRange, selectedYear])
+
+  useEffect(() => {
+    loadPayments()
+  }, [filterMethod, dateRange, selectedYear, page])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(4, 1fr)', 
-          gap: 24 
-        }}>
+      <div className="grid grid-4">
           <div className="kpi-card">
             <p className="kpi-label">Total Recaudado</p>
             <p className="kpi-value" style={{ color: '#4ade80' }}>
@@ -153,11 +158,7 @@ export function PaymentsPage(): JSX.Element {
           </div>
         </div>
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(4, 1fr)', 
-          gap: 24 
-        }}>
+        <div className="grid grid-4">
           <div className="kpi-card">
             <p className="kpi-label">Mañana (antes 12pm)</p>
             <p className="kpi-value" style={{ color: '#60a5fa' }}>
@@ -306,6 +307,27 @@ export function PaymentsPage(): JSX.Element {
                       ))}
                     </tbody>
                   </table>
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                Página {page} de {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Siguiente
+              </button>
             </div>
           )}
         </div>

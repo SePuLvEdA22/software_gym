@@ -346,6 +346,18 @@ export interface ClientNumberSeq {
   lastNumber: number
 }
 
+export interface PageRequest {
+  page?: number
+  pageSize?: number
+}
+
+export interface PageResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  totalPages: number
+}
+
 declare global {
   interface Window {
     electronAPI: any

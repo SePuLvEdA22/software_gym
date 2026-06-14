@@ -444,7 +444,7 @@ function AttendanceStatsModal({ client, onClose }: { client: Client; onClose: ()
               Cargando estadísticas...
             </div>
           ) : stats ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-2" style={{ gap: 16 }}>
               <div className="kpi-card" style={{ padding: 16 }}>
                 <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas Totales</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-primary-container)' }}>

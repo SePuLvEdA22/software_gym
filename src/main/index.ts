@@ -8,10 +8,20 @@ import { setupIpcHandlers } from './ipc'
 import { initializeDoorController } from './door/controller'
 import { setDoorConfig } from './door/config'
 import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig } from './whatsapp'
+import { initUpdater } from './updater'
+import * as Sentry from '@sentry/electron/main'
 
 log.initialize({ preload: true })
 log.transports.file.level = 'info'
 log.transports.console.level = 'debug'
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [Sentry.electronEventsIntegration()],
+  })
+  log.info('Sentry initialized for main process')
+}
 
 console.log = log.log
 console.error = log.error
@@ -387,7 +397,7 @@ app.whenReady().then(async () => {
   })
 
   log.info('Initializing database...')
-  initDatabase()
+  await initDatabase()
   log.info('Database initialized')
 
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
@@ -429,6 +439,7 @@ app.whenReady().then(async () => {
 
   if (appMode === 'admin' || appMode === 'both') {
     adminWindow = createAdminWindow()
+    initUpdater(adminWindow)
   }
 
   if (appMode === 'kiosk' || appMode === 'both') {

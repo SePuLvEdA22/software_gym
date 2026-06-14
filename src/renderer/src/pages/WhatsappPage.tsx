@@ -55,7 +55,7 @@ export function WhatsappPage(): JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+      <div className="grid grid-4" style={{ gap: 16 }}>
         <div className="kpi-card">
           <p className="kpi-label">Total Mensajes</p>
           <p className="kpi-value" style={{ fontSize: 28 }}>{messages.length}</p>

@@ -1,0 +1,143 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { initDatabase, closeDatabase } from '../../main/database/index'
+import {
+  authenticateUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  getUserById,
+  getUserByUsername,
+} from '../../main/database/users'
+
+describe('Users Database', () => {
+  beforeAll(async () => {
+    await initDatabase()
+  })
+
+  afterAll(() => {
+    closeDatabase()
+  })
+
+  it('should authenticate admin user with default credentials', () => {
+    const result = authenticateUser('admin', 'admin123')
+    expect(result.success).toBe(true)
+    expect(result.user).toBeDefined()
+    expect(result.user!.username).toBe('admin')
+    expect(result.user!.role).toBe('admin')
+  })
+
+  it('should reject invalid password', () => {
+    const result = authenticateUser('admin', 'wrongpassword')
+    expect(result.success).toBe(false)
+    expect(result.error).toBeDefined()
+    expect(result.user).toBeUndefined()
+  })
+
+  it('should reject non-existent user', () => {
+    const result = authenticateUser('nonexistent', 'password')
+    expect(result.success).toBe(false)
+    expect(result.error).toBeDefined()
+  })
+
+  it('should create a new user', () => {
+    const result = createUser({
+      username: 'testuser',
+      fullName: 'Usuario de Prueba',
+      password: 'test123',
+      role: 'reception',
+    })
+    expect(result.success).toBe(true)
+    expect(result.user).toBeDefined()
+    expect(result.user!.username).toBe('testuser')
+    expect(result.user!.role).toBe('reception')
+    expect(result.user!.isActive).toBe(true)
+  })
+
+  it('should not create duplicate username', () => {
+    const result = createUser({
+      username: 'testuser',
+      fullName: 'Otro Usuario',
+      password: 'test456',
+      role: 'trainer',
+    })
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Ya existe')
+  })
+
+  it('should authenticate newly created user', () => {
+    const result = authenticateUser('testuser', 'test123')
+    expect(result.success).toBe(true)
+    expect(result.user).toBeDefined()
+    expect(result.user!.username).toBe('testuser')
+  })
+
+  it('should get all users', () => {
+    const users = getAllUsers()
+    expect(users.length).toBeGreaterThanOrEqual(2)
+    expect(users.some(u => u.username === 'admin')).toBe(true)
+    expect(users.some(u => u.username === 'testuser')).toBe(true)
+  })
+
+  it('should get user by id', () => {
+    const users = getAllUsers()
+    const admin = users.find(u => u.username === 'admin')
+    expect(admin).toBeDefined()
+    const found = getUserById(admin!.id)
+    expect(found).not.toBeNull()
+    expect(found!.username).toBe('admin')
+  })
+
+  it('should get user by username', () => {
+    const found = getUserByUsername('testuser')
+    expect(found).not.toBeNull()
+    expect(found!.fullName).toBe('Usuario de Prueba')
+  })
+
+  it('should update a user', () => {
+    const user = getUserByUsername('testuser')!
+    const result = updateUser(user.id, { fullName: 'Usuario Modificado', role: 'trainer' })
+    expect(result.success).toBe(true)
+    expect(result.user!.fullName).toBe('Usuario Modificado')
+    expect(result.user!.role).toBe('trainer')
+  })
+
+  it('should update user password and authenticate with new password', () => {
+    const user = getUserByUsername('testuser')!
+    updateUser(user.id, { password: 'newpass123' })
+    const oldAuth = authenticateUser('testuser', 'test123')
+    expect(oldAuth.success).toBe(false)
+    const newAuth = authenticateUser('testuser', 'newpass123')
+    expect(newAuth.success).toBe(true)
+  })
+
+  it('should not delete admin user', () => {
+    const admin = getUserByUsername('admin')!
+    const result = deleteUser(admin.id)
+    expect(result.success).toBe(false)
+    expect(result.error).toMatch(/no se puede eliminar/i)
+  })
+
+  it('should delete a regular user', () => {
+    const user = getUserByUsername('testuser')!
+    const result = deleteUser(user.id)
+    expect(result.success).toBe(true)
+    const found = getUserById(user.id)
+    expect(found).toBeNull()
+  })
+
+  it('should return null for non-existent username', () => {
+    const found = getUserByUsername('__NONEXISTENT__')
+    expect(found).toBeNull()
+  })
+
+  it('should block after max failed login attempts', () => {
+    for (let i = 0; i < 5; i++) {
+      const result = authenticateUser('admin', 'wrongpassword')
+      expect(result.success).toBe(false)
+    }
+    const blocked = authenticateUser('admin', 'admin123')
+    expect(blocked.success).toBe(false)
+    expect(blocked.error).toContain('Demasiados intentos')
+  })
+})

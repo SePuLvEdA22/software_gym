@@ -27,7 +27,7 @@ const navItems: NavItem[] = [
   { id: 'settings', label: 'Configuración', icon: 'Settings', path: '/settings', roles: ['admin'] }
 ]
 
-export function Sidebar({ currentUser }: { currentUser: any }): JSX.Element {
+export function Sidebar({ currentUser, collapsed, onToggle }: { currentUser: any; collapsed: boolean; onToggle: () => void }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -38,45 +38,50 @@ export function Sidebar({ currentUser }: { currentUser: any }): JSX.Element {
   })
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-          <div className="sidebar-logo">
-          <img src={logoSrc} alt="BodyFitGym" className="sidebar-logo-img" />
-          <span className="sidebar-logo-text">BodyFitGym</span>
+    <>
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+        <div className="sidebar-header">
+            <div className="sidebar-logo">
+            <img src={logoSrc} alt="BodyFitGym" className="sidebar-logo-img" />
+            <span className="sidebar-logo-text">BodyFitGym</span>
+          </div>
         </div>
-      </div>
-      
-      <nav className="sidebar-nav">
-        {visibleItems.map((item) => {
-          const IconComponent = Icons[item.icon]
-          const isActive = location.pathname === item.path || 
-            (item.path === '/' && location.pathname === '/') ||
-            (item.path !== '/' && location.pathname.startsWith(item.path))
-          
-          return (
-            <div
-              key={item.id}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => navigate(item.path)}
-            >
-              <div className="nav-icon">
-                <IconComponent />
+        
+        <nav className="sidebar-nav">
+          {visibleItems.map((item) => {
+            const IconComponent = Icons[item.icon]
+            const isActive = location.pathname === item.path || 
+              (item.path === '/' && location.pathname === '/') ||
+              (item.path !== '/' && location.pathname.startsWith(item.path))
+            
+            return (
+              <div
+                key={item.id}
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => { navigate(item.path); if (collapsed) onToggle() }}
+              >
+                <div className="nav-icon">
+                  <IconComponent />
+                </div>
+                <span>{item.label}</span>
               </div>
-              <span>{item.label}</span>
-            </div>
-          )
-        })}
-      </nav>
-    </aside>
+            )
+          })}
+        </nav>
+      </aside>
+      {collapsed && <div className="sidebar-overlay" onClick={onToggle} />}
+    </>
   )
 }
 
 interface HeaderProps {
   title: string
   onLogout?: () => void
+  onToggleSidebar?: () => void
+  sidebarCollapsed?: boolean
 }
 
-export function Header({ title, onLogout }: HeaderProps): JSX.Element {
+export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps): JSX.Element {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -108,7 +113,12 @@ export function Header({ title, onLogout }: HeaderProps): JSX.Element {
 
   return (
     <header className="header">
-      <h1 className="header-title">{title}</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button className="sidebar-toggle" onClick={onToggleSidebar} title={sidebarCollapsed ? 'Mostrar menú' : 'Ocultar menú'}>
+          {sidebarCollapsed ? <Icons.Menu /> : <Icons.Close />}
+        </button>
+        <h1 className="header-title">{title}</h1>
+      </div>
       <div className="header-actions" style={{ position: 'relative' }} ref={menuRef}>
         <div
           className="badge badge-default"

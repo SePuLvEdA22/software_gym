@@ -33,6 +33,19 @@ function mapDbUser(dbUser: DbUser): User {
 
 let currentSessionUser: User | null = null
 
+const MAX_LOGIN_ATTEMPTS = 5
+const BLOCK_DURATION_MS = 30_000
+const loginAttempts = new Map<string, { attempts: number; blockedUntil: number | null }>()
+
+function cleanupLoginAttempts(): void {
+  const now = Date.now()
+  for (const [key, value] of loginAttempts) {
+    if (value.blockedUntil && now >= value.blockedUntil) {
+      loginAttempts.delete(key)
+    }
+  }
+}
+
 export function setSessionUser(user: User | null): void {
   currentSessionUser = user
 }
@@ -43,9 +56,39 @@ export function getSessionUser(): User | null {
 
 export function authenticateUser(username: string, password: string): { success: boolean; user?: User; error?: string } {
   const db = getDatabase()
+  const now = Date.now()
+
+  cleanupLoginAttempts()
+
+  const record = loginAttempts.get(username)
+  if (record?.blockedUntil && now < record.blockedUntil) {
+    const remainingSeconds = Math.ceil((record.blockedUntil - now) / 1000)
+    return { success: false, error: `Demasiados intentos. Intente de nuevo en ${remainingSeconds} segundos.` }
+  }
+
   const row = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username) as DbUser | undefined
-  if (!row) return { success: false, error: 'Usuario o contraseña incorrectos' }
-  if (!bcrypt.compareSync(password, row.password_hash)) return { success: false, error: 'Usuario o contraseña incorrectos' }
+  if (!row) {
+    const attempts = (loginAttempts.get(username)?.attempts || 0) + 1
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      loginAttempts.set(username, { attempts, blockedUntil: now + BLOCK_DURATION_MS })
+    } else {
+      loginAttempts.set(username, { attempts, blockedUntil: null })
+    }
+    return { success: false, error: 'Usuario o contraseña incorrectos' }
+  }
+
+  if (!bcrypt.compareSync(password, row.password_hash)) {
+    const attempts = (loginAttempts.get(username)?.attempts || 0) + 1
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      loginAttempts.set(username, { attempts, blockedUntil: now + BLOCK_DURATION_MS })
+    } else {
+      loginAttempts.set(username, { attempts, blockedUntil: null })
+    }
+    return { success: false, error: 'Usuario o contraseña incorrectos' }
+  }
+
+  loginAttempts.delete(username)
+
   const user = mapDbUser(row)
   db.prepare('UPDATE users SET last_login = ? WHERE id = ?').run(formatISO(new Date()), user.id)
   currentSessionUser = user
