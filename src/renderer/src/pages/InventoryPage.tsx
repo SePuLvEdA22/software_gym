@@ -236,7 +236,9 @@ export function InventoryPage(): JSX.Element {
   const [pageSize] = useState(50)
 
   const loadProducts = async () => {
-    const r = await window.electronAPI.inventory.getAllProducts(false, { page, pageSize })
+    const searchParam = search.trim() || undefined
+    const categoryParam = selectedCategory || undefined
+    const r = await window.electronAPI.inventory.getAllProducts(false, { page, pageSize, search: searchParam, category: categoryParam })
     if (r.success && r.data) {
       setProducts(r.data.data)
       setTotalPages(r.data.totalPages)
@@ -252,9 +254,24 @@ export function InventoryPage(): JSX.Element {
     }
   }
 
-  useEffect(() => { loadProducts() }, [page])
+  const loadLowStock = async () => {
+    const r = await window.electronAPI.inventory.getLowStock(undefined)
+    if (r.success && r.data) {
+      setLowStockProducts(r.data)
+    }
+  }
+
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
+
+  useEffect(() => { loadProducts() }, [page, search, selectedCategory])
   useEffect(() => { loadMovements() }, [movementsPage])
-  useEffect(() => { loadProducts(); loadMovements() }, [])
+  useEffect(() => { loadProducts(); loadMovements(); loadLowStock() }, [])
+
+  useEffect(() => {
+    const handler = () => { setEditingProduct(null); setShowForm(true) }
+    window.addEventListener('shortcut:newProduct', handler)
+    return () => window.removeEventListener('shortcut:newProduct', handler)
+  }, [])
 
   useEffect(() => { setPage(1) }, [search, selectedCategory])
 
@@ -270,14 +287,6 @@ export function InventoryPage(): JSX.Element {
     if (r.success) { showToast('success', 'Producto eliminado'); loadProducts() }
     else showToast('error', r.error)
   }
-
-  const lowStockProducts: Product[] = []
-
-  const filteredProducts = products.filter(p => {
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.barcode.toLowerCase().includes(search.toLowerCase())) return false
-    if (selectedCategory && p.category !== selectedCategory) return false
-    return true
-  })
 
   return (
     <div className="page">
@@ -347,7 +356,7 @@ export function InventoryPage(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map(p => (
+                  {products.map(p => (
                     <tr key={p.id}>
                       <td><strong>{p.name}</strong>{p.barcode && <div style={{ fontSize: 11, color: 'var(--color-secondary)' }}>{p.barcode}</div>}</td>
                       <td><span className="badge" style={{ background: categoryColors[p.category] + '22', color: categoryColors[p.category] }}>{categoryLabels[p.category] || p.category}</span></td>
@@ -372,7 +381,18 @@ export function InventoryPage(): JSX.Element {
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
                 <button className="btn btn-secondary btn-sm" disabled={page <= 1}
                   onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
-                <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Página {page} de {totalPages} ({totalCount} productos)</span>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                  .map((p, idx, arr) => (
+                    <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
+                      <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                        onClick={() => setPage(p)}
+                        style={{ minWidth: 36, padding: '4px 8px' }}>
+                        {p}
+                      </button>
+                    </span>
+                  ))}
                 <button className="btn btn-secondary btn-sm" disabled={page >= totalPages}
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Siguiente</button>
               </div>
@@ -417,7 +437,18 @@ export function InventoryPage(): JSX.Element {
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
               <button className="btn btn-secondary btn-sm" disabled={movementsPage <= 1}
                 onClick={() => setMovementsPage(p => Math.max(1, p - 1))}>Anterior</button>
-              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>Página {movementsPage} de {movementsTotalPages}</span>
+              {Array.from({ length: movementsTotalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === movementsTotalPages || Math.abs(p - movementsPage) <= 2)
+                .map((p, idx, arr) => (
+                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
+                    <button className={`btn ${p === movementsPage ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                      onClick={() => setMovementsPage(p)}
+                      style={{ minWidth: 36, padding: '4px 8px' }}>
+                      {p}
+                    </button>
+                  </span>
+                ))}
               <button className="btn btn-secondary btn-sm" disabled={movementsPage >= movementsTotalPages}
                 onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))}>Siguiente</button>
             </div>

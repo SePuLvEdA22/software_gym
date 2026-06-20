@@ -12,6 +12,7 @@ interface WhatsappConfig {
   apiUrl: string
   apiKey: string
   instanceId: string
+  checkIntervalHours: number
   reminders: {
     threeDays: boolean
     oneDay: boolean
@@ -26,6 +27,7 @@ let config: WhatsappConfig = {
   apiUrl: '',
   apiKey: '',
   instanceId: '',
+  checkIntervalHours: 6,
   reminders: {
     threeDays: true,
     oneDay: true,

@@ -50,8 +50,11 @@ export function LogsPage(): JSX.Element {
   })
 
   const loadLogs = async () => {
+    const resultParam = filterResult === 'all' ? undefined : filterResult
+    const options = { page, pageSize, result: resultParam }
+    
     const result = dateRange === 'all'
-      ? await window.electronAPI.access.getLogs({ page, pageSize })
+      ? await window.electronAPI.access.getLogs(options)
       : await (() => {
           const now = new Date()
           let startDate: Date
@@ -74,28 +77,22 @@ export function LogsPage(): JSX.Element {
           return window.electronAPI.access.getLogsByDate(
             startDate.toISOString(),
             endDate.toISOString(),
-            { page, pageSize }
+            options
           )
         })()
 
     if (result.success && result.data) {
       const logsData = result.data.data
       setTotalPages(result.data.totalPages)
-      let filteredLogs = logsData
+      setLogs(logsData)
       
-      if (filterResult !== 'all') {
-        filteredLogs = logsData.filter(l => l.result === filterResult)
-      }
-      
-      setLogs(filteredLogs)
-      
-      const granted = filteredLogs.filter(l => l.result === 'granted').length
-      const deniedExpired = filteredLogs.filter(l => l.result === 'denied_expired').length
-      const deniedInactive = filteredLogs.filter(l => l.result === 'denied_inactive').length
-      const deniedNotFound = filteredLogs.filter(l => l.result === 'denied_not_found').length
+      const granted = logsData.filter(l => l.result === 'granted').length
+      const deniedExpired = logsData.filter(l => l.result === 'denied_expired').length
+      const deniedInactive = logsData.filter(l => l.result === 'denied_inactive').length
+      const deniedNotFound = logsData.filter(l => l.result === 'denied_not_found').length
       
       setStats({
-        total: filteredLogs.length,
+        total: logsData.length,
         granted,
         denied: deniedExpired + deniedInactive + deniedNotFound,
         deniedExpired,
@@ -257,21 +254,26 @@ export function LogsPage(): JSX.Element {
           )}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
-              <button
-                className="btn btn-secondary btn-sm"
+              <button className="btn btn-secondary btn-sm"
                 disabled={page <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-              >
+                onClick={() => setPage(p => Math.max(1, p - 1))}>
                 Anterior
               </button>
-              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
-                Página {page} de {totalPages}
-              </span>
-              <button
-                className="btn btn-secondary btn-sm"
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .map((p, idx, arr) => (
+                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
+                    <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                      onClick={() => setPage(p)}
+                      style={{ minWidth: 36, padding: '4px 8px' }}>
+                      {p}
+                    </button>
+                  </span>
+                ))}
+              <button className="btn btn-secondary btn-sm"
                 disabled={page >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              >
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
                 Siguiente
               </button>
             </div>

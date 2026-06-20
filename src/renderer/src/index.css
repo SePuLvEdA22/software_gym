@@ -1,4 +1,8 @@
-:root {
+:root,
+[data-theme='dark'] {
+  --color-bg: #131313;
+  --color-bg-secondary: #1c1b1b;
+  --color-border: #2a2a2a;
   --color-surface: #131313;
   --color-surface-dim: #131313;
   --color-surface-bright: #3a3939;
@@ -23,6 +27,7 @@
   --color-tertiary: #c8c6c6;
   --color-on-tertiary: #303030;
   --color-tertiary-container: #9a9999;
+  --color-info: #60a5fa;
   --color-error: #ffb4ab;
   --color-on-error: #690005;
   --color-error-container: #93000a;
@@ -31,7 +36,48 @@
   --color-success-container: #166534;
   --color-warning: #fbbf24;
   --color-warning-container: #78350f;
+}
 
+[data-theme='light'] {
+  --color-bg: #FFFBFE;
+  --color-bg-secondary: #F7F2EE;
+  --color-border: #E0E0E0;
+  --color-surface: #FFFBFE;
+  --color-surface-dim: #E6E1E5;
+  --color-surface-bright: #FFFBFE;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #F7F2EE;
+  --color-surface-container: #F0EBE7;
+  --color-surface-container-high: #E6E0DA;
+  --color-surface-container-highest: #D6D0CB;
+  --color-on-surface: #1C1B1F;
+  --color-on-surface-variant: #49454F;
+  --color-outline: #857A74;
+  --color-outline-variant: #D0C4BC;
+  --color-surface-tint: #FF6B00;
+  --color-primary: #FF6B00;
+  --color-on-primary: #FFFFFF;
+  --color-primary-container: #FFDBC2;
+  --color-on-primary-container: #331100;
+  --color-secondary: #625B71;
+  --color-on-secondary: #FFFFFF;
+  --color-secondary-container: #E8DEF8;
+  --color-on-secondary-container: #1D192B;
+  --color-tertiary: #7A5268;
+  --color-on-tertiary: #FFFFFF;
+  --color-tertiary-container: #FFD8F0;
+  --color-info: #1976D2;
+  --color-error: #B3261E;
+  --color-on-error: #FFFFFF;
+  --color-error-container: #F9DEDC;
+  --color-on-error-container: #410E0B;
+  --color-success: #2E7D32;
+  --color-success-container: #C8E6C9;
+  --color-warning: #F59E0B;
+  --color-warning-container: #FEF3C7;
+}
+
+:root {
   --spacing-xs: 4px;
   --spacing-sm: 12px;
   --spacing-md: 24px;
@@ -45,6 +91,69 @@
 
   --shadow-glow: 0px 4px 20px rgba(255, 107, 0, 0.15);
   --shadow-glow-hover: 0px 4px 30px rgba(255, 107, 0, 0.25);
+}
+
+[data-theme='light'] {
+  --shadow-glow: 0px 4px 20px rgba(255, 107, 0, 0.2);
+  --shadow-glow-hover: 0px 6px 30px rgba(255, 107, 0, 0.3);
+}
+
+[data-theme='light'] .nav-item.active {
+  color: var(--color-primary);
+  border-left-color: var(--color-primary);
+}
+
+[data-theme='light'] .tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+[data-theme='light'] .btn-secondary:hover {
+  background-color: rgba(255, 107, 0, 0.08);
+}
+
+[data-theme='light'] .form-input:focus,
+[data-theme='light'] .form-select:focus,
+[data-theme='light'] .form-textarea:focus,
+[data-theme='light'] .search-input:focus,
+[data-theme='light'] .search-box:focus-within {
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.2);
+}
+
+[data-theme='light'] .form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231C1B1F'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+[data-theme='light'] .search-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23625B71'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+[data-theme='light'] .access-granted {
+  background: linear-gradient(135deg, rgba(46, 125, 50, 0.08) 0%, rgba(200, 230, 201, 0.3) 100%);
+}
+
+[data-theme='light'] .access-denied {
+  background: linear-gradient(135deg, rgba(179, 38, 30, 0.08) 0%, rgba(249, 222, 220, 0.3) 100%);
+}
+
+[data-theme='light'] .alert-success {
+  background-color: rgba(46, 125, 50, 0.08);
+}
+
+[data-theme='light'] .alert-error {
+  background-color: rgba(179, 38, 30, 0.08);
+}
+
+[data-theme='light'] .alert-warning {
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+[data-theme='light'] .quick-action-icon {
+  background-color: rgba(255, 107, 0, 0.08);
+}
+
+[data-theme='light'] .photo-upload:hover {
+  background-color: rgba(255, 107, 0, 0.05);
 }
 
 svg {

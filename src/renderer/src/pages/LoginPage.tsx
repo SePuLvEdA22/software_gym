@@ -109,7 +109,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
 
         <div style={{ marginTop: 16, textAlign: 'center' }}>
           <small style={{ color: 'var(--color-secondary)' }}>
-            Usuario por defecto: admin / admin123
+            Consulte con su administrador para obtener credenciales
           </small>
         </div>
       </div>

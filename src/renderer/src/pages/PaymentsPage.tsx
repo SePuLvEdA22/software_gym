@@ -77,33 +77,29 @@ export function PaymentsPage(): JSX.Element {
         endDate = new Date()
     }
 
+    const methodParam = filterMethod === 'all' ? undefined : filterMethod
     const result = await window.electronAPI.payment.getByDateRange(
       startDate.toISOString(),
       endDate.toISOString(),
-      { page, pageSize }
+      { page, pageSize, method: methodParam }
     )
 
     if (result.success && result.data) {
-      let filteredPayments = result.data.data
+      const paymentsData = result.data.data
       setTotalPages(result.data.totalPages)
+      setPayments(paymentsData)
       
-      if (filterMethod !== 'all') {
-        filteredPayments = filteredPayments.filter(p => p.method === filterMethod)
-      }
-      
-      setPayments(filteredPayments)
-      
-      const total = filteredPayments.reduce((sum, p) => sum + p.amount, 0)
-      const totalDiscount = filteredPayments.reduce((sum, p) => sum + (p.discount || 0), 0)
+      const total = paymentsData.reduce((sum, p) => sum + p.amount, 0)
+      const totalDiscount = paymentsData.reduce((sum, p) => sum + (p.discount || 0), 0)
       const byMethod: { [key: string]: number } = {}
       
-      for (const payment of filteredPayments) {
+      for (const payment of paymentsData) {
         byMethod[payment.method] = (byMethod[payment.method] || 0) + payment.amount
       }
       
       setSummary({
         total,
-        count: filteredPayments.length,
+        count: paymentsData.length,
         totalDiscount,
         byMethod
       })
@@ -311,21 +307,26 @@ export function PaymentsPage(): JSX.Element {
           )}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
-              <button
-                className="btn btn-secondary btn-sm"
+              <button className="btn btn-secondary btn-sm"
                 disabled={page <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-              >
+                onClick={() => setPage(p => Math.max(1, p - 1))}>
                 Anterior
               </button>
-              <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
-                Página {page} de {totalPages}
-              </span>
-              <button
-                className="btn btn-secondary btn-sm"
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .map((p, idx, arr) => (
+                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
+                    <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm`}
+                      onClick={() => setPage(p)}
+                      style={{ minWidth: 36, padding: '4px 8px' }}>
+                      {p}
+                    </button>
+                  </span>
+                ))}
+              <button className="btn btn-secondary btn-sm"
                 disabled={page >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              >
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
                 Siguiente
               </button>
             </div>

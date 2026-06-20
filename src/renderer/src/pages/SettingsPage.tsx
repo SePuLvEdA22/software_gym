@@ -7,6 +7,8 @@ import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types
 export function SettingsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const confirm = useAppStore((state) => state.confirm)
+  const theme = useAppStore((state) => state.theme)
+  const setTheme = useAppStore((state) => state.setTheme)
   const [kioskOpen, setKioskOpen] = useState(false)
   const [doorConfig, setDoorConfig] = useState({
     connectionType: 'mock' as 'mock' | 'http' | 'serial',
@@ -27,6 +29,7 @@ export function SettingsPage(): JSX.Element {
     apiUrl: '',
     apiKey: '',
     instanceId: '',
+    checkIntervalHours: 6,
     reminders: {
       threeDays: true,
       oneDay: true,
@@ -880,6 +883,21 @@ export function SettingsPage(): JSX.Element {
                   <span>El mismo día del vencimiento</span>
                 </label>
               </div>
+              <div style={{ marginTop: 16 }}>
+                <label className="form-label">Intervalo de verificación (horas)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={whatsappConfig.checkIntervalHours}
+                  onChange={(e) => setWhatsappConfig(prev => ({ ...prev, checkIntervalHours: Math.max(1, Number(e.target.value)) }))}
+                  min={1}
+                  max={168}
+                  style={{ width: 120 }}
+                />
+                <small style={{ display: 'block', color: 'var(--color-secondary)', marginTop: 4 }}>
+                  Cada cuántas horas se revisan y envían recordatorios automáticos (mín. 1, máx. 168)
+                </small>
+              </div>
             </>
           )}
 
@@ -889,6 +907,36 @@ export function SettingsPage(): JSX.Element {
               Guardar Configuración
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <h3 style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icons.Sun />
+            Apariencia
+          </h3>
+        </div>
+        <div className="card-body">
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button
+              className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTheme('dark')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              🌙 Oscuro
+            </button>
+            <button
+              className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTheme('light')}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              ☀️ Claro
+            </button>
+          </div>
+          <small style={{ display: 'block', color: 'var(--color-secondary)', marginTop: 12 }}>
+            Cambia entre tema oscuro y claro. La preferencia se guarda automáticamente.
+          </small>
         </div>
       </div>
 

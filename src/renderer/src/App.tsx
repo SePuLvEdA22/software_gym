@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { useAppStore } from '@/store/appStore'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { AccessPage } from '@/pages/AccessPage'
@@ -45,10 +46,44 @@ function RoleGuard({ roles, currentUser, children }: { roles?: UserRole[]; curre
 
 function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
   const location = useLocation()
+  const navigate = useNavigate()
   const title = getPageTitle(location.pathname)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const setTriggerNewClientModal = useAppStore((s) => s.setTriggerNewClientModal)
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault()
+        const path = location.pathname
+        if (path === '/clients') {
+          setTriggerNewClientModal(true)
+        } else if (path === '/inventory') {
+          window.dispatchEvent(new CustomEvent('shortcut:newProduct'))
+        } else {
+          setTriggerNewClientModal(true)
+          navigate('/clients')
+        }
+      }
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault()
+        const searchInput = document.querySelector<HTMLInputElement>('input[type="text"].search-input, .search-box input, input.search-input')
+        if (searchInput) searchInput.focus()
+      }
+      if (e.key === 'Escape') {
+        const modals = document.querySelectorAll('.modal-overlay')
+        if (modals.length > 0) {
+          const closeBtn = modals[modals.length - 1].querySelector('.modal-close')
+          if (closeBtn) (closeBtn as HTMLButtonElement).click()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [location.pathname, navigate, setTriggerNewClientModal])
 
   const handleLogout = async () => {
     await window.electronAPI.auth.logout()
@@ -88,6 +123,11 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
 export function App(): JSX.Element {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const theme = useAppStore((s) => s.theme)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   useEffect(() => {
     checkAuth()

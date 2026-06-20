@@ -66,7 +66,7 @@ function mapDbMovement(m: DbMovement): InventoryMovement {
   }
 }
 
-export function getAllProducts(activeOnly = true, page = 1, pageSize = 50): PageResponse<Product> {
+export function getAllProducts(activeOnly = true, page = 1, pageSize = 50, search?: string, category?: string): PageResponse<Product> {
   const db = getDatabase()
   let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1'
   let query = 'SELECT * FROM products WHERE 1=1'
@@ -76,6 +76,19 @@ export function getAllProducts(activeOnly = true, page = 1, pageSize = 50): Page
     countQuery += clause
     query += clause
     params.push(1)
+  }
+  if (search) {
+    const clause = ' AND (name LIKE ? OR barcode LIKE ?)'
+    countQuery += clause
+    query += clause
+    const searchPattern = `%${search}%`
+    params.push(searchPattern, searchPattern)
+  }
+  if (category) {
+    const clause = ' AND category = ?'
+    countQuery += clause
+    query += clause
+    params.push(category)
   }
   const countRow = db.prepare(countQuery).get(...params) as { total: number }
   const total = countRow.total

@@ -443,9 +443,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate, options?: { page?: number; pageSize?: number }) => {
+  ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate, options?: { page?: number; pageSize?: number; method?: string }) => {
     try {
-      const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50)
+      const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.method)
       return { success: true, data: payments }
     } catch (error: any) {
       log.error('Error getting payments by date:', error)
@@ -541,9 +541,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('access:getLogs', async (_, options?: { page?: number; pageSize?: number }) => {
+  ipcMain.handle('access:getLogs', async (_, options?: { page?: number; pageSize?: number; result?: string }) => {
     try {
-      const logs = getAccessLogs(options?.page || 1, options?.pageSize || 50)
+      const logs = getAccessLogs(options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting access logs:', error)
@@ -561,9 +561,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate, options?: { page?: number; pageSize?: number }) => {
+  ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate, options?: { page?: number; pageSize?: number; result?: string }) => {
     try {
-      const logs = getAccessLogsByDate(startDate, endDate, options?.page || 1, options?.pageSize || 50)
+      const logs = getAccessLogsByDate(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }
     } catch (error: any) {
       log.error('Error getting logs by date:', error)
@@ -1020,8 +1020,8 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('inventory:getAllProducts', async (_, activeOnly, options?: { page?: number; pageSize?: number }) => {
-    try { return { success: true, data: getAllProducts(activeOnly, options?.page || 1, options?.pageSize || 50) } }
+  ipcMain.handle('inventory:getAllProducts', async (_, activeOnly, options?: { page?: number; pageSize?: number; search?: string; category?: string }) => {
+    try { return { success: true, data: getAllProducts(activeOnly, options?.page || 1, options?.pageSize || 50, options?.search, options?.category) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 

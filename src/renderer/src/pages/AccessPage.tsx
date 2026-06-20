@@ -44,13 +44,13 @@ function CodeDisplay({ code, placeholder = 'Ingrese su código' }: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#1c1b1b',
-      border: '2px solid #353534',
+      backgroundColor: 'var(--color-surface-container-low)',
+      border: '2px solid var(--color-surface-container-highest)',
       borderRadius: 12,
       fontFamily: 'monospace',
       fontSize,
       fontWeight: 700,
-      color: len > 0 ? '#ff6b00' : '#606060',
+      color: len > 0 ? 'var(--color-primary-container)' : 'var(--color-secondary)',
       letterSpacing,
       padding: '0 20px',
       overflow: 'hidden'
@@ -70,7 +70,7 @@ function CodeDisplay({ code, placeholder = 'Ingrese su código' }: {
             display: 'inline-block',
             width: Math.max(2, fontSize / 18),
             height: fontSize,
-            backgroundColor: '#ff6b00',
+            backgroundColor: 'var(--color-primary-container)',
             marginLeft: Math.max(4, letterSpacing),
             animation: 'blink 1s step-end infinite',
             flexShrink: 0
@@ -98,12 +98,12 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: isActive ? bg : '#2a2a2a',
-    border: isActive ? '2px solid ' + bg : '2px solid #353534',
+    backgroundColor: isActive ? bg : 'var(--color-surface-container)',
+    border: isActive ? '2px solid ' + bg : '2px solid var(--color-surface-container-highest)',
     borderRadius: 10,
     fontSize: isActive ? 16 : 28,
     fontWeight: 700,
-    color: isActive ? textColor : '#e5e2e1',
+    color: isActive ? textColor : 'var(--color-on-surface)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
     transition: 'all 0.1s ease',
@@ -119,17 +119,17 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
             key={digit}
             onClick={() => onDigit(digit)}
             disabled={disabled}
-            style={buttonStyle('#2a2a2a', '#e5e2e1', false)}
+            style={buttonStyle('var(--color-surface-container)', 'var(--color-on-surface)', false)}
             onMouseEnter={(e) => {
               if (!disabled) {
-                e.currentTarget.style.backgroundColor = '#353534'
-                e.currentTarget.style.borderColor = '#ff6b00'
+                e.currentTarget.style.backgroundColor = 'var(--color-surface-container-highest)'
+                e.currentTarget.style.borderColor = 'var(--color-primary-container)'
               }
             }}
             onMouseLeave={(e) => {
               if (!disabled) {
-                e.currentTarget.style.backgroundColor = '#2a2a2a'
-                e.currentTarget.style.borderColor = '#353534'
+                e.currentTarget.style.backgroundColor = 'var(--color-surface-container)'
+                e.currentTarget.style.borderColor = 'var(--color-surface-container-highest)'
               }
             }}
           >
@@ -140,15 +140,17 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         <button
           onClick={onClear}
           disabled={disabled}
-          style={buttonStyle('rgba(255, 180, 171, 0.15)', '#ffb4ab', true)}
+          style={buttonStyle('var(--color-error-container)', 'var(--color-on-error-container)', true)}
           onMouseEnter={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 180, 171, 0.25)'
+              e.currentTarget.style.backgroundColor = 'var(--color-error)'
+              e.currentTarget.style.color = 'var(--color-on-error)'
             }
           }}
           onMouseLeave={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 180, 171, 0.15)'
+              e.currentTarget.style.backgroundColor = 'var(--color-error-container)'
+              e.currentTarget.style.color = 'var(--color-on-error-container)'
             }
           }}
         >
@@ -159,17 +161,17 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         <button
           onClick={() => onDigit('0')}
           disabled={disabled}
-          style={buttonStyle('#2a2a2a', '#e5e2e1', false)}
+          style={buttonStyle('var(--color-surface-container)', 'var(--color-on-surface)', false)}
           onMouseEnter={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = '#353534'
-              e.currentTarget.style.borderColor = '#ff6b00'
+              e.currentTarget.style.backgroundColor = 'var(--color-surface-container-highest)'
+              e.currentTarget.style.borderColor = 'var(--color-primary-container)'
             }
           }}
           onMouseLeave={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = '#2a2a2a'
-              e.currentTarget.style.borderColor = '#353534'
+              e.currentTarget.style.backgroundColor = 'var(--color-surface-container)'
+              e.currentTarget.style.borderColor = 'var(--color-surface-container-highest)'
             }
           }}
         >
@@ -179,15 +181,17 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         <button
           onClick={onBackspace}
           disabled={disabled}
-          style={buttonStyle('rgba(200, 198, 197, 0.15)', '#c8c6c5', true)}
+          style={buttonStyle('var(--color-surface-container-high)', 'var(--color-on-surface)', true)}
           onMouseEnter={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = 'rgba(200, 198, 197, 0.25)'
+              e.currentTarget.style.backgroundColor = 'var(--color-surface-container-highest)'
+              e.currentTarget.style.borderColor = 'var(--color-primary-container)'
             }
           }}
           onMouseLeave={(e) => {
             if (!disabled) {
-              e.currentTarget.style.backgroundColor = 'rgba(200, 198, 197, 0.15)'
+              e.currentTarget.style.backgroundColor = 'var(--color-surface-container-high)'
+              e.currentTarget.style.borderColor = 'var(--color-surface-container-highest)'
             }
           }}
         >
@@ -205,12 +209,12 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#ff6b00',
+          backgroundColor: 'var(--color-primary)',
           border: 'none',
           borderRadius: 10,
           fontSize: 20,
           fontWeight: 700,
-          color: '#0a0a0a',
+          color: 'var(--color-on-primary)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
           transition: 'all 0.1s ease',
@@ -218,13 +222,15 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         }}
         onMouseEnter={(e) => {
           if (!disabled) {
-            e.currentTarget.style.backgroundColor = '#ff8c33'
+            e.currentTarget.style.backgroundColor = 'var(--color-primary)'
+            e.currentTarget.style.filter = 'brightness(1.15)'
             e.currentTarget.style.transform = 'scale(1.01)'
           }
         }}
         onMouseLeave={(e) => {
           if (!disabled) {
-            e.currentTarget.style.backgroundColor = '#ff6b00'
+            e.currentTarget.style.backgroundColor = 'var(--color-primary)'
+            e.currentTarget.style.filter = 'none'
             e.currentTarget.style.transform = 'scale(1)'
           }
         }}
@@ -269,16 +275,16 @@ function AccessGrantedView({
           width: 80, 
           height: 80, 
           borderRadius: '50%', 
-          backgroundColor: 'rgba(74, 222, 128, 0.2)',
+          backgroundColor: 'var(--color-success-container)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: 16,
-          color: '#4ade80'
+          color: 'var(--color-success)'
         }}>
           <Icons.Check />
         </div>
-        <h2 style={{ fontSize: 28, fontWeight: 700, color: '#4ade80' }}>
+        <h2 style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-success)' }}>
           ACCESO PERMITIDO
         </h2>
       </div>
@@ -324,7 +330,7 @@ function AccessGrantedView({
               justifyContent: 'space-between', 
               padding: '12px 16px',
               backgroundColor: daysRemaining <= 5 
-                ? 'rgba(251, 191, 36, 0.1)' 
+                ? 'var(--color-warning-container)' 
                 : 'var(--color-surface-container)',
               borderRadius: 8,
               border: daysRemaining <= 5 ? '1px solid var(--color-warning)' : 'none'
@@ -349,7 +355,7 @@ function AccessGrantedView({
           <div style={{ 
             marginTop: 16,
             padding: 12,
-            backgroundColor: 'rgba(255, 180, 171, 0.15)',
+            backgroundColor: 'var(--color-error-container)',
             borderRadius: 8,
             border: '1px solid var(--color-error)'
           }}>
@@ -395,7 +401,7 @@ function AccessDeniedView({
           width: 80, 
           height: 80, 
           borderRadius: '50%', 
-          backgroundColor: 'rgba(255, 180, 171, 0.2)',
+          backgroundColor: 'var(--color-error-container)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -588,26 +594,26 @@ export function AccessPage(): JSX.Element {
              placeholder="Ingrese su código"
            />
 
-          {accessState === 'checking' && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 12,
-              color: '#ff6b00',
-              fontSize: 16,
-              fontWeight: 600
-            }}>
-              <div style={{ 
-                width: 24, 
-                height: 24, 
-                border: '3px solid #353534',
-                borderTopColor: '#ff6b00',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-              <span>Validando acceso...</span>
-            </div>
-          )}
+           {accessState === 'checking' && (
+             <div style={{ 
+               display: 'flex', 
+               alignItems: 'center', 
+               gap: 12,
+               color: 'var(--color-primary-container)',
+               fontSize: 16,
+               fontWeight: 600
+             }}>
+               <div style={{ 
+                 width: 24, 
+                 height: 24, 
+                 border: '3px solid var(--color-surface-container-highest)',
+                 borderTopColor: 'var(--color-primary-container)',
+                 borderRadius: '50%',
+                 animation: 'spin 1s linear infinite'
+               }} />
+               <span>Validando acceso...</span>
+             </div>
+           )}
 
           <AccessNumpad
             onDigit={handleDigit}

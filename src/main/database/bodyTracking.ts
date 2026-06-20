@@ -84,9 +84,19 @@ export function saveGoal(
 ): ClientGoal {
   const db = getDatabase()
   const id = uuidv4()
+  const createdAt = formatISO(new Date())
   db.prepare(`
     INSERT INTO client_goals (id, client_id, goal, start_date, target_date, notes, is_active, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-  `).run(id, clientId, data.goal, data.startDate, data.targetDate || null, data.notes || '', formatISO(new Date()))
-  return getGoals(clientId)[0]
+  `).run(id, clientId, data.goal, data.startDate, data.targetDate || null, data.notes || '', createdAt)
+  return {
+    id,
+    clientId,
+    goal: data.goal,
+    startDate: data.startDate,
+    targetDate: data.targetDate || null,
+    notes: data.notes || '',
+    isActive: true,
+    createdAt
+  }
 }

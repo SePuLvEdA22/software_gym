@@ -400,9 +400,15 @@ app.whenReady().then(async () => {
   await initDatabase()
   log.info('Database initialized')
 
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    log.info(`[PERMISSION] Request: ${permission}, type: ${(details as any)?.mediaType || 'unknown'}, mediaTypes: ${(details as any)?.mediaTypes || 'none'}`)
-    callback(true)
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      const origin = webContents.getURL()
+      const allowed = origin.includes('renderer') || origin.includes('localhost') || origin.includes('file://')
+      log.info(`[PERMISSION] media request from ${origin}: ${allowed ? 'allowed' : 'denied'}`)
+      callback(allowed)
+    } else {
+      callback(false)
+    }
   })
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
     if (permission === 'media') return true
@@ -482,7 +488,7 @@ app.whenReady().then(async () => {
     } catch (e) {
       log.error('Periodic reminder check error:', e)
     }
-  }, 6 * 60 * 60 * 1000)
+  }, (getWhatsappConfig().checkIntervalHours || 6) * 60 * 60 * 1000)
 
   app.on('activate', () => {
     const windows = BrowserWindow.getAllWindows()

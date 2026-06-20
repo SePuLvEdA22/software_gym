@@ -111,7 +111,7 @@ const electronAPI = {
       ipcRenderer.invoke('payment:record', clientId, amount, method, description, membershipId, notes, discount),
     getByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Payment>>> =>
       ipcRenderer.invoke('payment:getByClient', clientId, options),
-    getByDateRange: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Payment>>> =>
+    getByDateRange: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number; method?: string }): Promise<IpcResult<PageResponse<Payment>>> =>
       ipcRenderer.invoke('payment:getByDateRange', startDate, endDate, options),
     getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByMembership', membershipId)
@@ -120,9 +120,9 @@ const electronAPI = {
   access: {
     validate: (accessCode: string): Promise<IpcResult<AccessValidation>> =>
       ipcRenderer.invoke('access:validate', accessCode),
-    getLogs: (options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+    getLogs: (options?: { page?: number; pageSize?: number; result?: string }): Promise<IpcResult<PageResponse<AccessLog>>> =>
       ipcRenderer.invoke('access:getLogs', options),
-    getLogsByDate: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+    getLogsByDate: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number; result?: string }): Promise<IpcResult<PageResponse<AccessLog>>> =>
       ipcRenderer.invoke('access:getLogsByDate', startDate, endDate, options),
     getLogsByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
       ipcRenderer.invoke('access:getLogsByClient', clientId, options)
@@ -230,7 +230,7 @@ const electronAPI = {
   },
 
   inventory: {
-    getAllProducts: (activeOnly = true, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Product>>> =>
+    getAllProducts: (activeOnly = true, options?: { page?: number; pageSize?: number; search?: string; category?: string }): Promise<IpcResult<PageResponse<Product>>> =>
       ipcRenderer.invoke('inventory:getAllProducts', activeOnly, options),
     getProductById: (id: string): Promise<IpcResult<Product | null>> =>
       ipcRenderer.invoke('inventory:getProductById', id),
