@@ -73,15 +73,15 @@ describe('Users Database', () => {
   })
 
   it('should get all users', () => {
-    const users = getAllUsers()
-    expect(users.length).toBeGreaterThanOrEqual(2)
-    expect(users.some(u => u.username === 'admin')).toBe(true)
-    expect(users.some(u => u.username === 'testuser')).toBe(true)
+    const result = getAllUsers()
+    expect(result.data.length).toBeGreaterThanOrEqual(2)
+    expect(result.data.some(u => u.username === 'admin')).toBe(true)
+    expect(result.data.some(u => u.username === 'testuser')).toBe(true)
   })
 
   it('should get user by id', () => {
-    const users = getAllUsers()
-    const admin = users.find(u => u.username === 'admin')
+    const result = getAllUsers()
+    const admin = result.data.find(u => u.username === 'admin')
     expect(admin).toBeDefined()
     const found = getUserById(admin!.id)
     expect(found).not.toBeNull()

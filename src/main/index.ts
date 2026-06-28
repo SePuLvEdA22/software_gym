@@ -30,6 +30,7 @@ console.info = log.info
 
 let adminWindow: BrowserWindow | null = null
 let kioskWindow: BrowserWindow | null = null
+let clientFormWindow: BrowserWindow | null = null
 
 type AppMode = 'admin' | 'kiosk' | 'both'
 
@@ -159,8 +160,7 @@ function createKioskWindow(_displayIndex = 0): BrowserWindow {
        nodeIntegration: false,
        devTools: !app.isPackaged
      },
-    show: true,
-    alwaysOnTop: displays.length > 1
+    show: true
   })
 
   if (!app.isPackaged) {
@@ -196,7 +196,6 @@ function createKioskWindow(_displayIndex = 0): BrowserWindow {
     if (displays.length > 1) {
       window.setFullScreen(true)
     }
-    window.focus()
   })
 
   window.on('show', () => {
@@ -232,6 +231,47 @@ function createKioskWindowAuto(): BrowserWindow {
   }
 
   return createKioskWindow(displayIndex)
+}
+
+function createClientFormWindow(clientId?: string): BrowserWindow {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
+  const window = new BrowserWindow({
+    width: 900,
+    height: Math.min(height - 100, 800),
+    minWidth: 800,
+    minHeight: 600,
+    resizable: true,
+    show: false,
+    autoHideMenuBar: true,
+    title: clientId ? 'Editar Cliente - BodyFitGym' : 'Nuevo Cliente - BodyFitGym',
+    webPreferences: {
+      preload: getPreloadPath(),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    icon: join(__dirname, '../../resources/icon.png')
+  })
+
+  window.on('ready-to-show', () => {
+    window.show()
+  })
+
+  const hash = clientId ? `/client-form?id=${encodeURIComponent(clientId)}` : '/client-form'
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#' + hash)
+  } else {
+    window.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  }
+
+  window.on('closed', () => {
+    clientFormWindow = null
+  })
+
+  log.info(`Client form window created (clientId: ${clientId || 'new'})`)
+  return window
 }
 
 function setupWindowControls(): void {
@@ -288,6 +328,37 @@ function setupWindowControls(): void {
     return { success: true, data: { isOpen } }
   })
 
+  ipcMain.handle('window:open-client-form', async (_, clientId?: string) => {
+    try {
+      if (clientFormWindow && !clientFormWindow.isDestroyed()) {
+        clientFormWindow.removeAllListeners('closed')
+        clientFormWindow.close()
+      }
+      clientFormWindow = createClientFormWindow(clientId)
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error opening client form window:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('window:notify-client-form-saved', async () => {
+    try {
+      if (adminWindow && !adminWindow.isDestroyed()) {
+        adminWindow.webContents.send('clientForm:saved')
+      }
+      if (clientFormWindow && !clientFormWindow.isDestroyed()) {
+        clientFormWindow.removeAllListeners('closed')
+        clientFormWindow.close()
+        clientFormWindow = null
+      }
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error notifying client form saved:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.handle('window:minimize-admin', async () => {
     if (adminWindow) {
       adminWindow.minimize()
@@ -332,6 +403,13 @@ function createTray(): void {
         if (adminWindow && !adminWindow.isDestroyed()) {
           adminWindow.show()
           adminWindow.focus()
+        }
+        if (kioskWindow && !kioskWindow.isDestroyed() && !kioskWindow.isVisible()) {
+          const displays = screen.getAllDisplays()
+          if (displays.length > 1) {
+            kioskWindow.show()
+            kioskWindow.setFullScreen(true)
+          }
         }
       }
     },
@@ -389,6 +467,9 @@ ipcMain.handle('system:get-auto-start', async () => {
   }
 })
 
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.bodyfitgym.app')
 
@@ -503,6 +584,7 @@ app.whenReady().then(async () => {
 
   log.info('Application ready')
 })
+}
 
 app.on('window-all-closed', () => {
   closeDatabase()
@@ -516,11 +598,17 @@ app.on('before-quit', () => {
 })
 
 app.on('second-instance', () => {
-  if (adminWindow) {
-    if (adminWindow.isMinimized()) {
-      adminWindow.restore()
-    }
+  if (adminWindow && !adminWindow.isDestroyed()) {
+    if (adminWindow.isMinimized()) adminWindow.restore()
+    adminWindow.show()
     adminWindow.focus()
+  }
+  if (kioskWindow && !kioskWindow.isDestroyed()) {
+    const displays = screen.getAllDisplays()
+    if (displays.length > 1 && !kioskWindow.isVisible()) {
+      kioskWindow.show()
+      kioskWindow.setFullScreen(true)
+    }
   }
 })
 

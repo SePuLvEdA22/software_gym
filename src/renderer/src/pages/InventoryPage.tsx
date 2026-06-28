@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Product, InventoryMovement } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
+import { Pagination } from '@/components/Pagination'
 import { formatCurrency } from '@/utils/format'
 
 const categoryLabels: Record<string, string> = {
@@ -377,26 +378,7 @@ export function InventoryPage(): JSX.Element {
                 </tbody>
               </table>
             </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
-                <button className="btn btn-secondary btn-sm" disabled={page <= 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                  .map((p, idx, arr) => (
-                    <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
-                      <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                        onClick={() => setPage(p)}
-                        style={{ minWidth: 36, padding: '4px 8px' }}>
-                        {p}
-                      </button>
-                    </span>
-                  ))}
-                <button className="btn btn-secondary btn-sm" disabled={page >= totalPages}
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Siguiente</button>
-              </div>
-            )}
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
           </div>
         </>
       )}
@@ -433,26 +415,7 @@ export function InventoryPage(): JSX.Element {
               </tbody>
             </table>
           </div>
-          {movementsTotalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
-              <button className="btn btn-secondary btn-sm" disabled={movementsPage <= 1}
-                onClick={() => setMovementsPage(p => Math.max(1, p - 1))}>Anterior</button>
-              {Array.from({ length: movementsTotalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === movementsTotalPages || Math.abs(p - movementsPage) <= 2)
-                .map((p, idx, arr) => (
-                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
-                    <button className={`btn ${p === movementsPage ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                      onClick={() => setMovementsPage(p)}
-                      style={{ minWidth: 36, padding: '4px 8px' }}>
-                      {p}
-                    </button>
-                  </span>
-                ))}
-              <button className="btn btn-secondary btn-sm" disabled={movementsPage >= movementsTotalPages}
-                onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))}>Siguiente</button>
-            </div>
-          )}
+              <Pagination page={movementsPage} totalPages={movementsTotalPages} onPageChange={setMovementsPage} size="sm" />
         </div>
       )}
 

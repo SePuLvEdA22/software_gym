@@ -89,60 +89,70 @@ function Numpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
   onEnter: () => void
   disabled: boolean
 }): JSX.Element {
-  const btnDigit: React.CSSProperties = {
-    width: 96,
-    height: 64,
-    border: 'none',
-    borderRadius: 10,
-    backgroundColor: '#2a2a2a',
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 600,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.4 : 1
-  }
-
-  const btnSmall: React.CSSProperties = {
-    width: 96,
-    height: 64,
-    border: 'none',
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 700,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.4 : 1
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
       <div style={{ display: 'flex', gap: 10 }}>
         {['1','2','3'].map(d => (
-          <button key={d} style={btnDigit} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
+          <button key={d} style={{
+            width: 96, height: 64, border: 'none', borderRadius: 10,
+            backgroundColor: 'var(--color-surface-container-high)',
+            color: 'var(--color-on-surface)',
+            fontSize: 28, fontWeight: 600,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.4 : 1
+          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         {['4','5','6'].map(d => (
-          <button key={d} style={btnDigit} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
+          <button key={d} style={{
+            width: 96, height: 64, border: 'none', borderRadius: 10,
+            backgroundColor: 'var(--color-surface-container-high)',
+            color: 'var(--color-on-surface)',
+            fontSize: 28, fontWeight: 600,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.4 : 1
+          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         {['7','8','9'].map(d => (
-          <button key={d} style={btnDigit} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
+          <button key={d} style={{
+            width: 96, height: 64, border: 'none', borderRadius: 10,
+            backgroundColor: 'var(--color-surface-container-high)',
+            color: 'var(--color-on-surface)',
+            fontSize: 28, fontWeight: 600,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.4 : 1
+          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={onClear} disabled={disabled} style={{
-          ...btnSmall,
-          backgroundColor: 'rgba(255, 180, 171, 0.15)',
-          color: '#ffb4ab'
+          width: 96, height: 64, border: 'none', borderRadius: 10,
+          fontSize: 13, fontWeight: 700,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.4 : 1,
+          backgroundColor: 'var(--color-error-container)',
+          color: 'var(--color-on-error-container)'
         }}>
           LIMPIAR
         </button>
-        <button onClick={() => onDigit('0')} disabled={disabled} style={btnDigit}>0</button>
+        <button onClick={() => onDigit('0')} disabled={disabled} style={{
+          width: 96, height: 64, border: 'none', borderRadius: 10,
+          backgroundColor: 'var(--color-surface-container-high)',
+          color: 'var(--color-on-surface)',
+          fontSize: 28, fontWeight: 600,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.4 : 1
+        }}>0</button>
         <button onClick={onBackspace} disabled={disabled} style={{
-          ...btnSmall,
-          backgroundColor: 'rgba(200, 198, 197, 0.12)',
-          color: '#c8c6c5'
+          width: 96, height: 64, border: 'none', borderRadius: 10,
+          fontSize: 13, fontWeight: 700,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.4 : 1,
+          backgroundColor: 'var(--color-secondary-container)',
+          color: 'var(--color-on-secondary-container)'
         }}>
           BORRAR
         </button>
@@ -152,8 +162,8 @@ function Numpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         height: 64,
         border: 'none',
         borderRadius: 10,
-        backgroundColor: '#ff6b00',
-        color: '#fff',
+        backgroundColor: 'var(--color-primary-container)',
+        color: 'var(--color-on-primary-container)',
         fontSize: 20,
         fontWeight: 800,
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -172,6 +182,18 @@ export function KioskPage(): JSX.Element {
   const [client, setClient] = useState<Client | null>(null)
   const [membership, setMembership] = useState<Membership | null>(null)
   const [showAdminButton, setShowAdminButton] = useState(false)
+
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', 'dark')
+    return () => {
+      if (prev) {
+        document.documentElement.setAttribute('data-theme', prev)
+      } else {
+        document.documentElement.removeAttribute('data-theme')
+      }
+    }
+  }, [])
 
   const resetAll = useCallback(() => {
     setAccessCode('')

@@ -12,6 +12,7 @@ import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { KioskPage } from '@/pages/KioskPage'
+import { ClientFormPage } from '@/pages/ClientFormPage'
 import { WhatsappPage } from '@/pages/WhatsappPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { UsersPage } from '@/pages/UsersPage'
@@ -158,6 +159,7 @@ export function App(): JSX.Element {
       <HashRouter>
         <Routes>
           <Route path="/kiosk" element={<KioskPage />} />
+          <Route path="/client-form" element={<ClientFormPage />} />
           <Route path="/*" element={
             <>
               <LoginPage onLoginSuccess={async () => {
@@ -179,6 +181,7 @@ export function App(): JSX.Element {
     <HashRouter>
       <Routes>
         <Route path="/kiosk" element={<KioskPage />} />
+        <Route path="/client-form" element={<ClientFormPage />} />
         <Route path="/*" element={
           <>
             <AdminLayout currentUser={currentUser} />

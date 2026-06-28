@@ -140,11 +140,11 @@ export function setupIpcHandlers(): void {
     return { success: true, data: user }
   })
 
-  ipcMain.handle('user:getAll', async () => {
+  ipcMain.handle('user:getAll', async (_, options?: { page?: number; pageSize?: number }) => {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
-      return { success: true, data: getAllUsers() }
+      return { success: true, data: getAllUsers(options?.page || 1, options?.pageSize || 50) }
     } catch (error: any) {
       log.error('Error getting users:', error)
       return { success: false, error: sanitizeError(error) }
@@ -209,11 +209,11 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('user:getChangeLogs', async (_, limit?: number, tableName?: string) => {
+  ipcMain.handle('user:getChangeLogs', async (_, options?: { page?: number; pageSize?: number; tableName?: string }) => {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
-      return { success: true, data: getChangeLogs(limit, tableName) }
+      return { success: true, data: getChangeLogs(options?.page || 1, options?.pageSize || 50, options?.tableName) }
     } catch (error: any) {
       return { success: false, error: sanitizeError(error) }
     }
@@ -899,9 +899,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('whatsapp:getHistory', async (_, clientId, limit) => {
+  ipcMain.handle('whatsapp:getHistory', async (_, options?: { clientId?: string; page?: number; pageSize?: number }) => {
     try {
-      return { success: true, data: getMessageHistory(clientId, limit) }
+      return { success: true, data: getMessageHistory(options) }
     } catch (error: any) {
       return { success: false, error: sanitizeError(error) }
     }

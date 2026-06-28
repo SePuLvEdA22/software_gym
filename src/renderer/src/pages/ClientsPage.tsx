@@ -1,26 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { CameraCapture } from '@/components/CameraCapture'
-import { Client, Gender, ClientStatus, EmergencyContact, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
+import { Pagination } from '@/components/Pagination'
+import { Client, ClientStatus, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
-
-function calculateAge(birthDate: string): number | null {
-  if (!birthDate) return null
-  try {
-    const birth = parseISO(birthDate)
-    const today = new Date()
-    let age = today.getFullYear() - birth.getFullYear()
-    const monthDiff = today.getMonth() - birth.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--
-    }
-    return age
-  } catch {
-    return null
-  }
-}
 
 const statusBadge = (status: ClientStatus) => {
   switch (status) {
@@ -33,368 +17,6 @@ const statusBadge = (status: ClientStatus) => {
     case 'suspended':
       return <span className="badge badge-warning">Suspendido</span>
   }
-}
-
-interface ClientFormProps {
-  client?: Client | null
-  onClose: () => void
-  onSave: (client: Omit<Client, 'id' | 'registrationDate'>) => void
-}
-
-function ClientForm({ client, onClose, onSave }: ClientFormProps): JSX.Element {
-  const [formData, setFormData] = useState({
-    fullName: client?.fullName || '',
-    documentId: client?.documentId || '',
-    birthDate: client?.birthDate ? format(parseISO(client.birthDate), 'yyyy-MM-dd') : '',
-    gender: (client?.gender || 'not_specified') as Gender,
-    phone: client?.phone || '',
-    email: client?.email || '',
-    address: client?.address || '',
-    photo: client?.photo || null,
-    accessCode: client?.accessCode || '',
-    status: (client?.status || 'inactive') as ClientStatus,
-    notes: '',
-    emergencyContact: {
-      name: client?.emergencyContact.name || '',
-      phone: client?.emergencyContact.phone || '',
-      relationship: client?.emergencyContact.relationship || '',
-      notes: client?.emergencyContact.notes || ''
-    }
-  })
-
-  const age = calculateAge(formData.birthDate)
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const base64 = (ev.target?.result as string).split(',')[1]
-        setFormData(prev => ({ ...prev, photo: base64 }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleCameraCapture = (base64: string) => {
-    setFormData(prev => ({ ...prev, photo: base64 }))
-    setShowCamera(false)
-  }
-
-  const handleRemovePhoto = () => {
-    setFormData(prev => ({ ...prev, photo: null }))
-  }
-
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [showCamera, setShowCamera] = useState(false)
-
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {}
-    if (formData.phone && !/^\+?[\d\s\-()]{7,20}$/.test(formData.phone)) {
-      errors.phone = 'El teléfono no es válido'
-    }
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'El email no es válido'
-    }
-    setFieldErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateForm()) return
-    
-    const submitData: Omit<Client, 'id' | 'registrationDate'> = {
-      ...formData,
-      birthDate: formData.birthDate ? parseISO(formData.birthDate).toISOString() : new Date().toISOString()
-    }
-    
-    onSave(submitData)
-  }
-
-  const updateEmergencyContact = (field: keyof EmergencyContact, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      emergencyContact: { ...prev.emergencyContact, [field]: value }
-    }))
-  }
-
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-lg">
-        <form onSubmit={handleSubmit}>
-          <div className="modal-header">
-            <h2 className="modal-title">{client ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>
-            <button type="button" className="modal-close" onClick={onClose}>
-              <Icons.Close />
-            </button>
-          </div>
-          
-          <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, marginBottom: 28 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div 
-                  className="photo-upload" 
-                  onClick={() => document.getElementById('photo-upload')?.click()}
-                  title="Click para subir foto desde archivos"
-                >
-                  {formData.photo ? (
-                    <img src={`data:image/jpeg;base64,${formData.photo}`} alt="Client" />
-                  ) : (
-                    <div className="photo-upload-placeholder">
-                      <Icons.Camera />
-                      <span>Agregar foto</span>
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => document.getElementById('photo-upload')?.click()}
-                    title="Subir foto desde archivos"
-                  >
-                    <Icons.Upload />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    onClick={() => setShowCamera(true)}
-                    title="Tomar foto con la cámara"
-                  >
-                    <Icons.Camera />
-                  </button>
-                  {formData.photo && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-secondary"
-                      onClick={handleRemovePhoto}
-                      title="Eliminar foto"
-                      style={{ color: 'var(--color-error)' }}
-                    >
-                      <Icons.Trash />
-                    </button>
-                  )}
-                </div>
-                <input 
-                  id="photo-upload" 
-                  type="file" 
-                  accept="image/*" 
-                  style={{ display: 'none' }}
-                  onChange={handlePhotoChange}
-                />
-                {showCamera && (
-                  <CameraCapture
-                    onCapture={handleCameraCapture}
-                    onClose={() => setShowCamera(false)}
-                  />
-                )}
-              </div>
-              
-              <div style={{ flex: 1 }}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Nombre Completo *</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={formData.fullName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                      required
-                      placeholder="Ingrese nombre completo"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Documento de Identidad</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={formData.documentId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, documentId: e.target.value }))}
-                      placeholder="Número de documento"
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-row">
-                   <div className="form-group">
-                    <label className="form-label">Código de Acceso</label>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={formData.accessCode}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '').slice(0, 20)
-                          setFormData(prev => ({ ...prev, accessCode: value }))
-                        }}
-                        placeholder="Ingrese código numérico"
-                        maxLength={20}
-                        style={{ fontFamily: 'monospace' }}
-                        required
-                      />
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-                      El cliente usará este código para ingresar al gimnasio. Máximo 20 dígitos.
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Estado</label>
-                    <select 
-                      className="form-select"
-                      value={formData.status}
-                      onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as ClientStatus }))}
-                    >
-                      <option value="active">Activo</option>
-                      <option value="inactive">Inactivo</option>
-                      <option value="suspended">Suspendido</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="divider" />
-            
-            <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 600 }}>Información Personal</h3>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Fecha de Nacimiento</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={formData.birthDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, birthDate: e.target.value }))}
-                />
-                {age !== null && (
-                  <div style={{ fontSize: 13, color: 'var(--color-secondary)', marginTop: 4 }}>
-                    Edad: <strong>{age} años</strong>
-                  </div>
-                )}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Género</label>
-                <select 
-                  className="form-select"
-                  value={formData.gender}
-                  onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value as Gender }))}
-                >
-                  <option value="not_specified">No especificado</option>
-                  <option value="male">Masculino</option>
-                  <option value="female">Femenino</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Teléfono</label>
-                <input 
-                  type="tel" 
-                  className={`form-input ${fieldErrors.phone ? 'form-input-error' : ''}`} 
-                  value={formData.phone}
-                  onChange={(e) => { setFormData(prev => ({ ...prev, phone: e.target.value })); setFieldErrors(prev => ({ ...prev, phone: '' })) }}
-                  placeholder="Número de teléfono"
-                />
-                {fieldErrors.phone && <span className="form-error">{fieldErrors.phone}</span>}
-              </div>
-            </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Correo Electrónico</label>
-                <input 
-                  type="email" 
-                  className={`form-input ${fieldErrors.email ? 'form-input-error' : ''}`} 
-                  value={formData.email}
-                  onChange={(e) => { setFormData(prev => ({ ...prev, email: e.target.value })); setFieldErrors(prev => ({ ...prev, email: '' })) }}
-                  placeholder="correo@ejemplo.com"
-                />
-                {fieldErrors.email && <span className="form-error">{fieldErrors.email}</span>}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Dirección</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Dirección completa"
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Observaciones</label>
-              <textarea 
-                className="form-input" 
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notas u observaciones del cliente"
-                rows={3}
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-            
-            <div className="divider" />
-            
-            <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icons.Bell />
-              Contacto de Emergencia
-            </h3>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Nombre</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={formData.emergencyContact.name}
-                  onChange={(e) => updateEmergencyContact('name', e.target.value)}
-                  placeholder="Nombre del contacto"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Teléfono</label>
-                <input 
-                  type="tel" 
-                  className="form-input" 
-                  value={formData.emergencyContact.phone}
-                  onChange={(e) => updateEmergencyContact('phone', e.target.value)}
-                  placeholder="Número de emergencia"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Relación</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={formData.emergencyContact.relationship}
-                  onChange={(e) => updateEmergencyContact('relationship', e.target.value)}
-                  placeholder="Ej: Familiar, Amigo"
-                />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Observaciones Importantes</label>
-              <textarea 
-                className="form-textarea"
-                value={formData.emergencyContact.notes}
-                onChange={(e) => updateEmergencyContact('notes', e.target.value)}
-                placeholder="Alergias, condiciones médicas, etc."
-                rows={3}
-              />
-            </div>
-          </div>
-          
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {client ? 'Guardar Cambios' : 'Crear Cliente'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
 }
 
 function AttendanceStatsModal({ client, onClose }: { client: Client; onClose: () => void }): JSX.Element {
@@ -485,9 +107,7 @@ function AttendanceStatsModal({ client, onClose }: { client: Client; onClose: ()
 }
 
 export function ClientsPage(): JSX.Element {
-  const { clients, setClients, addClient, updateClientInState, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast, confirm } = useAppStore()
-  const [showForm, setShowForm] = useState(false)
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const { clients, setClients, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast, confirm } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all')
   const [debtorsMap, setDebtorsMap] = useState<{ [clientId: string]: number }>({})
@@ -527,33 +147,18 @@ export function ClientsPage(): JSX.Element {
 
   useEffect(() => {
     if (triggerNewClientModal) {
-      setSelectedClient(null)
-      setShowForm(true)
       setTriggerNewClientModal(false)
+      window.electronAPI.window.openClientForm()
     }
   }, [triggerNewClientModal, setTriggerNewClientModal])
 
-  const handleSave = async (clientData: Omit<Client, 'id' | 'registrationDate'>) => {
-    let result
-    if (selectedClient) {
-      result = await window.electronAPI.client.update(selectedClient.id, clientData)
-      if (result.success && result.data) {
-        updateClientInState(result.data)
-      }
-    } else {
-      result = await window.electronAPI.client.create(clientData)
-      if (result.success && result.data) {
-        addClient(result.data)
-      }
-    }
-    if (!result?.success) {
-      showToast('error', result?.error ?? 'Error al guardar el cliente', 'Error')
-      return
-    }
-    setShowForm(false)
-    setSelectedClient(null)
-    loadClients()
-  }
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.clientForm.onSaved(() => {
+      loadClients()
+      loadDebtors()
+    })
+    return unsubscribe
+  }, [])
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({ title: 'Eliminar cliente', message: '¿Está seguro de eliminar este cliente?', variant: 'danger', confirmLabel: 'Eliminar' })
@@ -564,8 +169,7 @@ export function ClientsPage(): JSX.Element {
   }
 
   const handleEdit = (client: Client) => {
-    setSelectedClient(client)
-    setShowForm(true)
+    window.electronAPI.window.openClientForm(client.id)
   }
 
   const handleSearch = async () => {
@@ -580,8 +184,7 @@ export function ClientsPage(): JSX.Element {
   }
 
   const handleNewClient = () => {
-    setSelectedClient(null)
-    setShowForm(true)
+    window.electronAPI.window.openClientForm()
   }
 
   const handlePageChange = (newPage: number) => {
@@ -735,43 +338,7 @@ export function ClientsPage(): JSX.Element {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-          <button className="btn btn-secondary" disabled={page <= 1}
-            onClick={() => handlePageChange(page - 1)} style={{ opacity: page <= 1 ? 0.5 : 1 }}>
-            <Icons.ChevronLeft />
-            Anterior
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-            .map((p, idx, arr) => (
-              <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
-                <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => handlePageChange(p)}
-                  style={{ minWidth: 36, padding: '4px 8px' }}>
-                  {p}
-                </button>
-              </span>
-            ))}
-          <button className="btn btn-secondary" disabled={page >= totalPages}
-            onClick={() => handlePageChange(page + 1)} style={{ opacity: page >= totalPages ? 0.5 : 1 }}>
-            Siguiente
-            <Icons.ChevronRight />
-          </button>
-        </div>
-      )}
-
-      {showForm && (
-        <ClientForm 
-          client={selectedClient}
-          onClose={() => {
-            setShowForm(false)
-            setSelectedClient(null)
-          }}
-          onSave={handleSave}
-        />
-      )}
+      <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
       {showStatsModal && statsClient && (
         <AttendanceStatsModal

@@ -1,5 +1,5 @@
 import { getDatabase } from './index'
-import { User, UserRole, ChangeLog } from '../../shared/types'
+import { User, UserRole, ChangeLog, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
 import { formatISO } from 'date-fns'
@@ -95,10 +95,15 @@ export function authenticateUser(username: string, password: string): { success:
   return { success: true, user }
 }
 
-export function getAllUsers(): User[] {
+export function getAllUsers(page = 1, pageSize = 50): PageResponse<User> {
   const db = getDatabase()
-  const rows = db.prepare('SELECT * FROM users ORDER BY full_name ASC').all() as DbUser[]
-  return rows.map(mapDbUser)
+  const countRow = db.prepare('SELECT COUNT(*) as total FROM users').get() as { total: number }
+  const total = countRow.total
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+  const rows = db.prepare('SELECT * FROM users ORDER BY full_name ASC LIMIT ? OFFSET ?').all(pageSize, offset) as DbUser[]
+  return { data: rows.map(mapDbUser), total, page: safePage, totalPages }
 }
 
 export function getUserById(id: string): User | null {
@@ -185,15 +190,20 @@ export function logChange(
   )
 }
 
-export function getChangeLogs(limit = 100, tableName?: string): ChangeLog[] {
+export function getChangeLogs(page = 1, pageSize = 50, tableName?: string): PageResponse<ChangeLog> {
   const db = getDatabase()
+  let countQuery = 'SELECT COUNT(*) as total FROM change_log WHERE 1=1'
   let query = `SELECT id, user_id AS userId, user_name AS userName, table_name AS tableName, record_id AS recordId, action, old_values AS oldValues, new_values AS newValues, timestamp FROM change_log WHERE 1=1`
   const params: (string | number)[] = []
-  if (tableName) { query += ' AND table_name = ?'; params.push(tableName) }
-  query += ' ORDER BY timestamp DESC LIMIT ?'
-  params.push(limit)
-  const rows = db.prepare(query).all(...params) as ChangeLog[]
-  return rows
+  if (tableName) { countQuery += ' AND table_name = ?'; query += ' AND table_name = ?'; params.push(tableName) }
+  const countRow = db.prepare(countQuery).all(...params)[0] as { total: number } | undefined
+  const total = countRow?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
+  query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?'
+  const rows = db.prepare(query).all(...params, pageSize, offset) as ChangeLog[]
+  return { data: rows, total, page: safePage, totalPages }
 }
 
 export function getUserByUsername(username: string): User | null {

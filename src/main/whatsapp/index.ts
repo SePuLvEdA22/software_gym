@@ -3,7 +3,7 @@ import { formatISO, differenceInDays, addDays } from 'date-fns'
 import log from 'electron-log'
 import { getDatabase } from '../database'
 import { getClientById } from '../database/clients'
-import { WhatsappMessage, MessageType, MessageStatus } from '../../shared/types'
+import { WhatsappMessage, MessageType, MessageStatus, PageResponse } from '../../shared/types'
 
 interface WhatsappConfig {
   enabled: boolean
@@ -382,33 +382,48 @@ function formatPhoneNumber(phone: string): string | null {
   return cleaned
 }
 
-export function getMessageHistory(clientId?: string, limit = 50): WhatsappMessage[] {
+export function getMessageHistory(options?: { clientId?: string; page?: number; pageSize?: number }): PageResponse<WhatsappMessage> {
   const db = getDatabase()
+  const clientId = options?.clientId
+  const page = options?.page || 1
+  const pageSize = options?.pageSize || 50
   
+  let countQuery = `SELECT COUNT(*) as total FROM whatsapp_messages wm WHERE 1=1`
   let query = `SELECT wm.*, c.full_name as client_name FROM whatsapp_messages wm LEFT JOIN clients c ON c.id = wm.client_id WHERE 1=1`
   const params: (string | number)[] = []
   
   if (clientId) {
-    query += ' AND wm.client_id = ?'
+    const clause = ' AND wm.client_id = ?'
+    countQuery += clause
+    query += clause
     params.push(clientId)
   }
   
-  query += ' ORDER BY wm.created_at DESC LIMIT ?'
-  params.push(limit)
+  const countRow = db.prepare(countQuery).all(...params)[0] as { total: number } | undefined
+  const total = countRow?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const offset = (safePage - 1) * pageSize
   
-  const stmt = db.prepare(query)
-  const results = stmt.all(...params) as any[]
+  query += ' ORDER BY wm.created_at DESC LIMIT ? OFFSET ?'
   
-  return results.map(r => ({
-    id: r.id,
-    clientId: r.client_id,
-    clientName: r.client_name || '',
-    phone: r.phone,
-    messageType: r.message_type as MessageType,
-    message: r.message,
-    status: r.status as MessageStatus,
-    scheduledFor: r.scheduled_for,
-    sentAt: r.sent_at,
-    createdAt: r.created_at
-  }))
+  const results = db.prepare(query).all(...params, pageSize, offset) as any[]
+  
+  return {
+    data: results.map(r => ({
+      id: r.id,
+      clientId: r.client_id,
+      clientName: r.client_name || '',
+      phone: r.phone,
+      messageType: r.message_type as MessageType,
+      message: r.message,
+      status: r.status as MessageStatus,
+      scheduledFor: r.scheduled_for,
+      sentAt: r.sent_at,
+      createdAt: r.created_at
+    })),
+    total,
+    page: safePage,
+    totalPages
+  }
 }

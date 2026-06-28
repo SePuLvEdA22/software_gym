@@ -209,12 +209,12 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--color-primary)',
+          backgroundColor: 'var(--color-primary-container)',
           border: 'none',
           borderRadius: 10,
           fontSize: 20,
           fontWeight: 700,
-          color: 'var(--color-on-primary)',
+          color: 'var(--color-on-primary-container)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           opacity: disabled ? 0.5 : 1,
           transition: 'all 0.1s ease',
@@ -222,14 +222,12 @@ function AccessNumpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
         }}
         onMouseEnter={(e) => {
           if (!disabled) {
-            e.currentTarget.style.backgroundColor = 'var(--color-primary)'
             e.currentTarget.style.filter = 'brightness(1.15)'
             e.currentTarget.style.transform = 'scale(1.01)'
           }
         }}
         onMouseLeave={(e) => {
           if (!disabled) {
-            e.currentTarget.style.backgroundColor = 'var(--color-primary)'
             e.currentTarget.style.filter = 'none'
             e.currentTarget.style.transform = 'scale(1)'
           }

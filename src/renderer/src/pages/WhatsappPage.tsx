@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Icons } from '@/components/Icons'
+import { Pagination } from '@/components/Pagination'
 import { WhatsappMessage, MessageType, MessageStatus } from '../../../shared/types'
 import { format, parseISO } from 'date-fns'
 
@@ -27,21 +28,29 @@ export function WhatsappPage(): JSX.Element {
   const [messages, setMessages] = useState<WhatsappMessage[]>([])
   const [filterType, setFilterType] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pageSize] = useState(50)
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (p?: number) => {
     try {
-      const result = await window.electronAPI.whatsapp.getHistory()
+      const result = await window.electronAPI.whatsapp.getHistory({ page: p || page, pageSize })
       if (result.success && result.data) {
-        setMessages(result.data as WhatsappMessage[])
+        setMessages(result.data.data)
+        setTotalPages(result.data.totalPages)
       }
     } catch (e) {
       console.error('Error loading WhatsApp history:', e)
     }
-  }, [])
+  }, [page, pageSize])
 
   useEffect(() => {
     loadMessages()
   }, [loadMessages])
+
+  useEffect(() => {
+    loadMessages(1)
+  }, [filterType, filterStatus])
 
   const filtered = messages.filter(m => {
     if (filterType !== 'all' && m.messageType !== filterType) return false
@@ -98,7 +107,7 @@ export function WhatsappPage(): JSX.Element {
               <option value="failed">Fallidos</option>
               <option value="pending">Pendientes</option>
             </select>
-            <button className="btn btn-secondary btn-sm" onClick={loadMessages}>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setPage(1); loadMessages(1) }}>
               <Icons.Refresh />
             </button>
           </div>
@@ -137,6 +146,7 @@ export function WhatsappPage(): JSX.Element {
               )}
             </tbody>
           </table>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
         </div>
       </div>
     </div>

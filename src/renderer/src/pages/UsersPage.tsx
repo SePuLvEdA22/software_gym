@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { User, UserRole, ChangeLog } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
+import { Pagination } from '@/components/Pagination'
 
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -178,16 +179,35 @@ export function UsersPage(): JSX.Element {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [tab, setTab] = useState<'users' | 'logs'>('users')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [logPage, setLogPage] = useState(1)
+  const [logTotalPages, setLogTotalPages] = useState(1)
+  const [pageSize] = useState(50)
 
   const loadUsers = async () => {
-    const result = await window.electronAPI.user.getAll()
-    if (result.success) setUsers(result.data)
+    const result = await window.electronAPI.user.getAll({ page, pageSize })
+    if (result.success && result.data) {
+      setUsers(result.data.data)
+      setTotalPages(result.data.totalPages)
+    }
   }
 
   const loadLogs = async () => {
-    const result = await window.electronAPI.user.getChangeLogs(50)
-    if (result.success) setChangeLogs(result.data)
+    const result = await window.electronAPI.user.getChangeLogs({ page: logPage, pageSize })
+    if (result.success && result.data) {
+      setChangeLogs(result.data.data)
+      setLogTotalPages(result.data.totalPages)
+    }
   }
+
+  useEffect(() => {
+    loadUsers()
+  }, [page])
+
+  useEffect(() => {
+    loadLogs()
+  }, [logPage])
 
   useEffect(() => {
     loadUsers()
@@ -240,7 +260,7 @@ export function UsersPage(): JSX.Element {
           onClick={() => setTab('users')}>Usuarios</button>
         <button className={`btn ${tab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: '0 8px 8px 0' }}
-          onClick={() => { setTab('logs'); loadLogs() }}>Historial de Cambios</button>
+          onClick={() => { setTab('logs'); setLogPage(1); loadLogs() }}>Historial de Cambios</button>
       </div>
 
       {tab === 'users' && (
@@ -307,8 +327,9 @@ export function UsersPage(): JSX.Element {
               </tbody>
             </table>
           </div>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
         </div>
-        </>
+      </>
       )}
 
       {tab === 'logs' && (
@@ -348,6 +369,7 @@ export function UsersPage(): JSX.Element {
               </tbody>
             </table>
           </div>
+          <Pagination page={logPage} totalPages={logTotalPages} onPageChange={setLogPage} size="sm" />
         </div>
       )}
 
@@ -355,7 +377,7 @@ export function UsersPage(): JSX.Element {
         <UserForm
           user={editingUser}
           onClose={() => { setShowForm(false); setEditingUser(null) }}
-          onSave={() => { setShowForm(false); setEditingUser(null); loadUsers(); loadLogs() }}
+          onSave={() => { setShowForm(false); setEditingUser(null); loadUsers(); setLogPage(1); loadLogs() }}
         />
       )}
     </div>

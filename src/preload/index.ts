@@ -155,8 +155,8 @@ const electronAPI = {
   },
 
   user: {
-    getAll: (): Promise<IpcResult<User[]>> =>
-      ipcRenderer.invoke('user:getAll'),
+    getAll: (options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<User>>> =>
+      ipcRenderer.invoke('user:getAll', options),
     getById: (id: string): Promise<IpcResult<User | null>> =>
       ipcRenderer.invoke('user:getById', id),
     create: (data: { username: string; fullName: string; password: string; role: UserRole; permissions?: string[] }): Promise<IpcResult<{ user: User }>> =>
@@ -165,8 +165,8 @@ const electronAPI = {
       ipcRenderer.invoke('user:update', id, data),
     delete: (id: string): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('user:delete', id),
-    getChangeLogs: (limit?: number, tableName?: string): Promise<IpcResult<ChangeLog[]>> =>
-      ipcRenderer.invoke('user:getChangeLogs', limit, tableName)
+    getChangeLogs: (options?: { page?: number; pageSize?: number; tableName?: string }): Promise<IpcResult<PageResponse<ChangeLog>>> =>
+      ipcRenderer.invoke('user:getChangeLogs', options)
   },
 
   door: {
@@ -191,8 +191,8 @@ const electronAPI = {
       ipcRenderer.invoke('whatsapp:sendWelcome', clientId),
     sendPaymentConfirmation: (clientId: string, planName: string, endDate: string): Promise<IpcResult<{ success: boolean }>> =>
       ipcRenderer.invoke('whatsapp:sendPaymentConfirmation', clientId, planName, endDate),
-    getHistory: (clientId?: string, limit?: number): Promise<IpcResult<WhatsappMessage[]>> =>
-      ipcRenderer.invoke('whatsapp:getHistory', clientId, limit),
+    getHistory: (options?: { clientId?: string; page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<WhatsappMessage>>> =>
+      ipcRenderer.invoke('whatsapp:getHistory', options),
     checkReminders: (): Promise<IpcResult<{ sent: number }>> =>
       ipcRenderer.invoke('whatsapp:checkReminders')
   },
@@ -283,10 +283,22 @@ const electronAPI = {
       ipcRenderer.invoke('window:close-kiosk'),
     getKioskStatus: (): Promise<IpcResult<{ isOpen: boolean }>> =>
       ipcRenderer.invoke('window:kiosk-status'),
+    openClientForm: (clientId?: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:open-client-form', clientId),
+    notifyClientFormSaved: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:notify-client-form-saved'),
     minimize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:minimize-admin'),
     maximize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:maximize-admin')
+  },
+
+  clientForm: {
+    onSaved: (callback: () => void): () => void => {
+      const handler = () => callback()
+      ipcRenderer.on('clientForm:saved', handler)
+      return () => ipcRenderer.removeListener('clientForm:saved', handler)
+    }
   },
 
   update: {

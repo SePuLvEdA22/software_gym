@@ -13,15 +13,21 @@ export function MessagesPage(): JSX.Element {
   const [searchQuery, setSearchQuery] = useState('')
   const [templateSearch, setTemplateSearch] = useState('')
   const [form, setForm] = useState({ name: '', type: 'whatsapp' as 'email' | 'whatsapp', subject: '', content: '', variables: '' })
+  const [clientPage, setClientPage] = useState(1)
+  const [clientTotalPages, setClientTotalPages] = useState(1)
+  const [clientPageSize] = useState(50)
 
   const loadTemplates = async () => {
     const r = await window.electronAPI.messageTemplates.getAll()
     if (r.success) setTemplates(r.data)
   }
 
-  const loadClients = async () => {
-    const r = await window.electronAPI.client.getAll({ page: 1, pageSize: 1000 })
-    if (r.success) setClients(r.data.data)
+  const loadClients = async (p?: number) => {
+    const r = await window.electronAPI.client.getAll({ page: p || clientPage, pageSize: clientPageSize })
+    if (r.success && r.data) {
+      setClients(r.data.data)
+      setClientTotalPages(r.data.totalPages)
+    }
   }
 
   useEffect(() => { loadTemplates(); loadClients() }, [])
@@ -128,10 +134,10 @@ export function MessagesPage(): JSX.Element {
               <div className="search-box" style={{ marginBottom: 12 }}>
                 <Icons.Search />
                 <input type="text" placeholder="Buscar cliente..."
-                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setClientPage(1); loadClients(1) }} />
               </div>
               <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                {filteredClients.slice(0, 20).map(c => (
+                {filteredClients.map(c => (
                   <div key={c.id}
                     style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: 6, marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}
                     onClick={() => setSendModal({ ...sendModal, client: c, all: false })}
@@ -142,7 +148,23 @@ export function MessagesPage(): JSX.Element {
                     <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{c.phone}</span>
                   </div>
                 ))}
+                {filteredClients.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: 16, color: 'var(--color-secondary)' }}>
+                    No se encontraron clientes
+                  </div>
+                )}
               </div>
+              {clientTotalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12 }}>
+                  <button className="btn btn-secondary btn-sm" disabled={clientPage <= 1}
+                    onClick={() => { setClientPage(p => p - 1); loadClients(clientPage - 1) }}>Anterior</button>
+                  <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                    Pág. {clientPage} de {clientTotalPages}
+                  </span>
+                  <button className="btn btn-secondary btn-sm" disabled={clientPage >= clientTotalPages}
+                    onClick={() => { setClientPage(p => p + 1); loadClients(clientPage + 1) }}>Siguiente</button>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setSendModal(null)}>Cancelar</button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { Pagination } from '@/components/Pagination'
 import { AccessLog, AccessResult } from '../../../shared/types'
 import { format, parseISO, startOfDay, endOfDay, startOfMonth } from 'date-fns'
 
@@ -252,32 +253,7 @@ export function LogsPage(): JSX.Element {
               </table>
             </div>
           )}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 }}>
-              <button className="btn btn-secondary btn-sm"
-                disabled={page <= 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}>
-                Anterior
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
-                .map((p, idx, arr) => (
-                  <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {idx > 0 && arr[idx - 1] !== p - 1 && <span style={{ color: 'var(--color-secondary)' }}>...</span>}
-                    <button className={`btn ${p === page ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-                      onClick={() => setPage(p)}
-                      style={{ minWidth: 36, padding: '4px 8px' }}>
-                      {p}
-                    </button>
-                  </span>
-                ))}
-              <button className="btn btn-secondary btn-sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-                Siguiente
-              </button>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
         </div>
       </div>
     </div>

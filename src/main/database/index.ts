@@ -322,24 +322,6 @@ function runMigrations(db: SqlJsDatabase): void {
     {
       name: '006_seed_default_data',
       run: (db) => {
-        const count = (db.prepare('SELECT COUNT(*) as count FROM membership_plans').get() as { count: number })?.count ?? 0
-        if (count > 0) return
-
-        const insertPlan = db.prepare(`
-          INSERT INTO membership_plans (id, name, type, price, duration_days, description)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `)
-        const plans = [
-          ['plan_diario', 'Diario', 'daily', 15000, 1, 'Acceso por un día'],
-          ['plan_semanal', 'Semanal', 'weekly', 60000, 7, 'Acceso por una semana'],
-          ['plan_15dias', '15 Días', 'biweekly', 100000, 15, 'Acceso por 15 días'],
-          ['plan_mensual', 'Mensual', 'monthly', 180000, 30, 'Acceso por un mes'],
-          ['plan_trimestral', 'Trimestral', 'quarterly', 480000, 90, 'Acceso por 3 meses'],
-          ['plan_semestral', 'Semestral', 'semiannual', 900000, 180, 'Acceso por 6 meses'],
-          ['plan_anual', 'Anual', 'annual', 1600000, 365, 'Acceso por un año']
-        ]
-        for (const plan of plans) insertPlan.run(...plan)
-
         const insertSettings = db.prepare(`
           INSERT INTO settings (key, value) VALUES (?, ?)
           ON CONFLICT(key) DO UPDATE SET value = excluded.value
