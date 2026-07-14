@@ -50,7 +50,10 @@ export function LogsPage(): JSX.Element {
     deniedNotFound: 0
   })
 
+  const [loading, setLoading] = useState(true)
+
   const loadLogs = async () => {
+    setLoading(true)
     const resultParam = filterResult === 'all' ? undefined : filterResult
     const options = { page, pageSize, result: resultParam }
     
@@ -87,10 +90,10 @@ export function LogsPage(): JSX.Element {
       setTotalPages(result.data.totalPages)
       setLogs(logsData)
       
-      const granted = logsData.filter(l => l.result === 'granted').length
-      const deniedExpired = logsData.filter(l => l.result === 'denied_expired').length
-      const deniedInactive = logsData.filter(l => l.result === 'denied_inactive').length
-      const deniedNotFound = logsData.filter(l => l.result === 'denied_not_found').length
+      const granted = logsData.filter((l: AccessLog) => l.result === 'granted').length
+      const deniedExpired = logsData.filter((l: AccessLog) => l.result === 'denied_expired').length
+      const deniedInactive = logsData.filter((l: AccessLog) => l.result === 'denied_inactive').length
+      const deniedNotFound = logsData.filter((l: AccessLog) => l.result === 'denied_not_found').length
       
       setStats({
         total: logsData.length,
@@ -101,6 +104,7 @@ export function LogsPage(): JSX.Element {
         deniedNotFound
       })
     }
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -112,6 +116,17 @@ export function LogsPage(): JSX.Element {
     const interval = setInterval(loadLogs, 10000)
     return () => clearInterval(interval)
   }, [filterResult, dateRange, page])
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" />
+          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>Cargando historial de accesos...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

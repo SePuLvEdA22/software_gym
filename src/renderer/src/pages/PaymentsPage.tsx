@@ -60,7 +60,10 @@ export function PaymentsPage(): JSX.Element {
     byMethod: {} as { [key: string]: number }
   })
 
+  const [loading, setLoading] = useState(true)
+
   const loadPayments = async () => {
+    setLoading(true)
     let startDate: Date
     let endDate: Date
 
@@ -95,8 +98,8 @@ export function PaymentsPage(): JSX.Element {
       setTotalPages(result.data.totalPages)
       setPayments(paymentsData)
 
-      const total = paymentsData.reduce((sum, p) => sum + p.amount, 0)
-      const totalDiscount = paymentsData.reduce((sum, p) => sum + (p.discount || 0), 0)
+      const total = paymentsData.reduce((sum: number, p: Payment) => sum + p.amount, 0)
+      const totalDiscount = paymentsData.reduce((sum: number, p: Payment) => sum + (p.discount || 0), 0)
       const byMethod: { [key: string]: number } = {}
 
       for (const payment of paymentsData) {
@@ -123,6 +126,7 @@ export function PaymentsPage(): JSX.Element {
     if (timeResult.success && timeResult.data) {
       setRevenueByTime(timeResult.data)
     }
+    setLoading(false)
   }
 
   useEffect(() => {
@@ -132,6 +136,17 @@ export function PaymentsPage(): JSX.Element {
   useEffect(() => {
     loadPayments()
   }, [filterMethod, dateRange, selectedYear, page])
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" />
+          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>Cargando pagos...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

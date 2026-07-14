@@ -268,81 +268,33 @@ export function SettingsPage(): JSX.Element {
   }
 
   const handleOpenKiosk = async () => {
-    console.log('[SettingsPage] handleOpenKiosk called')
-    console.log('[SettingsPage] window:', window)
-    console.log('[SettingsPage] electronAPI exists?', 'electronAPI' in window)
-    
     try {
       const isElectron = typeof window !== 'undefined' && 
                          'electronAPI' in window && 
                          window.electronAPI !== undefined &&
                          typeof window.electronAPI.window === 'object'
       
-      console.log('[SettingsPage] isElectron:', isElectron)
-      
       if (!isElectron) {
-        let debugInfo = ''
-        debugInfo += `typeof window: ${typeof window}\n`
-        debugInfo += `'electronAPI' in window: ${'electronAPI' in window}\n`
-        if ('electronAPI' in window) {
-          debugInfo += `window.electronAPI: ${window.electronAPI}\n`
-          debugInfo += `typeof window.electronAPI: ${typeof window.electronAPI}\n`
-          if (window.electronAPI) {
-            debugInfo += `window.electronAPI keys: ${Object.keys(window.electronAPI)}\n`
-          }
-        }
-        console.log('[SettingsPage] Debug info:', debugInfo)
-        
-         alert(
-           '⚠️ CONTEXTO INVALIDO\n\n' +
-           'Esta funcionalidad solo funciona dentro de la ventana de Electron.\n\n' +
-           'COMO SABER SI ESTAS EN ELECTRON:\n' +
-           '- La ventana debería tener título "BodyFitGym - Panel Administrativo"\n' +
-           '- No deberías ver la barra de URL del navegador\n\n' +
-           'Si estas viendo esto en Chrome/Edge/Firefox:\n' +
-           '1. Cierra esta pestaña\n' +
-           '2. Mira la TERMINAL donde ejecutaste npm run dev\n' +
-           '3. Electron abrió una ventana NUEVA - usa esa.\n\n' +
-           `[Debug Info]\n${debugInfo}`
-         )
+        showToast('error', 'Esta funcionalidad solo funciona dentro de la ventana de Electron. Asegúrate de estar usando la ventana nativa, no el navegador.', 'Contexto Inválido')
         return
       }
       
-      console.log('[SettingsPage] Calling openKiosk...')
       const result = await window.electronAPI.window.openKiosk()
-      console.log('[SettingsPage] openKiosk result:', result)
       
       if (result.success) {
         setKioskOpen(true)
-         alert(
-           '✅ KIOSCO ABIERTO!\n\n' +
-           'Si tienes 2 MONITORES:\n' +
-           '  → Mira el segundo monitor (deberia estar en pantalla completa)\n\n' +
-           'Si tienes 1 MONITOR:\n' +
-           '  → Busca la ventana nueva con título "BodyFitGym Kiosco"\n\n' +
-           'Para volver al panel admin:\n' +
-           '  → Presiona la tecla "A" en el kiosco para mostrar el botón de admin'
-         )
+        showToast('success', 
+          'Kiosco abierto correctamente. ' +
+          (result.data?.alreadyOpen ? 'Ya estaba abierto.' : '') +
+          ' Si tienes 2 monitores, mira el segundo. ' +
+          'Si tienes 1 monitor, busca la ventana "BodyFitGym Kiosco". ' +
+          'Presiona "A" en el kiosco para mostrar el botón de admin.',
+          'Kiosco Abierto')
        } else {
          showToast('error', result.error || 'No se pudo abrir el kiosco. Mira la terminal para detalles.', 'Error')
        }
     } catch (error: any) {
-      console.error('[SettingsPage] Exception in handleOpenKiosk:', error)
-      console.error('[SettingsPage] error.message:', error?.message)
-      console.error('[SettingsPage] error.stack:', error?.stack)
-      
-      let errorMsg = 'Error inesperado'
-      if (error?.message) errorMsg = error.message
-      if (error?.code) errorMsg = `${errorMsg} (code: ${error.code})`
-      
-      alert(
-        `❌ EXCEPCION CAPTURADA\n\n` +
-        `Mensaje: ${errorMsg}\n\n` +
-        `Asegurate de:\n` +
-        `1. Estar usando la ventana de Electron (no el navegador)\n` +
-        `2. Tener npm run dev ejecutandose\n\n` +
-        `Mira la TERMINAL para logs completos.`
-      )
+      showToast('error', `Error inesperado: ${error?.message || 'desconocido'}. Asegúrate de estar en la ventana de Electron con npm run dev ejecutándose.`, 'Error')
     }
   }
 

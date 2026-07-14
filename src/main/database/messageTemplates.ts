@@ -1,29 +1,40 @@
 import { getDatabase } from './index'
 import { MessageTemplate } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
+import { sendMessage } from '../whatsapp/index'
 
-export function getTemplates(): MessageTemplate[] {
-  const db = getDatabase()
-  const rows = db.prepare('SELECT * FROM message_templates ORDER BY name ASC').all() as any[]
-  return rows.map(mapTemplate)
+interface DbMessageTemplate {
+  id: string
+  name: string
+  type: string
+  subject: string
+  content: string
+  variables: string
+  created_at: string
 }
 
-export function getTemplateById(id: string): MessageTemplate | null {
-  const db = getDatabase()
-  const row = db.prepare('SELECT * FROM message_templates WHERE id = ?').get(id) as any
-  return row ? mapTemplate(row) : null
-}
-
-function mapTemplate(r: any): MessageTemplate {
+function mapTemplate(r: DbMessageTemplate): MessageTemplate {
   return {
     id: r.id,
     name: r.name,
-    type: r.type,
+    type: r.type as 'email' | 'whatsapp',
     subject: r.subject || '',
     content: r.content,
     variables: r.variables ? JSON.parse(r.variables) : [],
     createdAt: r.created_at
   }
+}
+
+export function getTemplates(): MessageTemplate[] {
+  const db = getDatabase()
+  const rows = db.prepare('SELECT * FROM message_templates ORDER BY name ASC').all() as Record<string, unknown>[]
+  return rows.map((r) => mapTemplate(r as unknown as DbMessageTemplate))
+}
+
+export function getTemplateById(id: string): MessageTemplate | null {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM message_templates WHERE id = ?').get(id) as Record<string, unknown> | undefined
+  return row ? mapTemplate(row as unknown as DbMessageTemplate) : null
 }
 
 export function createTemplate(data: { name: string; type: 'email' | 'whatsapp'; subject: string; content: string; variables: string[] }): MessageTemplate {
@@ -50,6 +61,15 @@ export function deleteTemplate(id: string): boolean {
   return r.changes > 0
 }
 
+interface ClientWithPlan {
+  id: string
+  full_name: string
+  document_id: string
+  phone: string
+  plan_name: string | null
+  plan_end: string | null
+}
+
 function resolveVariables(content: string, client: { fullName: string; documentId: string; phone: string; planName?: string; planEnd?: string }): string {
   return content
     .replace(/\{\{nombre\}\}/g, client.fullName)
@@ -69,13 +89,13 @@ export function sendTemplateToClient(templateId: string, clientId: string): { se
   if (!template) return { sent: false, message: 'Plantilla no encontrada' }
 
   const db = getDatabase()
-  // try to get client with plan info
   const client = db.prepare(`
-    SELECT c.id, c.full_name, c.document_id, c.phone, p.name as plan_name, cp.end_date as plan_end
-    FROM clients c LEFT JOIN client_plans cp ON cp.client_id = c.id AND cp.is_active = 1
-    LEFT JOIN plans p ON p.id = cp.plan_id
-    WHERE c.id = ? AND c.is_active = 1
-  `).get(clientId) as any
+    SELECT c.id, c.full_name, c.document_id, c.phone,
+           m.plan_name, m.end_date as plan_end
+    FROM clients c
+    LEFT JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
+    WHERE c.id = ? AND c.status = 'active'
+  `).get(clientId) as ClientWithPlan | undefined
 
   if (!client) return { sent: false, message: 'Cliente no encontrado o inactivo' }
 
@@ -83,24 +103,17 @@ export function sendTemplateToClient(templateId: string, clientId: string): { se
     fullName: client.full_name,
     documentId: client.document_id,
     phone: client.phone,
-    planName: client.plan_name,
-    planEnd: client.plan_end
+    planName: client.plan_name || undefined,
+    planEnd: client.plan_end || undefined
   })
 
-  // Get the WhatsApp provider from settings and send
   try {
-    const settings = db.prepare('SELECT value FROM settings WHERE key = ?').get('whatsapp_default_provider') as any
-    const provider = settings?.value || 'mock'
-
     if (template.type === 'whatsapp') {
-      if (provider === 'mock') {
-        console.log(`[MOCK WA] Sending to ${client.phone}: ${message}`)
-      } else {
-        // Real provider integration would go here
-        console.log(`[${provider}] Sending to ${client.phone}: ${message}`)
-      }
-    } else {
-      console.log(`[EMAIL] Sending to ${client.phone}: ${template.subject} - ${message}`)
+      sendMessage(clientId, client.phone, 'welcome', message)
+        .catch((err: unknown) => console.error('[Templates] Error sending WhatsApp:', err))
+    }
+    if (template.type === 'email') {
+      console.log(`[EMAIL] To: ${client.phone} | Subject: ${template.subject} | Message: ${message}`)
     }
 
     return { sent: true }
@@ -112,8 +125,8 @@ export function sendTemplateToClient(templateId: string, clientId: string): { se
 export function sendTemplateToAll(templateId: string): { sent: number; failed: number } {
   const db = getDatabase()
   const activeClients = db.prepare(`
-    SELECT id FROM clients WHERE is_active = 1
-  `).all() as any[]
+    SELECT id FROM clients WHERE status = 'active'
+  `).all() as { id: string }[]
 
   let sent = 0
   let failed = 0

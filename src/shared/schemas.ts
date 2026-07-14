@@ -64,6 +64,26 @@ export const RecordPaymentSchema = z.object({
   discount: z.number().min(0).optional(),
 })
 
+export const RoutineExerciseSchema = z.object({
+  name: z.string().min(1, 'Nombre del ejercicio requerido').max(200),
+  sets: z.number().int().positive('Series debe ser positivo'),
+  reps: z.string().min(1, 'Repeticiones requeridas').max(50),
+  notes: z.string().max(500).optional(),
+})
+
+export const SaveRoutineSchema = z.object({
+  clientId: z.string().uuid(),
+  dayOfWeek: z.number().int().min(0).max(6),
+  exercises: z.array(RoutineExerciseSchema),
+})
+
+export const GymSettingsSchema = z.object({
+  name: z.string().min(1, 'Nombre del gimnasio requerido').max(200),
+  address: z.string().max(500).optional(),
+  phone: z.string().max(50).optional(),
+  welcomeMessage: z.string().max(500).optional(),
+})
+
 export const PageRequestSchema = z.object({
   page: z.number().int().positive().optional(),
   pageSize: z.number().int().min(1).max(500).optional(),
