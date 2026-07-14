@@ -180,7 +180,7 @@ export function ClientFormPage(): JSX.Element {
           <div style={{
             width: 40, height: 40, margin: '0 auto',
             border: '4px solid rgba(255,107,0,0.2)',
-            borderTopColor: '#ff6b00', borderRadius: '50%',
+            borderTopColor: 'var(--color-primary-container)', borderRadius: '50%',
             animation: 'spin 1s linear infinite'
           }} />
           <p style={{ marginTop: 16, color: 'var(--color-secondary)' }}>Cargando...</p>
@@ -288,16 +288,6 @@ export function ClientFormPage(): JSX.Element {
                   <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
                     El cliente usará este código para ingresar al gimnasio. Máximo 20 dígitos.
                   </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Estado</label>
-                  <select className="form-select"
-                    value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as ClientStatus }))}>
-                    <option value="active">Activo</option>
-                    <option value="inactive">Inactivo</option>
-                    <option value="suspended">Suspendido</option>
-                  </select>
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import { User, UserRole, ChangeLog } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
+import { format, parseISO } from 'date-fns'
 
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -303,7 +304,7 @@ export function UsersPage(): JSX.Element {
                         : <span className="badge badge-error">Inactivo</span>}
                     </td>
                     <td style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
-                      {user.lastLogin ? new Date(user.lastLogin).toLocaleString('es-CO') : 'Nunca'}
+                      {user.lastLogin ? format(parseISO(user.lastLogin), 'dd/MM/yyyy HH:mm') : 'Nunca'}
                     </td>
                     <td>
                       <div className="table-actions">
@@ -348,7 +349,7 @@ export function UsersPage(): JSX.Element {
               <tbody>
                 {changeLogs.map(log => (
                   <tr key={log.id}>
-                    <td style={{ fontSize: 13 }}>{new Date(log.timestamp).toLocaleString('es-CO')}</td>
+                    <td style={{ fontSize: 13 }}>{format(parseISO(log.timestamp), 'dd/MM/yyyy HH:mm')}</td>
                     <td>{log.userName}</td>
                     <td>{tableLabels[log.tableName] || log.tableName}</td>
                     <td>

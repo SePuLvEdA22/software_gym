@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITAN GYM - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed": "#002106",
+                        "on-tertiary": "#003910",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#ffbc7c",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "surface": "#131313",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-container": "#00a73e",
+                        "secondary-container": "#fe9400",
+                        "tertiary": "#47e266",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#4b2800",
+                        "on-primary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#313030",
+                        "outline": "#8b90a0",
+                        "surface-dim": "#131313",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-container": "#00285c",
+                        "outline-variant": "#414755",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#633700",
+                        "on-primary": "#002e69",
+                        "background": "#131313",
+                        "on-tertiary-container": "#00320d",
+                        "on-background": "#e5e2e1",
+                        "tertiary-fixed-dim": "#47e266",
+                        "primary-fixed-dim": "#adc6ff",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "tertiary-fixed": "#6cff82",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-fixed": "#ffdcbf",
+                        "on-secondary-fixed": "#2d1600"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "unit": "8px",
+                        "touch-target-min": "56px",
+                        "gutter": "24px",
+                        "stack-gap": "16px"
+                    },
+                    "fontFamily": {
+                        "label-xl": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glow-hover:hover {
+            box-shadow: 0 4px 20px rgba(173, 198, 255, 0.3);
+        }
+        .active-glow {
+            box-shadow: 0 4px 20px rgba(173, 198, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden min-h-screen">
+<!-- SideNavBar (Shared Component) -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 bg-surface-container-high dark:bg-surface-container-high shadow-sm flex flex-col h-full py-unit px-4 z-50">
+<!-- Header -->
+<div class="flex items-center gap-4 mb-8 pt-4">
+<div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="fitness_center">fitness_center</span>
+</div>
+<div>
+<h1 class="font-display-lg text-headline-md font-black tracking-tighter text-primary dark:text-primary leading-none">TITAN GYM</h1>
+<p class="font-label-md text-label-md text-on-surface-variant text-[10px] mt-1 uppercase tracking-widest">Elite Performance</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Members</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-md text-label-md">Classes</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-touch-target-min rounded-lg text-primary font-bold border-r-4 border-primary bg-primary/10 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</div>
+<!-- CTA -->
+<button class="w-full h-touch-target-min bg-primary text-on-primary font-label-md text-label-md rounded-lg mt-4 mb-8 glow-hover active:scale-95 transition-all font-bold">
+            New Check-in
+        </button>
+<!-- Footer Tabs -->
+<div class="mt-auto border-t border-surface-variant pt-4 pb-4 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Log Out</span>
+</a>
+</div>
+</nav>
+<!-- TopAppBar (Shared Component) -->
+<header class="bg-surface dark:bg-surface flex justify-between items-center h-touch-target-min ml-64 px-container-padding w-[calc(100%-16rem)] docked full-width top-0 z-40 relative">
+<div class="flex items-center gap-4 text-on-surface-variant focus-within:ring-2 focus-within:ring-primary rounded-lg px-2 bg-surface-container">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant w-64 h-10 font-body-md" placeholder="Search settings..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-opacity bg-surface-container hover:bg-surface-container-highest">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-opacity bg-surface-container hover:bg-surface-container-highest">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-opacity bg-surface-container hover:bg-surface-container-highest">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 mt-8 px-container-padding pb-container-padding">
+<div class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">System Settings</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage global configurations, roles, and facility details.</p>
+</div>
+<!-- Settings Layout: Grid (Sidebar + Main Pane) -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Settings Navigation Sidebar (Inner) -->
+<aside class="col-span-3">
+<div class="glass-panel rounded-xl p-4 flex flex-col gap-2">
+<button class="flex items-center justify-between w-full p-4 rounded-lg bg-primary/10 text-primary border-l-4 border-primary text-left transition-colors active-glow">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="card_membership" style="font-variation-settings: 'FILL' 1;">card_membership</span>
+<span class="font-label-md text-label-md font-bold">Membership Plans</span>
+</div>
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 rounded-lg text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface text-left transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="badge">badge</span>
+<span class="font-label-md text-label-md font-medium">Staff &amp; Roles</span>
+</div>
+</button>
+<button class="flex items-center justify-between w-full p-4 rounded-lg text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface text-left transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="font-label-md text-label-md font-medium">Facility Info</span>
+</div>
+</button>
+<button class="flex items-center justify-between w-full p-4 rounded-lg text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface text-left transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="palette">palette</span>
+<span class="font-label-md text-label-md font-medium">Branding</span>
+</div>
+</button>
+<button class="flex items-center justify-between w-full p-4 rounded-lg text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface text-left transition-colors mt-8 border-t border-surface-variant pt-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="developer_board">developer_board</span>
+<span class="font-label-md text-label-md font-medium">Hardware Integration</span>
+</div>
+</button>
+</div>
+</aside>
+<!-- Active Settings Pane (Membership Plans) -->
+<div class="col-span-9">
+<div class="glass-panel rounded-xl p-8 min-h-[600px]">
+<div class="flex justify-between items-center mb-8 border-b border-surface-variant pb-4">
+<div>
+<h3 class="font-label-xl text-label-xl text-on-surface">Active Membership Tiers</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Configure pricing and access levels for gym members.</p>
+</div>
+<button class="h-touch-target-min px-6 bg-primary text-on-primary font-label-md text-label-md font-bold rounded-lg flex items-center gap-2 glow-hover transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                            Create Plan
+                        </button>
+</div>
+<!-- Bento Grid for Plans -->
+<div class="grid grid-cols-2 gap-stack-gap">
+<!-- Plan Card 1 -->
+<div class="bg-surface-container rounded-xl p-6 border border-surface-variant relative overflow-hidden group">
+<!-- Subtle primary glow accent -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-primary/10 transition-colors"></div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface">Basic Access</h4>
+<div class="font-label-xl text-label-xl text-primary mt-1">$29.99<span class="text-on-surface-variant text-sm font-normal">/mo</span></div>
+</div>
+<span class="bg-surface-container-high px-3 py-1 rounded-full text-xs font-label-md text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Active
+                                </span>
+</div>
+<div class="space-y-2 mb-6">
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="check_circle">check_circle</span>
+                                    Cardio &amp; Weight Room Access
+                                </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="check_circle">check_circle</span>
+                                    Locker Room Use
+                                </div>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-3 bg-surface-container-high hover:bg-surface-variant text-on-surface rounded-lg font-label-md text-label-md transition-colors border border-outline-variant">Edit</button>
+<button class="p-3 bg-surface-container-high hover:bg-error-container/20 hover:text-error text-on-surface-variant rounded-lg transition-colors border border-outline-variant">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Plan Card 2 -->
+<div class="bg-surface-container rounded-xl p-6 border border-primary/30 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-secondary/20 transition-colors"></div>
+<div class="absolute top-0 right-0 bg-primary text-on-primary text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface">Titan Pro</h4>
+<div class="font-label-xl text-label-xl text-secondary mt-1">$59.99<span class="text-on-surface-variant text-sm font-normal">/mo</span></div>
+</div>
+<span class="bg-surface-container-high px-3 py-1 rounded-full text-xs font-label-md text-on-surface flex items-center gap-1 mt-6">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Active
+                                </span>
+</div>
+<div class="space-y-2 mb-6">
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="check_circle">check_circle</span>
+                                    All Basic Access Features
+                                </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="check_circle">check_circle</span>
+                                    Unlimited Group Classes
+                                </div>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="check_circle">check_circle</span>
+                                    1 PT Session / Month
+                                </div>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-3 bg-surface-container-high hover:bg-surface-variant text-on-surface rounded-lg font-label-md text-label-md transition-colors border border-outline-variant">Edit</button>
+<button class="p-3 bg-surface-container-high hover:bg-error-container/20 hover:text-error text-on-surface-variant rounded-lg transition-colors border border-outline-variant">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

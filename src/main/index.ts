@@ -342,6 +342,50 @@ function setupWindowControls(): void {
     }
   })
 
+  ipcMain.handle('window:open-client-payments', async (_, clientId: string) => {
+    try {
+      if (adminWindow && !adminWindow.isDestroyed()) {
+        adminWindow.show()
+        adminWindow.focus()
+        adminWindow.webContents.send('navigate:payments', { clientId })
+      }
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error opening client payments:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
+  ipcMain.handle('window:open-client-renew', async (_, clientId: string) => {
+    try {
+      const wasCreated = !adminWindow || adminWindow.isDestroyed()
+      if (wasCreated) {
+        adminWindow = createAdminWindow()
+      }
+
+      adminWindow.show()
+      adminWindow.focus()
+
+      // Navigate directly via URL hash so it works even if React hasn't mounted yet
+      const navigateJs = `window.location.hash = '#/clients?clientId=${encodeURIComponent(clientId)}&action=renew'`
+
+      if (wasCreated) {
+        // New window: wait for the page to load before navigating
+        adminWindow.webContents.once('did-finish-load', () => {
+          adminWindow!.webContents.executeJavaScript(navigateJs)
+        })
+      } else {
+        // Existing window: navigate immediately
+        adminWindow.webContents.executeJavaScript(navigateJs)
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error opening client renew:', error)
+      return { success: false, error: error.message }
+    }
+  })
+
   ipcMain.handle('window:notify-client-form-saved', async () => {
     try {
       if (adminWindow && !adminWindow.isDestroyed()) {

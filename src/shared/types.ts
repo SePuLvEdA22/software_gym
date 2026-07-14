@@ -124,6 +124,8 @@ export interface AccessValidation {
   membership?: Membership
   message: string
   code: AccessResult
+  debt?: ClientDebt[]
+  routines?: ClientRoutine[]
 }
 
 export interface DashboardMetrics {
@@ -330,6 +332,28 @@ export interface MessageTemplate {
   content: string
   variables: string[]
   createdAt: string
+}
+
+export interface RoutineExercise {
+  name: string
+  sets: number
+  reps: string
+  notes?: string
+}
+
+export interface ClientRoutine {
+  id: string
+  clientId: string
+  dayOfWeek: number
+  exercises: RoutineExercise[]
+  createdAt: string
+}
+
+export interface GymSettings {
+  name: string
+  address: string
+  phone: string
+  welcomeMessage: string
 }
 
 export interface PasswordReset {

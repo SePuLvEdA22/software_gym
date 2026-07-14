@@ -71,7 +71,7 @@ export function WhatsappPage(): JSX.Element {
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Enviados</p>
-          <p className="kpi-value" style={{ color: '#4ade80', fontSize: 28 }}>{sentCount}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>{sentCount}</p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Fallidos</p>
@@ -79,7 +79,7 @@ export function WhatsappPage(): JSX.Element {
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Pendientes</p>
-          <p className="kpi-value" style={{ color: '#fbbf24', fontSize: 28 }}>{pendingCount}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>{pendingCount}</p>
         </div>
       </div>
 

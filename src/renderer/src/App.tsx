@@ -6,8 +6,6 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useAppStore } from '@/store/appStore'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/ClientsPage'
-import { AccessPage } from '@/pages/AccessPage'
-import { MembershipsPage } from '@/pages/MembershipsPage'
 import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -24,9 +22,7 @@ import type { UserRole } from '@shared/types'
 function getPageTitle(pathname: string): string {
   switch (pathname) {
     case '/': return 'Dashboard'
-    case '/clients': return 'Gestión de Clientes'
-    case '/access': return 'Control de Acceso'
-    case '/memberships': return 'Membresías'
+    case '/clients': return 'Clientes y Membresías'
     case '/payments': return 'Pagos'
     case '/logs': return 'Historial de Accesos'
     case '/whatsapp': return 'Notificaciones WhatsApp'
@@ -53,6 +49,17 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
   const setTriggerNewClientModal = useAppStore((s) => s.setTriggerNewClientModal)
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+
+  useEffect(() => {
+    const handleNavigatePayments = (_: any, data: { clientId: string }) => {
+      navigate(`/payments?clientId=${encodeURIComponent(data.clientId)}`)
+    }
+    window.electronAPI?.window?.onNavigatePayments?.(handleNavigatePayments)
+    return () => {
+      const cleanup = window.electronAPI?.window?.onNavigatePayments
+      if (cleanup) cleanup()
+    }
+  }, [navigate])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -104,8 +111,6 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
                 : <DashboardPage />
             } />
             <Route path="/clients" element={<RoleGuard roles={undefined} currentUser={currentUser}><ClientsPage /></RoleGuard>} />
-            <Route path="/access" element={<RoleGuard roles={['admin', 'reception']} currentUser={currentUser}><AccessPage /></RoleGuard>} />
-            <Route path="/memberships" element={<RoleGuard roles={undefined} currentUser={currentUser}><MembershipsPage /></RoleGuard>} />
             <Route path="/payments" element={<RoleGuard roles={['admin', 'reception', 'accounting']} currentUser={currentUser}><PaymentsPage /></RoleGuard>} />
             <Route path="/logs" element={<RoleGuard roles={undefined} currentUser={currentUser}><LogsPage /></RoleGuard>} />
             <Route path="/whatsapp" element={<RoleGuard roles={['admin', 'reception']} currentUser={currentUser}><WhatsappPage /></RoleGuard>} />

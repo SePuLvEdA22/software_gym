@@ -128,7 +128,7 @@ This design system utilizes a "Void and Ignition" palette. The primary surface i
 
 ## Typography
 
-The design system exclusively uses **Montserrat** to maintain a geometric, technical, and modern appearance. The type hierarchy relies on significant weight contrast—heavy bolds for headlines and medium/regular weights for utility text.
+The design system uses **Montserrat** for display, headline, and title roles, and **Inter** for labels and body text. This mixed approach provides geometric, technical impact for headings while maintaining excellent readability for dense data and labels. The type hierarchy relies on significant weight contrast—heavy bolds for headlines and medium/regular weights for utility text.
 
 For "Display" and "Headline" roles, use a tighter letter-spacing to give the text a compact, engineered look. All "Label" roles should be set in uppercase with increased letter-spacing to enhance legibility against dark backgrounds. Ensure all body text uses a high-contrast white or very light gray (#E0E0E0) to maintain WCAG accessibility on the charcoal surfaces.
 
@@ -175,6 +175,18 @@ Cards are flat #1F1F1F containers. They do not use shadows by default. Depth is 
 
 ### Chips & Badges
 Small, high-contrast indicators. For "Active" status, use a solid Orange background. For "Neutral" or "Inactive," use #2D2D2D with white text.
+
+### Semantic Color Tokens (Extended)
+
+Beyond the core palette, the design system defines these semantic tokens for status/feedback:
+
+| Variable | Dark | Light | Usage |
+|----------|------|-------|-------|
+| `--color-info` | `#60a5fa` | `#1565C0` | Informational badges, tooltips |
+| `--color-success` | `#4ade80` | `#2B6B3B` | Success states, active indicators |
+| `--color-warning` | `#fbbf24` | `#C47A0B` | Warnings, expiring soon |
+| `--color-success-container` | `#166534` | `#C8E6C9` | Success badge backgrounds |
+| `--color-warning-container` | `#78350f` | `#FEF3C7` | Warning badge backgrounds |
 
 ### Selection Controls
 Checkboxes and Radio buttons use the Primary Orange for the checked state. The "unselected" state is a simple #333333 outline to remain unobtrusive.

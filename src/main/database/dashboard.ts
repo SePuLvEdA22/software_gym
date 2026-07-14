@@ -1,7 +1,7 @@
 import { getDatabase } from './index'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
 import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
-import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear } from 'date-fns'
+import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear, startOfWeek } from 'date-fns'
 
 export interface DbAccessLog {
   id: string
@@ -14,13 +14,20 @@ export interface DbAccessLog {
   timestamp: string
 }
 
-export function getDashboardMetrics(): DashboardMetrics {
+export function getDashboardMetrics(period?: 'day' | 'week' | 'month'): DashboardMetrics {
   const db = getDatabase()
   const today = new Date()
   const startOfToday = formatISO(startOfDay(today))
   const endOfToday = formatISO(endOfDay(today))
+  const startOfThisWeek = formatISO(startOfWeek(today, { weekStartsOn: 1 }))
   const startOfThisMonth = formatISO(startOfMonth(today))
   const endOfThisMonth = formatISO(endOfMonth(today))
+
+  // Determine revenue range based on period
+  const revenueStart = period === 'week' ? startOfThisWeek : 
+                        period === 'month' ? startOfThisMonth : 
+                        startOfToday
+  const revenueEnd = period === 'month' ? endOfThisMonth : endOfToday
 
   const counts = db.prepare(`
     SELECT status, COUNT(*) as count FROM clients GROUP BY status
@@ -38,17 +45,11 @@ export function getDashboardMetrics(): DashboardMetrics {
   `)
   const newThisMonthResult = newThisMonthStmt.get(startOfThisMonth) as { count: number }
   
-  const todayRevenueStmt = db.prepare(`
+  const periodRevenueStmt = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total FROM payments 
     WHERE date >= ? AND date <= ?
   `)
-  const todayRevenueResult = todayRevenueStmt.get(startOfToday, endOfToday) as { total: number }
-  
-  const monthRevenueStmt = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) as total FROM payments 
-    WHERE date >= ? AND date <= ?
-  `)
-  const monthRevenueResult = monthRevenueStmt.get(startOfThisMonth, endOfThisMonth) as { total: number }
+  const periodRevenueResult = periodRevenueStmt.get(revenueStart, revenueEnd) as { total: number }
   
   const thirtyDaysAgo = formatISO(subMonths(today, 1))
   const topPlansStmt = db.prepare(`
@@ -105,8 +106,8 @@ export function getDashboardMetrics(): DashboardMetrics {
     expiredClients,
     inactiveClients,
     todayAccesses: getTodayAccessCount(),
-    todayRevenue: todayRevenueResult.total,
-    monthRevenue: monthRevenueResult.total,
+    todayRevenue: periodRevenueResult.total,
+    monthRevenue: periodRevenueResult.total,
     newThisMonth: newThisMonthResult.count,
     debtorsCount: debtorsCount.count,
     inactiveClientsCount,

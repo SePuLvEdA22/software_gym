@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITAN GYM - Class Schedule</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed": "#002106",
+                        "on-tertiary": "#003910",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#ffbc7c",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "surface": "#131313",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-container": "#00a73e",
+                        "secondary-container": "#fe9400",
+                        "tertiary": "#47e266",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#4b2800",
+                        "on-primary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#313030",
+                        "outline": "#8b90a0",
+                        "surface-dim": "#131313",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-container": "#00285c",
+                        "outline-variant": "#414755",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#633700",
+                        "on-primary": "#002e69",
+                        "background": "#131313",
+                        "on-tertiary-container": "#00320d",
+                        "on-background": "#e5e2e1",
+                        "tertiary-fixed-dim": "#47e266",
+                        "primary-fixed-dim": "#adc6ff",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "tertiary-fixed": "#6cff82",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-fixed": "#ffdcbf",
+                        "on-secondary-fixed": "#2d1600"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "container-padding": "32px",
+                        "unit": "8px",
+                        "touch-target-min": "56px",
+                        "gutter": "24px",
+                        "stack-gap": "16px"
+                    },
+                    fontFamily: {
+                        "label-xl": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"]
+                    },
+                    fontSize: {
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Subtle glow for interactive elements */
+        .glow-hover:hover {
+            box-shadow: 0 4px 20px rgba(173, 198, 255, 0.3); /* Primary color at 30% */
+        }
+        .glow-active:active {
+            box-shadow: 0 4px 20px rgba(173, 198, 255, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 shadow-sm z-50 flex flex-col h-full py-unit px-4">
+<div class="mb-gutter mt-stack-gap">
+<h1 class="font-display-lg text-headline-md font-black tracking-tighter text-primary dark:text-primary">TITAN GYM</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">Elite Performance</p>
+</div>
+<ul class="flex flex-col gap-unit flex-grow">
+<!-- Inactive -->
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Members</span>
+</a>
+</li>
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+</li>
+<!-- Active: Classes -->
+<li class="rounded-lg overflow-hidden text-primary font-bold border-r-4 border-primary bg-primary/10">
+<a class="flex items-center gap-3 px-4 py-3 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined fill text-primary dark:text-primary">calendar_month</span>
+<span class="font-label-md text-label-md text-primary dark:text-primary">Classes</span>
+</a>
+</li>
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+</li>
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto">
+<button class="w-full bg-primary text-on-primary-container font-label-xl py-3 rounded-lg flex items-center justify-center gap-2 mb-gutter glow-hover transition-all active:scale-95">
+<span class="material-symbols-outlined">add</span>
+                New Check-in
+            </button>
+<ul class="flex flex-col gap-unit border-t border-surface-container-high pt-4">
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</li>
+<li class="rounded-lg overflow-hidden">
+<a class="flex items-center gap-3 px-4 py-2 text-error font-medium hover:bg-surface-container-highest transition-colors duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Log Out</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface docked full-width top-0 flex justify-between items-center h-touch-target-min ml-64 px-container-padding w-[calc(100%-16rem)] sticky z-40">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary rounded-full transition-all">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container text-on-surface pl-12 pr-4 py-2 rounded-full border-none focus:ring-0 font-body-md outline-none" placeholder="Search classes, instructors..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-opacity p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-opacity p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">bolt</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-opacity p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 p-container-padding min-h-screen">
+<!-- Header Actions -->
+<div class="flex justify-between items-end mb-gutter">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2">Class Schedule</h2>
+<p class="font-body-md text-on-surface-variant">Manage weekly classes and instructor assignments.</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface-container-high text-on-surface border border-outline-variant font-label-md px-6 py-3 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">manage_accounts</span>
+                    Manage Instructors
+                </button>
+<button class="bg-primary text-on-primary-container font-label-md px-6 py-3 rounded-lg glow-hover transition-all flex items-center gap-2 font-bold">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    New Class
+                </button>
+</div>
+</div>
+<!-- Calendar Controls -->
+<div class="bg-surface-container rounded-xl p-4 mb-stack-gap flex justify-between items-center border border-surface-container-high shadow-sm">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<span class="font-headline-md text-[20px] font-bold text-on-surface min-w-[200px] text-center">October 23 - 29</span>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container-high text-primary px-4 py-2 rounded-md font-label-md">Week</button>
+<button class="text-on-surface-variant px-4 py-2 rounded-md font-label-md hover:bg-surface-container-high transition-colors">Day</button>
+</div>
+</div>
+<!-- Calendar Grid (Bento style structure) -->
+<div class="grid grid-cols-7 gap-2 h-[800px]">
+<!-- Headers -->
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high">
+<div class="text-on-surface-variant font-label-md">MON</div>
+<div class="text-on-surface font-headline-md text-[24px]">23</div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high">
+<div class="text-on-surface-variant font-label-md">TUE</div>
+<div class="text-on-surface font-headline-md text-[24px]">24</div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high">
+<div class="text-on-surface-variant font-label-md">WED</div>
+<div class="text-on-surface font-headline-md text-[24px] text-primary">25</div>
+<div class="w-1.5 h-1.5 bg-primary rounded-full mx-auto mt-1"></div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high">
+<div class="text-on-surface-variant font-label-md">THU</div>
+<div class="text-on-surface font-headline-md text-[24px]">26</div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high">
+<div class="text-on-surface-variant font-label-md">FRI</div>
+<div class="text-on-surface font-headline-md text-[24px]">27</div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high opacity-50">
+<div class="text-on-surface-variant font-label-md">SAT</div>
+<div class="text-on-surface font-headline-md text-[24px]">28</div>
+</div>
+<div class="col-span-1 text-center py-2 border-b border-surface-container-high opacity-50">
+<div class="text-on-surface-variant font-label-md">SUN</div>
+<div class="text-on-surface font-headline-md text-[24px]">29</div>
+</div>
+<!-- Day Columns -->
+<!-- MON -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative">
+<!-- Time slot markers (background) -->
+<div class="absolute w-full top-10 border-t border-surface-container-low z-0"></div>
+<div class="absolute w-full top-40 border-t border-surface-container-low z-0"></div>
+<!-- Class Card -->
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-primary font-bold">HIIT Blast</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant group-hover:text-primary transition-colors">more_vert</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 06:00 - 07:00
+                    </div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a fit male gym instructor wearing a black tank top, lit by high-contrast gym lighting, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgyBcF2pdPPTBfGP4wD-5IMOf3ICq9UKndjFWYWjQwn5x4FjmYVfAgrkn5RU0GxEbyvfOtsSiWjXayNV12iCTJI3xK_4xMyyMQDIVzZcMx6nS740mb3vBlS96WWUuwG5slVpdgGBKVOOK7VhRe4nFRiuHQyffvokUvu2ArJpuCRjWRufVgIpEPpEm_q79YtO4kgutbKzZtS2wyRMlS92HLqVBvSITXzOmPeyM6MFafKQ8fiMVICLugqRyo3uM-ii9o5jPO4TxMFyQ"/>
+</div>
+<span class="font-body-md text-[13px] text-on-surface">J. Smith</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-primary h-1.5 rounded-full" style="width: 80%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">16/20</span>
+</div>
+</div>
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-tertiary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group mt-10">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-tertiary font-bold">Vinyasa Yoga</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">08:00 - 09:30</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a female yoga instructor looking calm, lit by soft natural light, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTzOkaPg4G-JpzecZuJDC5mZ3qCIHINXp4_QUaWod12GilcpAzNXWGctajnz6f9lIJpVUFh73wtlgGiMfAoPAQ3Jl8f4NK1tCSA4k4-i-w2DZt6a3yAE02PQkepJAz0zl6VwpRz4TaS2jIifye5bN2hBCh-kECbRZNtEaw_F8zuAbAOcr1ZjcjwgH-rT7O0vsq2VSFGAbktwEDIqT5FwaLYSKJjKP3621C5eIQ6mS-BEcJzNhO3lRPqQyBYiHl8-st9JNNBuS7GtQ"/>
+</div>
+<span class="font-body-md text-[13px]">S. Davis</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 100%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">15/15</span>
+</div>
+<span class="absolute top-2 right-2 bg-error text-on-error font-label-md text-[10px] px-1.5 py-0.5 rounded">FULL</span>
+</div>
+</div>
+<!-- TUE -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative">
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-secondary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group mt-[100px]">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-secondary font-bold">CrossFit WOD</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">07:30 - 08:30</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a rugged male crossfit instructor, lit by harsh overhead gym lights, high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgG8byOO8-1eourLMD39ZLgX_bwW0YGBIQi0ZZvgwN8QhfRG8Pcr5nvmq0bTzhnaTkEXO16YKH5u-Pd6bKERqkKbl4bf3x-AXjXsy5E3nupjDzBkHKqYeCFZQkuTYlCT5an3OR5xa7cjGMvn4sIkb62fXgH_qTGR2YU7UC1X50mTB9BpGln35cjCd1KdS5kQ8D2S3S7in-5OY616S8sRLBWHDABh0zvlgnxBNjKYsE6Dxeu71I2hG8zRq2mLw6Jp28zJcMqNYcKe0"/>
+</div>
+<span class="font-body-md text-[13px]">M. Johnson</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-secondary h-1.5 rounded-full" style="width: 40%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">8/20</span>
+</div>
+</div>
+</div>
+<!-- WED (Active Day) -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative bg-surface-container/30">
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-primary font-bold">HIIT Blast</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">06:00 - 07:00</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a fit male gym instructor wearing a black tank top, lit by high-contrast gym lighting, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1vfrMQUhYHkdpf3wEg1AAYgqaSx1YwgsyCMetA1mvn1OG4wMc7z1A57_MhU49xO0ThwrmMqYBUPnrE-Vd-OnKLImeM6f6HnkWOM7kQBuk1mtbRlvVPZOMumrCqSri-Ve4covX7rSR25ToaRsnCFrY_RxE0WnMugMj4cyvaqIN6aZ9bFzGSV0IAOKHWwcUY24nWsDyemQfV5obJibCn67EBjmyKnbV1WyncGqFfeydMDSwFHQLfr_NUORFdzV95aTjVbhL_O71e7U"/>
+</div>
+<span class="font-body-md text-[13px]">J. Smith</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-primary h-1.5 rounded-full" style="width: 90%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">18/20</span>
+</div>
+</div>
+<!-- Current time indicator -->
+<div class="absolute w-full h-[2px] bg-error z-20 mt-[150px] flex items-center">
+<div class="w-2 h-2 rounded-full bg-error -ml-1"></div>
+</div>
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-secondary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group mt-[80px]">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-secondary font-bold">CrossFit WOD</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">12:00 - 13:00</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a rugged male crossfit instructor, lit by harsh overhead gym lights, high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJhtJK2jM23G0tNHv8gyb7lGr-BhiZVOeYKdsMMt1UaET5NwiFSU61hUS4h1i5LAAWTlsJg9jZo3SFJ11KZp02TETm05DHZ80zkuFIPixUFmN5IR_pRP1wuPZZmKKFYXTlnAW9hRBmxIWI1Wfmnb3H_YptP0rYlnH86u8tdRnBz52lSjIXGYihRdyHGagX6eAZS2FdnpFbg1VyHUNCnk7iLAJB0BdQKBanMc7QL-ywEkClMW8gWGYspL-TvX_WhjR5VlGgsr_aH8Y"/>
+</div>
+<span class="font-body-md text-[13px]">M. Johnson</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-secondary h-1.5 rounded-full" style="width: 20%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">4/20</span>
+</div>
+</div>
+</div>
+<!-- THU -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative">
+<!-- Empty day representation -->
+</div>
+<!-- FRI -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative">
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group mt-[40px]">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-primary font-bold">HIIT Blast</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">06:00 - 07:00</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a fit male gym instructor wearing a black tank top, lit by high-contrast gym lighting, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNDfQtDoCaoGsr4F95vu_kMvb7STOsW1s3NKBYT_tBWTHHvg7F2Yj1iZStdHmFiMLtOO-fucufN55d6cgGuSo8vtD-9bZfAtNaCWWSWIVM4a6up_MR9dlO2ie8_WoOmlK5XUgDDgDI6S7kTVuVunaJWgYc91UNqxnd2NX0maYsTQxigx00R0RXyTFKE6n_wd_afTBj0rYB-7eD6LhqCXip9EOH-a8IApslfx_M3KYVBNFa6l0KWmWOtti0P3oFY0oRg6fJzyEoCGk"/>
+</div>
+<span class="font-body-md text-[13px]">J. Smith</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-primary h-1.5 rounded-full" style="width: 60%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">12/20</span>
+</div>
+</div>
+</div>
+<!-- SAT -->
+<div class="col-span-1 border-r border-surface-container-high border-dashed pt-4 flex flex-col gap-3 relative bg-surface-container-lowest/50">
+</div>
+<!-- SUN -->
+<div class="col-span-1 pt-4 flex flex-col gap-3 relative bg-surface-container-lowest/50">
+<div class="bg-[#1E1E1E] rounded-lg p-3 border-l-4 border-tertiary shadow-sm hover:shadow-md transition-shadow cursor-pointer relative z-10 group mt-[100px]">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-tertiary font-bold">Restorative Yoga</span>
+</div>
+<div class="text-on-surface-variant text-[12px] mb-2">10:00 - 11:30</div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small circular avatar of a female yoga instructor looking calm, lit by soft natural light, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBW0JFnxWvZkIzldBGhgDKJeE_h1itkub1ZPN_4t94VqN22WFkRI_8N1ujk6csqiEN72p0rkieFBgxaTxvuVyzYqOQQ4yXRhfYxIX1lHhzP5Ik7I8BZ_n0SBRwX5_l5NqFmDCZVAXKL35-rR0d4y69G0Rgq7ofbBoW-AMPARB360RCAZ8MySdpUuBTyc_FbpCbVXp-4zlvF2JKHCR1GjzUFVXCSekQXfgWC95fUu5PF69X2YQVk-Gl5v8H4seuMNa6Mv_JP_HFILjE"/>
+</div>
+<span class="font-body-md text-[13px]">S. Davis</span>
+</div>
+<div class="mt-2 pt-2 border-t border-surface-container-high flex justify-between items-center">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 mr-2">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 50%"></div>
+</div>
+<span class="font-label-md text-[11px] text-on-surface whitespace-nowrap">10/20</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITAN GYM - Inventory &amp; Pro Shop</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&amp;family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed": "#002106",
+                        "on-tertiary": "#003910",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#ffbc7c",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "surface": "#131313",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-container": "#00a73e",
+                        "secondary-container": "#fe9400",
+                        "tertiary": "#47e266",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#4b2800",
+                        "on-primary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#313030",
+                        "outline": "#8b90a0",
+                        "surface-dim": "#131313",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-container": "#00285c",
+                        "outline-variant": "#414755",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#633700",
+                        "on-primary": "#002e69",
+                        "background": "#131313",
+                        "on-tertiary-container": "#00320d",
+                        "on-background": "#e5e2e1",
+                        "tertiary-fixed-dim": "#47e266",
+                        "primary-fixed-dim": "#adc6ff",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "tertiary-fixed": "#6cff82",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-fixed": "#ffdcbf",
+                        "on-secondary-fixed": "#2d1600"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "unit": "8px",
+                        "touch-target-min": "56px",
+                        "gutter": "24px",
+                        "stack-gap": "16px"
+                    },
+                    "fontFamily": {
+                        "label-xl": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glowing-primary {
+            box-shadow: 0 4px 20px rgba(173, 198, 255, 0.3);
+        }
+        .glowing-error {
+            box-shadow: 0 4px 20px rgba(255, 180, 171, 0.3);
+        }
+        .bento-card {
+            background-color: theme('colors.surface-container');
+            border: 1px solid theme('colors.surface-container-highest');
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .bento-card:hover {
+            transform: translateY(-2px);
+            border-color: theme('colors.primary-fixed-dim');
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 shadow-sm z-50 flex flex-col h-full py-unit px-4 border-r border-surface-container-high dark:border-surface-container-high hidden md:flex">
+<div class="mb-stack-gap pt-unit flex flex-col items-center justify-center border-b border-surface-container-highest pb-stack-gap">
+<h1 class="font-display-lg text-headline-md font-black tracking-tighter text-primary dark:text-primary mt-unit text-center">TITAN GYM</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase mt-1">Elite Performance</p>
+</div>
+<button class="w-full h-touch-target-min bg-inverse-primary text-on-primary-fixed-variant rounded-full font-label-xl flex items-center justify-center gap-2 mb-gutter glowing-primary active:scale-95 transition-transform">
+<span class="material-symbols-outlined font-bold">add</span>
+            New Check-in
+        </button>
+<ul class="flex-grow flex flex-col gap-2">
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-xl">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-xl">Members</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-xl">Payments</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-xl">Classes</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-primary font-bold border-r-4 border-primary bg-primary/10 hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-xl">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-xl">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto border-t border-surface-container-highest pt-stack-gap">
+<ul class="flex flex-col gap-2">
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-xl">Support</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 h-touch-target-min px-4 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-xl">Log Out</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-grow md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface docked full-width top-0 z-40 flex justify-between items-center h-touch-target-min px-container-padding sticky border-b border-surface/5 shadow-md">
+<!-- Mobile Menu Button -->
+<button class="md:hidden text-primary p-2 mr-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Search (on_left) -->
+<div class="flex-1 max-w-md relative hidden md:block group focus-within:ring-2 focus-within:ring-primary rounded-lg">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container h-12 pl-10 pr-4 rounded-lg border border-surface-container-highest text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:bg-surface-container-low transition-colors" placeholder="Search inventory..." type="text"/>
+</div>
+<div class="flex items-center gap-unit ml-auto">
+<button class="w-touch-target-min h-touch-target-min rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-opacity hover:bg-surface-container-highest active:scale-95 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-touch-target-min h-touch-target-min rounded-full flex items-center justify-center text-secondary-container hover:text-secondary-fixed transition-opacity hover:bg-surface-container-highest active:scale-95 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</button>
+<div class="h-8 w-px bg-surface-container-highest mx-2"></div>
+<button class="flex items-center gap-2 pl-2 pr-4 h-12 rounded-full border border-surface-container-highest hover:bg-surface-container-highest transition-colors active:scale-95 transition-transform">
+<img alt="User Avatar" class="w-8 h-8 rounded-full object-cover border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9a1_ab4Ndq1vL-6j8xZaJ8DXcRTfbDs2-jTI6c6aAXXcVo1AgdbaaRlgne-nTXaA-o6mOU9Z1QnTZupN06j5q1-myOTxvjoADjnZS2ccin2BQbaNK6_w9es0L375qJkwqxAUojvfKGtAMuf52PvL_d3Ey6PIhmHsvYsGeVFDiIiN5FLwxMXcufyepJiukdg0LQRz5lEp-zeqFjGg_3vwSAy57u29YGUyTm5tMwT2M6pbGz-Wm7PYP1mRtkQFmlVzXddB7rr9UDac"/>
+<span class="font-label-md text-on-surface">Admin</span>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-container-padding flex-grow flex flex-col gap-gutter">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-stack-gap">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Pro Shop Inventory</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage stock levels, pricing, and reorder alerts.</p>
+</div>
+<div class="flex gap-stack-gap w-full md:w-auto">
+<button class="flex-1 md:flex-none h-touch-target-min px-6 rounded-lg bg-surface-container border border-surface-container-highest text-on-surface font-label-xl flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors active:scale-95 transition-transform">
+<span class="material-symbols-outlined">filter_list</span>
+                        Filter
+                    </button>
+<button class="flex-1 md:flex-none h-touch-target-min px-8 rounded-lg bg-primary-container text-on-primary-container font-label-xl flex items-center justify-center gap-2 glowing-primary hover:brightness-110 transition-all active:scale-95 transition-transform font-bold">
+<span class="material-symbols-outlined">add</span>
+                        Add Item
+                    </button>
+</div>
+</div>
+<!-- Dashboard Overview Bento -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-stack-gap">
+<div class="bento-card rounded-xl p-stack-gap flex flex-col justify-between h-32 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Items</span>
+<div class="flex items-end justify-between">
+<span class="font-headline-md text-display-lg-mobile text-on-surface">248</span>
+<span class="material-symbols-outlined text-primary text-3xl">inventory</span>
+</div>
+</div>
+<div class="bento-card rounded-xl p-stack-gap flex flex-col justify-between h-32 relative overflow-hidden ring-1 ring-error/50 bg-error/5">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-error/20 rounded-full blur-2xl"></div>
+<span class="font-label-md text-label-md text-error uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">warning</span>
+                        Low Stock Alerts
+                    </span>
+<div class="flex items-end justify-between">
+<span class="font-headline-md text-display-lg-mobile text-error font-bold">12</span>
+<span class="material-symbols-outlined text-error text-3xl">error</span>
+</div>
+</div>
+<div class="bento-card rounded-xl p-stack-gap flex flex-col justify-between h-32 relative overflow-hidden">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Categories</span>
+<div class="flex items-end justify-between">
+<span class="font-headline-md text-display-lg-mobile text-on-surface">8</span>
+<span class="material-symbols-outlined text-secondary text-3xl">category</span>
+</div>
+</div>
+<div class="bento-card rounded-xl p-stack-gap flex flex-col justify-between h-32 relative overflow-hidden">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">This Month Sales</span>
+<div class="flex items-end justify-between">
+<span class="font-headline-md text-display-lg-mobile text-tertiary-container">$4.2k</span>
+<span class="material-symbols-outlined text-tertiary text-3xl">trending_up</span>
+</div>
+</div>
+</div>
+<!-- Categories Tabs -->
+<div class="flex gap-unit overflow-x-auto pb-2 scrollbar-hide border-b border-surface-container-highest">
+<button class="h-10 px-4 border-b-2 border-primary text-primary font-label-md uppercase tracking-wider whitespace-nowrap">All Items</button>
+<button class="h-10 px-4 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md uppercase tracking-wider whitespace-nowrap transition-colors">Supplements</button>
+<button class="h-10 px-4 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md uppercase tracking-wider whitespace-nowrap transition-colors">Apparel</button>
+<button class="h-10 px-4 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md uppercase tracking-wider whitespace-nowrap transition-colors">Accessories</button>
+<button class="h-10 px-4 border-b-2 border-transparent text-on-surface-variant hover:text-on-surface font-label-md uppercase tracking-wider whitespace-nowrap transition-colors">Beverages</button>
+</div>
+<!-- Inventory Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-gutter mt-stack-gap">
+<!-- Product Card: Low Stock Alert -->
+<div class="bento-card rounded-xl overflow-hidden flex flex-col group border-error/50">
+<div class="h-48 relative bg-surface-container-high flex items-center justify-center p-4">
+<div class="absolute top-2 right-2 bg-error text-on-error font-label-md px-2 py-1 rounded flex items-center gap-1 shadow-lg glowing-error z-10">
+<span class="material-symbols-outlined text-sm">priority_high</span>
+                            Low Stock: 3
+                        </div>
+<img class="w-full h-full object-contain filter group-hover:scale-105 transition-transform duration-300" data-alt="A sleek black tub of pre-workout supplement powder sitting on a dark grey, slightly reflective surface. The label features aggressive, modern geometric typography in electric blue and vibrant orange against a matte black background. Studio lighting highlights the texture of the plastic tub, creating a high-end, energetic aesthetic suitable for a premium gym brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA520pLYpaGIwGf2jP0G2yvXRXsRAyur9zf_pguFM8Lqyk2LaMlX4n-rbrkS5lp3Ewl-wHeMSJtjsjp6mkG2USCvk7sNAqpl44Dlw6hWfZyKuOpoyy0W8S67OL2BGyTT70katfUoHsMjGzodb17r2rT0sFG80JJmyFB7IV4niY7w1dMhhCty8UJ8B8u8FCG91f2Wdy8ueRujhPEcIL74IkJLTc9-0Mpx739AqGJaj_yj3NJ20CU5h3VCs06Y-1BoxJmD4Oyfmjlczo"/>
+</div>
+<div class="p-4 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-md text-xs text-primary uppercase tracking-wider bg-primary/10 px-2 py-1 rounded">Supplements</span>
+<span class="font-headline-md text-label-xl text-on-surface">$45.00</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-bold mb-1 line-clamp-2">Titan Surge Pre-Workout (Blue Raspberry)</h3>
+<p class="font-body-md text-sm text-on-surface-variant mb-4">SKU: TS-PRE-BR</p>
+<div class="mt-auto">
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+<div class="bg-error h-1.5 rounded-full" style="width: 15%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-sm text-error font-bold">Needs Reorder</span>
+<button class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary hover:text-on-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card: Normal Stock -->
+<div class="bento-card rounded-xl overflow-hidden flex flex-col group">
+<div class="h-48 relative bg-surface-container-high flex items-center justify-center p-4">
+<img class="w-full h-full object-contain filter group-hover:scale-105 transition-transform duration-300" data-alt="A premium 5lbs bag of whey protein isolate in dark metallic packaging. The design is minimalist, utilizing a dark mode aesthetic with bold, crisp white sans-serif text indicating '100% Isolate' and subtle neon green accents indicating flavor. The lighting is dramatic, casting deep shadows that emphasize the high-quality, professional nature of the fitness supplement." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3ftNv8z0gYtj2N9T7Jtza2GzZGfNuawNzj0J61zw5sDAhImVp3vIjrAbKUJc8bW_W1zm1XGry-XGs33-wRtWPOsYj_XagcXUwrdZfqv1BTa8QBDkW6VlLzxueV3N1CNz-JKAdOZZL_tISZZXd1J_zC1uXTepi41bjEKWIiaxtv19PNGY0zfkZwdSYNunggqQfACWXwFGPbknBNdke99p9V5COduTMZRvXXCJ_Ps_ScNJvHPZmshci5hQyteUtgUtseGiTvex61RQ"/>
+</div>
+<div class="p-4 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-md text-xs text-primary uppercase tracking-wider bg-primary/10 px-2 py-1 rounded">Supplements</span>
+<span class="font-headline-md text-label-xl text-on-surface">$75.00</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-bold mb-1 line-clamp-2">Whey Isolate Protein (Vanilla)</h3>
+<p class="font-body-md text-sm text-on-surface-variant mb-4">SKU: TW-ISO-VAN</p>
+<div class="mt-auto">
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 75%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-sm text-on-surface-variant">Stock: 45</span>
+<button class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary hover:text-on-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card: Normal Stock Apparel -->
+<div class="bento-card rounded-xl overflow-hidden flex flex-col group">
+<div class="h-48 relative bg-surface-container-high flex items-center justify-center p-4">
+<img class="w-full h-full object-contain filter group-hover:scale-105 transition-transform duration-300" data-alt="A neatly folded, high-quality dark grey gym t-shirt resting on an industrial metal mesh surface. The shirt features a bold, minimalist logo on the chest in vibrant electric blue. The lighting is cool and directional, highlighting the moisture-wicking texture of the athletic fabric and creating a modern, high-contrast, edgy fitness vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTmq5PvGNNWUFLFbcWzN3lw5HBGHlhcOqM0PydNzfb_cfgFMCorga57rAMhPAiH257YMNWq1R2xt_tAXcDD85JnySObdRgkkdA5aBVq0IZKrYUWoYlBJ34RRxrzooB7Fxf7LlJqyun-hzjkUGXmmlbOt5oPrh1uALNgY1lMuyNv_UBhZCHua0WR6zpsGDa8sjYYuRU2n8e5hbPVpifD9HbIIrK5CHIcYUlXsowA7CbxH6-6-QoQBrWOkMoJqo7oBCR6qXS36SyJyA"/>
+</div>
+<div class="p-4 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-md text-xs text-secondary-container uppercase tracking-wider bg-secondary-container/10 px-2 py-1 rounded text-secondary">Apparel</span>
+<span class="font-headline-md text-label-xl text-on-surface">$30.00</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-bold mb-1 line-clamp-2">Titan Performance Tee - Black</h3>
+<p class="font-body-md text-sm text-on-surface-variant mb-4">SKU: TA-TEE-BLK-L</p>
+<div class="mt-auto">
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 60%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-sm text-on-surface-variant">Stock: 28</span>
+<button class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary hover:text-on-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card: Warning Stock -->
+<div class="bento-card rounded-xl overflow-hidden flex flex-col group border-secondary-container/30">
+<div class="h-48 relative bg-surface-container-high flex items-center justify-center p-4">
+<div class="absolute top-2 right-2 bg-secondary-container text-on-secondary-container font-label-md px-2 py-1 rounded flex items-center gap-1 shadow-lg z-10">
+<span class="material-symbols-outlined text-sm">inventory_2</span>
+                            Low: 8
+                        </div>
+<img class="w-full h-full object-contain filter group-hover:scale-105 transition-transform duration-300" data-alt="A sleek, matte black shaker bottle with a stainless steel whisk ball visible next to it. The bottle features a subtle, glossy black logo and measurement markings. It is positioned on a dark, textured slate surface under stark, overhead studio lighting that casts sharp shadows, emphasizing the durability and modern design of the fitness accessory." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDgHYaNA3omLojzbAXF0BAKLjvvL1_aJXkR_dUnQBMXQDD8dzfue2VJBYedRvtZ2H8Y2_EOyOqhn-HjAyDM1Fzxi0EXejSIMaafW5ZXFbVxfq03OP0ld-xXFjjXEE5L94Mjz4oej6vEYRmsgcuGbWgTULyOHRkUR0WRsk_Kib6tQawtbpLGwYBWIiTVaJlmXatrgzegFu7Ew2Bj8mHeJ5LIIAeKAzd_Ez9ye35RWZIxm2DeYZ_sN6gxfawVdL8-Qe3IZYVvSWXq_4"/>
+</div>
+<div class="p-4 flex flex-col flex-grow">
+<div class="flex justify-between items-start mb-2">
+<span class="font-label-md text-xs text-outline uppercase tracking-wider bg-outline/10 px-2 py-1 rounded">Accessories</span>
+<span class="font-headline-md text-label-xl text-on-surface">$15.00</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-bold mb-1 line-clamp-2">Pro Shaker Bottle 28oz</h3>
+<p class="font-body-md text-sm text-on-surface-variant mb-4">SKU: TAC-SHK-28</p>
+<div class="mt-auto">
+<div class="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+<div class="bg-secondary-container h-1.5 rounded-full" style="width: 20%"></div>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-sm text-secondary-container font-bold">Order Soon</span>
+<button class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface hover:bg-primary hover:text-on-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex justify-center mt-stack-gap mb-container-padding">
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-on-surface active:scale-95 transition-all opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary text-on-primary font-label-xl font-bold flex items-center justify-center shadow-lg glowing-primary active:scale-95 transition-all">1</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container border border-surface-container-highest text-on-surface-variant font-label-xl flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95">2</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container border border-surface-container-highest text-on-surface-variant font-label-xl flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95">3</button>
+<span class="w-10 h-10 flex items-center justify-center text-on-surface-variant">...</span>
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface hover:text-primary transition-colors active:scale-95">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

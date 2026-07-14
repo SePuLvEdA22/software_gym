@@ -122,7 +122,7 @@ export function LogsPage(): JSX.Element {
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Permitidos</p>
-          <p className="kpi-value" style={{ color: '#4ade80', fontSize: 28 }}>{stats.granted}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>{stats.granted}</p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Denegados</p>
@@ -130,7 +130,7 @@ export function LogsPage(): JSX.Element {
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Vencidos</p>
-          <p className="kpi-value" style={{ color: '#fbbf24', fontSize: 28 }}>{stats.deniedExpired}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>{stats.deniedExpired}</p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">No Encontrados</p>
@@ -237,7 +237,7 @@ export function LogsPage(): JSX.Element {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{ 
-                            color: log.result === 'granted' ? '#4ade80' : 'var(--color-error)' 
+                            color: log.result === 'granted' ? 'var(--color-success)' : 'var(--color-error)' 
                           }}>
                             {getResultIcon(log.result)}
                           </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Client, BodyMeasurement, ClientGoal, FitnessGoal } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
+import { format, parseISO } from 'date-fns'
 
 const goalLabels: Record<FitnessGoal, string> = {
   lose_weight: 'Bajar de Peso',
@@ -170,7 +171,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
               <tbody>
                 {measurements.slice(0, 20).map(m => (
                   <tr key={m.id}>
-                    <td style={{ fontSize: 13 }}>{new Date(m.date).toLocaleDateString('es-CO')}</td>
+                    <td style={{ fontSize: 13 }}>{format(parseISO(m.date), 'dd/MM/yyyy')}</td>
                     <td>{m.weight ?? '-'}</td>
                     <td>{m.waist ?? '-'}</td>
                     <td>{m.chest ?? '-'}</td>
@@ -276,8 +277,8 @@ function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: st
           <div key={g.id} style={{ padding: '10px 12px', background: 'var(--color-bg)', borderRadius: 8, marginBottom: 8 }}>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{goalLabels[g.goal] || g.goal}</div>
             <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-              Desde: {new Date(g.startDate).toLocaleDateString('es-CO')}
-              {g.targetDate && ` | Hasta: ${new Date(g.targetDate).toLocaleDateString('es-CO')}`}
+              Desde: {format(parseISO(g.startDate), 'dd/MM/yyyy')}
+              {g.targetDate && ` | Hasta: ${format(parseISO(g.targetDate), 'dd/MM/yyyy')}`}
             </div>
             {g.notes && <div style={{ fontSize: 12, marginTop: 4 }}>{g.notes}</div>}
           </div>
@@ -293,7 +294,7 @@ function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: st
               <div key={g.id} style={{ padding: '8px 12px', background: 'var(--color-bg)', borderRadius: 8, marginTop: 6, opacity: 0.6 }}>
                 <div style={{ fontSize: 13 }}>{goalLabels[g.goal] || g.goal}</div>
                 <div style={{ fontSize: 11, color: 'var(--color-secondary)' }}>
-                  {new Date(g.startDate).toLocaleDateString('es-CO')} - {new Date(g.createdAt).toLocaleDateString('es-CO')}
+                  {format(parseISO(g.startDate), 'dd/MM/yyyy')} - {format(parseISO(g.createdAt), 'dd/MM/yyyy')}
                 </div>
               </div>
             ))}

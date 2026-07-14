@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Icons } from '@/components/Icons'
-import { parseISO, differenceInDays } from 'date-fns'
-import { Client, Membership } from '../../../shared/types'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { parseISO, differenceInDays, format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { Client, Membership, ClientDebt, ClientRoutine, GymSettings } from '../../../shared/types'
 
-type AccessState = 'idle' | 'granted' | 'denied' | 'checking'
+type AccessState = 'idle' | 'result' | 'checking'
 
 interface ValidationResult {
   valid: boolean
@@ -11,166 +11,597 @@ interface ValidationResult {
   membership?: Membership
   message: string
   code: string
+  debt?: ClientDebt[]
+  routines?: ClientRoutine[]
 }
 
-function CodeDisplay({ code }: { code: string }): JSX.Element {
-  const len = code.length
-  
-  const getFontSize = () => {
-    if (len <= 6) return 36
-    if (len <= 8) return 32
-    if (len <= 10) return 28
-    if (len <= 12) return 24
-    if (len <= 15) return 20
-    return 16
-  }
-  
-  const getLetterSpacing = () => {
-    if (len <= 6) return 6
-    if (len <= 10) return 4
-    return 2
-  }
-  
-  const fontSize = getFontSize()
-  const letterSpacing = getLetterSpacing()
+// Maps JS dayOfWeek (0=Dom, 1=Lun...) to DAYS array index (0=Lun...)
+const DAY_INDEX_FROM_DOW = [6, 0, 1, 2, 3, 4, 5]
+
+const DAYS = [
+  { key: 'Lunes', icon: 'directions_run', label: 'Cardio & Core' },
+  { key: 'Martes', icon: 'fitness_center', label: 'Upper Body' },
+  { key: 'Miércoles', icon: 'self_improvement', label: 'Active Recovery' },
+  { key: 'Jueves', icon: 'fitness_center', label: 'Lower Body' },
+  { key: 'Viernes', icon: 'sports_gymnastics', label: 'Full Body HIIT' },
+  { key: 'Sábado', icon: 'pool', label: 'Optional / Swim' },
+  { key: 'Domingo', icon: 'bed', label: 'Rest Day', dimmed: true }
+]
+
+const glass: React.CSSProperties = {
+  background: 'color-mix(in srgb, var(--color-surface-container-high) 60%, transparent)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  border: '1px solid var(--color-outline-variant)'
+}
+
+function MaterialIcon({ name, style }: { name: string; style?: React.CSSProperties }): JSX.Element {
+  return (
+    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1", ...style }}>
+      {name}
+    </span>
+  )
+}
+
+function ClockWidget(): JSX.Element {
+  const [clock, setClock] = useState(new Date())
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   return (
-    <div style={{
-      width: 420,
-      height: 72,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#1c1b1b',
-      border: '2px solid #353534',
-      borderRadius: 12,
-      fontFamily: 'monospace',
-      fontSize,
-      fontWeight: 700,
-      color: code ? '#ff6b00' : '#606060',
-      letterSpacing,
-      padding: '0 20px',
-      overflow: 'hidden'
-    }}>
-      {code ? (
-        <>
-          <span style={{ 
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            direction: 'rtl',
-            textAlign: 'left'
-          }}>
-            {code}
-          </span>
-          <span style={{
-            display: 'inline-block',
-            width: Math.max(2, fontSize / 18),
-            height: fontSize,
-            backgroundColor: '#ff6b00',
-            marginLeft: Math.max(4, letterSpacing),
-            animation: 'blink 1s step-end infinite',
-            flexShrink: 0
-          }} />
-        </>
-      ) : (
-        <span style={{ fontSize: 18, fontWeight: 500, letterSpacing: 0 }}>
-          Ingrese su código
-        </span>
-      )}
+    <div style={{ ...glass, borderRadius: 12, padding: '12px 24px', textAlign: 'right' }}>
+      <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-on-surface)', fontFamily: 'monospace', margin: 0, letterSpacing: '-0.02em' }}>
+        {format(clock, 'HH:mm:ss')}
+      </p>
     </div>
   )
 }
 
-function Numpad({ onDigit, onClear, onBackspace, onEnter, disabled }: {
+function IdleScreen({
+  settings, accessCode, showAdminButton, onGoToAdmin, errorMessage,
+  onDigit, onBackspace, onCheckIn
+}: {
+  settings: GymSettings | null
+  accessCode: string
+  showAdminButton: boolean
+  onGoToAdmin: () => void
+  errorMessage: string
   onDigit: (d: string) => void
-  onClear: () => void
   onBackspace: () => void
-  onEnter: () => void
-  disabled: boolean
+  onCheckIn: () => void
 }): JSX.Element {
+  const maxDots = 6
+  const filled = accessCode.slice(0, maxDots).length
+
+  const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-      <div style={{ display: 'flex', gap: 10 }}>
-        {['1','2','3'].map(d => (
-          <button key={d} style={{
-            width: 96, height: 64, border: 'none', borderRadius: 10,
-            backgroundColor: 'var(--color-surface-container-high)',
-            color: 'var(--color-on-surface)',
-            fontSize: 28, fontWeight: 600,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.4 : 1
-          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        {['4','5','6'].map(d => (
-          <button key={d} style={{
-            width: 96, height: 64, border: 'none', borderRadius: 10,
-            backgroundColor: 'var(--color-surface-container-high)',
-            color: 'var(--color-on-surface)',
-            fontSize: 28, fontWeight: 600,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.4 : 1
-          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        {['7','8','9'].map(d => (
-          <button key={d} style={{
-            width: 96, height: 64, border: 'none', borderRadius: 10,
-            backgroundColor: 'var(--color-surface-container-high)',
-            color: 'var(--color-on-surface)',
-            fontSize: 28, fontWeight: 600,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.4 : 1
-          }} onClick={() => onDigit(d)} disabled={disabled}>{d}</button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={onClear} disabled={disabled} style={{
-          width: 96, height: 64, border: 'none', borderRadius: 10,
-          fontSize: 13, fontWeight: 700,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.4 : 1,
-          backgroundColor: 'var(--color-error-container)',
-          color: 'var(--color-on-error-container)'
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      minHeight: '100vh', backgroundColor: 'var(--color-bg)',
+      position: 'relative', fontFamily: "'Montserrat', 'Inter', sans-serif",
+      overflow: 'hidden', userSelect: 'none'
+    }}>
+      {/* Background Glows */}
+      <div style={{
+        position: 'absolute', top: '15%', left: '-10%',
+        width: '40vw', height: '40vw', borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
+      <div style={{
+        position: 'absolute', bottom: '15%', right: '-10%',
+        width: '40vw', height: '40vw', borderRadius: '50%',
+        background: 'color-mix(in srgb, var(--color-secondary) 8%, transparent)',
+        filter: 'blur(120px)', pointerEvents: 'none'
+      }} />
+
+      {/* Admin Button (hidden by default) */}
+      {showAdminButton && (
+        <button onClick={onGoToAdmin} style={{
+          position: 'absolute', top: 16, right: 16, zIndex: 100,
+          padding: '6px 14px', fontSize: 13, fontWeight: 600,
+          backgroundColor: 'var(--color-surface-container-high)', color: 'var(--color-on-surface)',
+          border: '1px solid var(--color-surface-container-highest)', borderRadius: 8, cursor: 'pointer'
         }}>
-          LIMPIAR
+          Panel Admin
         </button>
-        <button onClick={() => onDigit('0')} disabled={disabled} style={{
-          width: 96, height: 64, border: 'none', borderRadius: 10,
-          backgroundColor: 'var(--color-surface-container-high)',
-          color: 'var(--color-on-surface)',
-          fontSize: 28, fontWeight: 600,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.4 : 1
-        }}>0</button>
-        <button onClick={onBackspace} disabled={disabled} style={{
-          width: 96, height: 64, border: 'none', borderRadius: 10,
-          fontSize: 13, fontWeight: 700,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          opacity: disabled ? 0.4 : 1,
-          backgroundColor: 'var(--color-secondary-container)',
-          color: 'var(--color-on-secondary-container)'
-        }}>
-          BORRAR
-        </button>
-      </div>
-      <button onClick={onEnter} disabled={disabled} style={{
-        width: 308,
-        height: 64,
-        border: 'none',
-        borderRadius: 10,
-        backgroundColor: 'var(--color-primary-container)',
-        color: 'var(--color-on-primary-container)',
-        fontSize: 20,
-        fontWeight: 800,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1
+      )}
+
+      {/* Header: Gym Name + Clock */}
+      <div style={{
+        width: '100%', display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', padding: '28px 32px 16px',
+        borderBottom: '1px solid var(--color-surface-container-highest)'
       }}>
-        ENTER
-      </button>
+        {settings?.name && (
+          <h1 style={{
+            fontSize: 28, fontWeight: 800, color: 'var(--color-primary)', margin: 0,
+            fontStyle: 'italic', textTransform: 'uppercase',
+            letterSpacing: '-0.02em', fontFamily: "'Montserrat', sans-serif"
+          }}>
+            {settings.name}
+          </h1>
+        )}
+        <ClockWidget />
+      </div>
+
+      {/* Main Content */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 36,
+        padding: '0 32px 40px', maxWidth: 480, width: '100%', zIndex: 1,
+        position: 'relative'
+      }}>
+        {/* Welcome Section */}
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{
+            fontSize: 44, fontWeight: 800, color: 'var(--color-on-surface)', margin: 0,
+            letterSpacing: '-0.02em', lineHeight: '52px',
+            fontFamily: "'Montserrat', sans-serif"
+          }}>
+            {settings?.welcomeMessage || 'BIENVENIDO'}
+          </h2>
+          <p style={{
+            fontSize: 17, fontWeight: 500, color: 'var(--color-on-surface-variant)', marginTop: 8,
+            fontFamily: "'Inter', sans-serif"
+          }}>
+            Ingresa tu código de acceso
+          </p>
+        </div>
+
+        {/* Code Dots Display */}
+        <div style={{
+          width: '100%', maxWidth: 360, height: 76,
+          backgroundColor: 'var(--color-surface-container-low)',
+          border: '2px solid var(--color-outline-variant)',
+          borderRadius: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: 12, padding: '0 20px',
+          transition: 'border-color 0.2s ease'
+        }}>
+          {Array.from({ length: maxDots }).map((_, i) => (
+            <span key={i} style={{
+              width: 14, height: 14, borderRadius: '50%',
+              backgroundColor: i < filled ? 'var(--color-primary)' : 'var(--color-outline-variant)',
+              transition: 'all 0.2s ease', flexShrink: 0
+            }} />
+          ))}
+        </div>
+
+        {/* Numeric Keypad */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 12, width: '100%', maxWidth: 360
+        }}>
+          {numpadKeys.map(d => (
+            <button key={d} onClick={() => onDigit(d)}
+              className="kiosk-numpad-btn"
+              style={{
+                height: 70, backgroundColor: 'var(--color-surface-container)',
+                border: '1px solid var(--color-outline-variant)', borderRadius: 16,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 26, fontWeight: 800, color: 'var(--color-on-surface)',
+                fontFamily: "'Montserrat', sans-serif",
+                cursor: 'pointer', transition: 'background 0.15s ease'
+              }}>
+              {d}
+            </button>
+          ))}
+          <button onClick={onBackspace}
+            className="kiosk-numpad-btn kiosk-backspace-btn"
+            style={{
+              height: 70, backgroundColor: 'var(--color-surface-container)',
+              border: '1px solid var(--color-outline-variant)', borderRadius: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'background 0.15s ease',
+              color: 'var(--color-on-surface)'
+            }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+              <line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
+            </svg>
+          </button>
+          <button onClick={() => onDigit('0')}
+            className="kiosk-numpad-btn"
+            style={{
+              height: 70, backgroundColor: 'var(--color-surface-container)',
+              border: '1px solid var(--color-outline-variant)', borderRadius: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26, fontWeight: 800, color: 'var(--color-on-surface)',
+              fontFamily: "'Montserrat', sans-serif",
+              cursor: 'pointer', transition: 'background 0.15s ease'
+            }}>
+            0
+          </button>
+          <button onClick={onCheckIn} style={{
+            height: 70, backgroundColor: 'var(--color-primary)', color: 'var(--color-on-primary)',
+            border: 'none', borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, fontWeight: 700, fontFamily: "'Inter', sans-serif",
+            textTransform: 'uppercase', letterSpacing: '0.05em',
+            cursor: 'pointer', gap: 6,
+            boxShadow: 'var(--shadow-glow)',
+            transition: 'all 0.15s ease'
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Check-In
+          </button>
+        </div>
+
+      </div>
+
+      {/* Error Message — floating at top-right of viewport */}
+      {errorMessage && (
+        <div style={{
+          position: 'absolute', top: 100, right: 32, zIndex: 50,
+          width: 400, maxWidth: 'calc(100% - 64px)',
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            animation: 'kiosk-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, kiosk-fade-in 0.35s ease-out both',
+            position: 'relative'
+          }}>
+            {/* Red glow behind */}
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%',
+              width: '90%', height: '200%',
+              transform: 'translate(-50%, -50%)',
+              borderRadius: '50%',
+              background: 'color-mix(in srgb, var(--color-error) 18%, transparent)',
+              filter: 'blur(28px)', pointerEvents: 'none'
+            }} />
+            <div style={{
+              position: 'relative', zIndex: 1, pointerEvents: 'auto',
+              display: 'flex', alignItems: 'center', gap: 12,
+              width: '100%',
+              background: 'color-mix(in srgb, var(--color-error) 12%, var(--color-surface-container) 88%)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid color-mix(in srgb, var(--color-error) 45%, transparent)',
+              borderRadius: 14,
+              padding: '16px 20px',
+              boxShadow: '0 8px 32px color-mix(in srgb, var(--color-error) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.05)'
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%',
+                backgroundColor: 'color-mix(in srgb, var(--color-error) 20%, transparent)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <MaterialIcon name="block" style={{ fontSize: 22, color: 'var(--color-error)' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{
+                  color: 'var(--color-error)', fontWeight: 700, fontSize: 13, margin: 0,
+                  textTransform: 'uppercase', letterSpacing: '0.04em'
+                }}>
+                  Código inválido
+                </p>
+                <p style={{
+                  color: 'var(--color-on-surface-variant)', fontWeight: 500, fontSize: 13, margin: '2px 0 0 0', lineHeight: 1.4
+                }}>
+                  {errorMessage}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .kiosk-numpad-btn:active { transform: scale(0.94); }
+        .kiosk-numpad-btn:hover { background-color: var(--color-surface-container-high) !important; }
+        .kiosk-backspace-btn:hover { background-color: color-mix(in srgb, var(--color-error-container) 40%, var(--color-surface-container)) !important; }
+        @keyframes kiosk-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+        .kiosk-pulse { animation: kiosk-pulse 2s ease-in-out infinite; }
+        @keyframes kiosk-shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+          20%, 40%, 60%, 80% { transform: translateX(6px); }
+        }
+        @keyframes kiosk-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function ResultScreen({
+  client, membership, validationResult, debts, routines, onReset, onRenew
+}: {
+  client: Client
+  membership?: Membership
+  validationResult: ValidationResult
+  debts?: ClientDebt[]
+  routines?: ClientRoutine[]
+  onReset: () => void
+  onRenew: () => void
+}): JSX.Element {
+  const daysRemaining = membership
+    ? differenceInDays(parseISO(membership.endDate), new Date())
+    : 0
+
+  const isExpired = !validationResult.valid || daysRemaining <= 0
+  const daysText = daysRemaining <= 0 ? '0 Días Restantes' : `${daysRemaining} Días Restantes`
+
+  const totalDebt = useMemo(() => {
+    if (!debts || debts.length === 0) return 0
+    return debts.reduce((sum, d) => sum + d.balance, 0)
+  }, [debts])
+
+  const debtColor = totalDebt <= 0 ? 'var(--color-tertiary)' : 'var(--color-error)'
+  const debtText = totalDebt <= 0 ? 'Sin Deuda' : 'Pendiente'
+
+  const expiryDate = membership
+    ? format(parseISO(membership.endDate), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
+    : '—'
+
+  const statusColor = isExpired ? 'var(--color-error)' : 'var(--color-tertiary)'
+
+  return (
+    <div style={{
+      height: '100vh', backgroundColor: 'var(--color-background)',
+      fontFamily: "'Montserrat', 'Inter', sans-serif",
+      display: 'flex', flexDirection: 'column', overflow: 'hidden'
+    }}>
+      <main style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <header style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexShrink: 0
+        }}>
+          <div>
+            <h2 style={{ fontSize: 32, lineHeight: '38px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0, letterSpacing: '-0.02em' }}>
+              Registro de Ingreso
+            </h2>
+            <p style={{ color: 'var(--color-on-surface-variant)', fontWeight: 500, marginTop: 4, fontSize: 16 }}>
+              Revise los detalles y estado del miembro
+            </p>
+          </div>
+          <ClockWidget />
+        </header>
+
+        <div style={{
+          flex: 1, display: 'grid', gridTemplateColumns: '1fr 2fr', gridTemplateRows: '1fr',
+          gap: 24, paddingBottom: 32,
+          minHeight: 0, minWidth: 0
+        }}>
+          {/* LEFT COLUMN: Photo + Renew button */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{
+              ...glass, borderRadius: 16, padding: 24,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              position: 'relative', flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, width: '100%', height: 96,
+                borderRadius: '16px 16px 0 0',
+                background: isExpired
+                  ? 'linear-gradient(to bottom, rgba(255,180,171,0.15), transparent)'
+                  : 'linear-gradient(to bottom, rgba(255,107,0,0.15), transparent)',
+                pointerEvents: 'none'
+              }} />
+              <div style={{ position: 'relative', marginBottom: 24, marginTop: 16 }}>
+                <div style={{
+                  width: 128, height: 128, borderRadius: '50%',
+                  border: '4px solid var(--color-surface-container)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                  overflow: 'hidden', backgroundColor: 'var(--color-surface-bright)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative', zIndex: 1
+                }}>
+                  {client.photo ? (
+                    <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <MaterialIcon name="person" style={{ fontSize: 64, color: 'var(--color-on-surface-variant)' }} />
+                  )}
+                </div>
+                <div style={{
+                  position: 'absolute', bottom: 4, right: 4, width: 32, height: 32,
+                  borderRadius: '50%', backgroundColor: statusColor,
+                  border: '4px solid var(--color-surface-container)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 2
+                }}>
+                  <MaterialIcon name={isExpired ? 'close' : 'check'} style={{
+                    fontSize: 16,
+                    color: isExpired ? 'var(--color-on-error)' : '#fff'
+                  }} />
+                </div>
+              </div>
+              <h3 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-on-surface)', margin: '0 0 4px 0', textAlign: 'center' }}>
+                {client.fullName.toUpperCase()}
+              </h3>
+              <p style={{
+                fontSize: 13, color: 'var(--color-on-surface-variant)', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 24
+              }}>
+                MIEMBRO
+              </p>
+              <div style={{ width: '100%' }}>
+                <div style={{
+                  backgroundColor: 'var(--color-surface-container)', borderRadius: 12, padding: 16,
+                  border: '1px solid rgba(139,144,160,0.2)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>ID (Clave)</span>
+                  <span style={{
+                    fontSize: 18, fontFamily: 'monospace', fontWeight: 700,
+                    color: 'var(--color-primary)', letterSpacing: '0.05em'
+                  }}>
+                    {client.accessCode}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {isExpired && validationResult.code === 'denied_expired' && (
+              <button onClick={onRenew} style={{
+                width: '100%', padding: 16, borderRadius: 10,
+                backgroundColor: 'var(--color-primary-container)',
+                color: 'var(--color-on-primary-container)',
+                border: 'none', fontSize: 16, fontWeight: 800, cursor: 'pointer',
+                letterSpacing: '0.02em'
+              }}>
+                RENOVAR MEMBRESÍA
+              </button>
+            )}
+          </div>
+
+          {/* RIGHT COLUMN: Status cards + Routine panel */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+            {/* Status cards row */}
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                <div style={{
+                  ...glass, borderRadius: 12, padding: 20,
+                  display: 'flex', flexDirection: 'column',
+                  borderLeft: `4px solid ${statusColor}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <MaterialIcon name={isExpired ? 'event_busy' : 'check_circle'} style={{ color: statusColor, fontSize: 20 }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Estado</span>
+                  </div>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                    {isExpired ? 'Vencida' : 'Activa'}
+                  </p>
+                  <p style={{ fontSize: 12, color: statusColor, fontWeight: 600, marginTop: 4 }}>{daysText}</p>
+                </div>
+                <div style={{
+                  ...glass, borderRadius: 12, padding: 20,
+                  display: 'flex', flexDirection: 'column',
+                  borderLeft: `4px solid ${debtColor}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <MaterialIcon name="payments" style={{ color: debtColor, fontSize: 20 }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Adeudo</span>
+                  </div>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                    ${totalDebt.toFixed(2)}
+                  </p>
+                  <p style={{ fontSize: 12, color: debtColor, fontWeight: 600, marginTop: 4 }}>{debtText}</p>
+                </div>
+                <div style={{
+                  ...glass, borderRadius: 12, padding: 20,
+                  display: 'flex', flexDirection: 'column',
+                  borderLeft: `4px solid var(--color-primary)`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <MaterialIcon name="calendar_month" style={{ color: 'var(--color-primary)', fontSize: 20 }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Vencimiento</span>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0, textTransform: 'capitalize' }}>
+                    {expiryDate}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Routine panel */}
+            <div style={{
+              flex: 1, overflowY: 'auto', minHeight: 0,
+              ...glass, borderRadius: 16,
+              display: 'flex', flexDirection: 'column'
+            }}>
+              <div style={{
+                padding: '14px 24px 12px',
+                borderBottom: '1px solid rgba(139,144,160,0.2)',
+                backgroundColor: 'rgba(32,31,31,0.5)',
+                flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 8
+              }}>
+                <MaterialIcon name="fitness_center" style={{ color: 'var(--color-primary)', fontSize: 18 }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary)' }}>Rutina Semanal</span>
+              </div>
+
+              <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {Array.from({ length: 7 }, (_, dow) => {
+                  const dayIdx = DAY_INDEX_FROM_DOW[dow]
+                  const dayInfo = DAYS[dayIdx]
+                  const isWeekend = dow === 0 || dow === 6
+                  const dayRoutine = routines?.find(r => r.dayOfWeek === dow)
+                  const exercises = dayRoutine?.exercises || []
+
+                  return (
+                    <div key={dow}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        marginBottom: 6
+                      }}>
+                        <MaterialIcon name={dayInfo.icon} style={{
+                          color: isWeekend ? 'var(--color-on-surface-variant)' : 'var(--color-primary)',
+                          fontSize: 15
+                        }} />
+                        <span style={{
+                          fontSize: 12, fontWeight: 700,
+                          color: isWeekend ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
+                          textTransform: 'uppercase', letterSpacing: '0.03em'
+                        }}>
+                          {dayInfo.key}
+                        </span>
+                      </div>
+                      {exercises.length > 0 ? (
+                        <div style={{
+                          backgroundColor: 'var(--color-surface-container)',
+                          borderRadius: 10, padding: '10px 14px',
+                          border: '1px solid rgba(139,144,160,0.15)',
+                          display: 'flex', flexDirection: 'column', gap: 6
+                        }}>
+                          {exercises.map((ex, i) => (
+                            <div key={i} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{
+                                  width: 20, height: 20, borderRadius: '50%',
+                                  backgroundColor: 'var(--color-surface-container-high)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 9, fontWeight: 700, color: 'var(--color-primary)'
+                                }}>{i + 1}</span>
+                                <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--color-on-surface)' }}>{ex.name}</span>
+                              </div>
+                              <span style={{ color: 'var(--color-outline)', fontWeight: 500, fontSize: 12 }}>
+                                {ex.sets} x {ex.reps}
+                                {ex.notes && <span style={{ color: 'var(--color-outline)', marginLeft: 4, fontSize: 10 }}>({ex.notes})</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{
+                          backgroundColor: 'var(--color-surface-container)',
+                          borderRadius: 10, padding: '10px 14px',
+                          border: '1px dashed rgba(139,144,160,0.2)',
+                          opacity: 0.6
+                        }}>
+                          <span style={{ fontSize: 12, color: 'var(--color-on-surface-variant)', fontStyle: 'italic' }}>
+                            Sin ejercicios registrados
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p style={{ textAlign: 'center', color: 'var(--color-outline)', fontSize: 13, marginTop: 8, flexShrink: 0 }}>
+          Volviendo al inicio...
+        </p>
+      </main>
+
+      <style>{`
+        * { user-select: none; }
+      `}</style>
     </div>
   )
 }
@@ -181,11 +612,24 @@ export function KioskPage(): JSX.Element {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [client, setClient] = useState<Client | null>(null)
   const [membership, setMembership] = useState<Membership | null>(null)
+  const [debts, setDebts] = useState<ClientDebt[] | undefined>(undefined)
+  const [routines, setRoutines] = useState<ClientRoutine[] | undefined>(undefined)
   const [showAdminButton, setShowAdminButton] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [gymSettings, setGymSettings] = useState<GymSettings | null>(null)
+  const isValidating = useRef(false)
+
+  useEffect(() => {
+    window.electronAPI.gym.getSettings().then((result: any) => {
+      if (result.success && result.data) {
+        setGymSettings(result.data)
+      }
+    })
+  }, [])
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute('data-theme')
-    document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.setAttribute('data-theme', 'kiosk')
     return () => {
       if (prev) {
         document.documentElement.setAttribute('data-theme', prev)
@@ -198,14 +642,17 @@ export function KioskPage(): JSX.Element {
   const resetAll = useCallback(() => {
     setAccessCode('')
     setAccessState('idle')
+    setErrorMessage('')
     setValidationResult(null)
     setClient(null)
     setMembership(null)
+    setDebts(undefined)
+    setRoutines(undefined)
   }, [])
 
   useEffect(() => {
-    if (accessState === 'granted' || accessState === 'denied') {
-      const timer = setTimeout(resetAll, 6000)
+    if (accessState === 'result') {
+      const timer = setTimeout(resetAll, 8000)
       return () => clearTimeout(timer)
     }
   }, [accessState, resetAll])
@@ -213,6 +660,7 @@ export function KioskPage(): JSX.Element {
   const handleDigit = useCallback((digit: string) => {
     if (accessCode.length < 20 && accessState === 'idle') {
       setAccessCode(prev => prev + digit)
+      setErrorMessage('')
     }
   }, [accessCode.length, accessState])
 
@@ -223,25 +671,42 @@ export function KioskPage(): JSX.Element {
   }, [accessState])
 
   const validateAccess = useCallback(async () => {
-    if (accessCode.length < 1) return
+    if (accessCode.length < 1 || isValidating.current) return
+    isValidating.current = true
     setAccessState('checking')
-    const result = await window.electronAPI.access.validate(accessCode)
+    try {
+      const result = await window.electronAPI.access.validate(accessCode)
 
-    if (result.success && result.data) {
-      setValidationResult(result.data)
-      setClient(result.data.client || null)
-      setMembership(result.data.membership || null)
+      if (result.success && result.data && result.data.client) {
+        setValidationResult(result.data)
+        setClient(result.data.client || null)
+        setMembership(result.data.membership || null)
+        setDebts(result.data.debt)
+        setRoutines(result.data.routines)
 
-      if (result.data.valid) {
-        setAccessState('granted')
-        await window.electronAPI.door.open()
+        setAccessState('result')
+        if (result.data.valid) {
+          await window.electronAPI.door.open()
+        }
       } else {
-        setAccessState('denied')
+        setAccessCode('')
+        setAccessState('idle')
+        setErrorMessage('El código ingresado no existe')
       }
-    } else {
-      resetAll()
+    } catch {
+      setAccessCode('')
+      setAccessState('idle')
+      setErrorMessage('Error al validar el código')
+    } finally {
+      isValidating.current = false
     }
   }, [accessCode, resetAll])
+
+  useEffect(() => {
+    if (!errorMessage) return
+    const timer = setTimeout(() => setErrorMessage(''), 5000)
+    return () => clearTimeout(timer)
+  }, [errorMessage])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -250,6 +715,7 @@ export function KioskPage(): JSX.Element {
       } else if (e.key === 'Backspace') {
         handleBackspace()
       } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
+        setErrorMessage('')
         resetAll()
       } else if (e.key === 'Enter') {
         validateAccess()
@@ -265,215 +731,55 @@ export function KioskPage(): JSX.Element {
     window.location.hash = '#/'
   }
 
+  const goToRenew = () => {
+    if (client) {
+      window.electronAPI.window.openClientRenew(client.id)
+    }
+  }
+
   if (accessState === 'checking') {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', backgroundColor: '#0e0e0e', gap: 24
+        minHeight: '100vh', backgroundColor: 'var(--color-bg)', gap: 24
       }}>
         <div style={{
-          width: 40, height: 40,
-          border: '4px solid rgba(255,107,0,0.2)',
-          borderTopColor: '#ff6b00',
+          width: 44, height: 44,
+          border: '4px solid var(--color-surface-container-highest)',
+          borderTopColor: 'var(--color-primary)',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        <span style={{ color: '#ff6b00', fontSize: 20, fontWeight: 600 }}>Validando...</span>
+        <span style={{ color: 'var(--color-primary)', fontSize: 22, fontWeight: 700, fontFamily: "'Montserrat', sans-serif" }}>Validando...</span>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
-  if (accessState === 'granted' && client) {
-    const daysRemaining = membership
-      ? differenceInDays(parseISO(membership.endDate), new Date())
-      : 0
-
+  if (accessState === 'result' && client && validationResult) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', backgroundColor: '#0e0e0e', gap: 20
-      }}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
-          padding: '40px 48px', backgroundColor: 'rgba(74,222,128,0.06)',
-          border: '2px solid #4ade80', borderRadius: 16
-        }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            backgroundColor: 'rgba(74,222,128,0.12)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Icons.Check />
-          </div>
-          <h2 style={{ fontSize: 36, fontWeight: 800, color: '#4ade80', margin: 0 }}>
-            ACCESO PERMITIDO
-          </h2>
-          <p style={{ fontSize: 16, color: '#a98a7d', margin: 0 }}>
-            Bienvenido, puedes ingresar
-          </p>
-          <div style={{
-            width: 120, height: 120, borderRadius: '50%',
-            backgroundColor: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 48, fontWeight: 800, color: '#ff6b00', overflow: 'hidden'
-          }}>
-            {client.photo ? (
-              <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              client.fullName.charAt(0).toUpperCase()
-            )}
-          </div>
-          <h3 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{client.fullName}</h3>
-          {membership && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px',
-                backgroundColor: '#1c1b1b', borderRadius: 8 }}>
-                <span style={{ color: '#a98a7d', fontSize: 14 }}>Membresía</span>
-                <span style={{ fontWeight: 700 }}>{membership.planName}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px',
-                backgroundColor: '#1c1b1b', borderRadius: 8 }}>
-                <span style={{ color: '#a98a7d', fontSize: 14 }}>Días Restantes</span>
-                <span style={{ fontWeight: 800, fontSize: 24,
-                  color: daysRemaining <= 3 ? '#ffb4ab' : daysRemaining <= 7 ? '#fbbf24' : '#4ade80'
-                }}>
-                  {daysRemaining} días
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-        <span style={{ color: '#606060', fontSize: 13 }}>
-          Volviendo al inicio...
-        </span>
-        <style>{`
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          * { user-select: none; }
-        `}</style>
-      </div>
-    )
-  }
-
-  if (accessState === 'denied' && validationResult) {
-    const getTitle = () => {
-      switch (validationResult.code) {
-        case 'denied_expired': return 'MEMBRESÍA VENCIDA'
-        case 'denied_frozen': return 'MEMBRESÍA CONGELADA'
-        case 'denied_inactive': return 'CUENTA INACTIVA'
-        default: return 'ACCESO DENEGADO'
-      }
-    }
-
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', backgroundColor: '#0e0e0e', gap: 20
-      }}>
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24,
-          padding: '40px 48px', backgroundColor: 'rgba(255,180,171,0.06)',
-          border: '2px solid #ffb4ab', borderRadius: 16
-        }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            backgroundColor: 'rgba(255,180,171,0.12)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Icons.X />
-          </div>
-          <h2 style={{ fontSize: 32, fontWeight: 800, color: '#ffb4ab', margin: 0 }}>
-            {getTitle()}
-          </h2>
-          {client && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16,
-              backgroundColor: '#1c1b1b', borderRadius: 12 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', backgroundColor: '#2a2a2a',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 22, fontWeight: 700, color: '#ff6b00', overflow: 'hidden' }}>
-                {client.photo ? (
-                  <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  client.fullName.charAt(0).toUpperCase()
-                )}
-              </div>
-              <div>
-                <div style={{ fontWeight: 600 }}>{client.fullName}</div>
-                <div style={{ fontSize: 13, color: '#a98a7d' }}>Código: {client.accessCode}</div>
-              </div>
-            </div>
-          )}
-          <p style={{ fontSize: 18, fontWeight: 600, color: '#ffb4ab', margin: 0, textAlign: 'center' }}>
-            {validationResult.message}
-          </p>
-          {validationResult.code === 'denied_expired' && (
-            <p style={{ fontSize: 14, color: '#a98a7d', margin: 0 }}>
-              Renueva tu membresía en recepción
-            </p>
-          )}
-          {validationResult.code === 'denied_frozen' && (
-            <p style={{ fontSize: 14, color: '#a98a7d', margin: 0 }}>
-              Visita recepción para reactivar tu membresía
-            </p>
-          )}
-        </div>
-        <span style={{ color: '#606060', fontSize: 13 }}>
-          Volviendo al inicio...
-        </span>
-        <style>{`
-          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          * { user-select: none; }
-        `}</style>
-      </div>
+      <ResultScreen
+        client={client}
+        membership={membership || undefined}
+        validationResult={validationResult}
+        debts={debts}
+        routines={routines}
+        onReset={resetAll}
+        onRenew={goToRenew}
+      />
     )
   }
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', backgroundColor: '#0e0e0e', padding: 32, gap: 40, position: 'relative'
-    }}>
-      {showAdminButton && (
-        <button onClick={goToAdmin} style={{
-          position: 'absolute', top: 20, right: 20, zIndex: 100,
-          padding: '6px 14px', fontSize: 13, fontWeight: 600,
-          backgroundColor: '#2a2a2a', color: '#fff', border: '1px solid #353534',
-          borderRadius: 8, cursor: 'pointer'
-        }}>
-          Panel Admin
-        </button>
-      )}
-
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: 44, fontWeight: 800, color: '#ff6b00', margin: 0 }}>
-          BODYFITGYM
-        </h1>
-        <p style={{ fontSize: 18, color: '#a98a7d', marginTop: 8 }}>
-          Ingresa tu código de acceso
-        </p>
-      </div>
-
-      <CodeDisplay code={accessCode} />
-
-      <Numpad
-        onDigit={handleDigit}
-        onClear={resetAll}
-        onBackspace={handleBackspace}
-        onEnter={validateAccess}
-        disabled={false}
-      />
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes blink {
-          50% { opacity: 0; }
-        }
-        * { user-select: none; }
-        button { -webkit-tap-highlight-color: transparent; }
-      `}</style>
-    </div>
+    <IdleScreen
+      settings={gymSettings}
+      accessCode={accessCode}
+      showAdminButton={showAdminButton}
+      onGoToAdmin={goToAdmin}
+      errorMessage={errorMessage}
+      onDigit={handleDigit}
+      onBackspace={handleBackspace}
+      onCheckIn={validateAccess}
+    />
   )
 }

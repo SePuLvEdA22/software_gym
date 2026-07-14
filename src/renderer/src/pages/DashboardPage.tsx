@@ -7,87 +7,19 @@ import { AccessLog, PeakHour, PlanStat, InactiveClient } from '../../../shared/t
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 
-const COLORS = ['#ff6b00', '#4ade80', '#ffb4ab', '#60a5fa', '#f472b6', '#a78bfa']
-
-interface KpiCardProps {
-  label: string
-  value: string | number
-  icon: keyof typeof Icons
-  trend?: string
-  trendUp?: boolean
-  color?: 'primary' | 'success' | 'error' | 'warning'
-}
-
-function KpiCard({ label, value, icon, trend, trendUp, color = 'primary' }: KpiCardProps): JSX.Element {
-  const IconComponent = Icons[icon]
-  const colorClass = {
-    primary: '#ff6b00',
-    success: '#4ade80',
-    error: '#ffb4ab',
-    warning: '#fbbf24'
-  }[color]
-
-  return (
-    <div className={`kpi-card kpi-card--${color}`}>
-      <div className="kpi-card-inner">
-        <div className="kpi-card-info">
-          <p className="kpi-label">{label}</p>
-          <p className="kpi-value" style={{ color: colorClass }}>{value}</p>
-        </div>
-        <div className="kpi-card-icon" style={{ color: colorClass, background: `${colorClass}20` }}>
-          <IconComponent />
-        </div>
-      </div>
-      {trend && (
-        <div className="kpi-card-trend" style={{ color: trendUp ? '#4ade80' : '#ffb4ab' }}>
-          {trendUp ? <Icons.TrendingUp /> : null}
-          <span>{trend}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function QuickActions({ onAction }: { onAction: (action: string) => void }): JSX.Element {
-  const actions = [
-    { id: 'new-client', label: 'Nuevo Cliente', icon: 'Plus' as const },
-    { id: 'check-access', label: 'Control Acceso', icon: 'Access' as const },
-    { id: 'new-payment', label: 'Registrar Pago', icon: 'CreditCard' as const },
-    { id: 'open-door', label: 'Abrir Puerta', icon: 'Door' as const }
-  ]
-
-  return (
-    <div className="quick-actions">
-      {actions.map((action) => {
-        const IconComponent = Icons[action.icon]
-        return (
-          <div 
-            key={action.id} 
-            className="quick-action"
-            onClick={() => onAction(action.id)}
-          >
-            <div className="quick-action-icon">
-              <IconComponent />
-            </div>
-            <span className="quick-action-label">{action.label}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+const CHART_COLORS = ['var(--color-primary-container)', 'var(--color-success)', 'var(--color-error)', 'var(--color-info)', '#f472b6', '#a78bfa']
 
 function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
   const getResultBadge = (result: string) => {
     switch (result) {
       case 'granted':
-        return <span className="badge badge-success">Permitido</span>
+        return <span className="status-badge status-badge-success">Permitido</span>
       case 'denied_expired':
-        return <span className="badge badge-error">Vencido</span>
+        return <span className="status-badge status-badge-error">Vencido</span>
       case 'denied_inactive':
-        return <span className="badge badge-warning">Inactivo</span>
+        return <span className="status-badge status-badge-warning">Inactivo</span>
       default:
-        return <span className="badge badge-error">Denegado</span>
+        return <span className="status-badge status-badge-error">Denegado</span>
     }
   }
 
@@ -100,79 +32,77 @@ function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
   }
 
   return (
-    <div className="card chart-card">
-      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Accesos Recientes</h3>
-        <Icons.History />
+    <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="flex-row-between" style={{ marginBottom: 16 }}>
+        <h3 className="headline-md" style={{ fontSize: 18 }}>Accesos Recientes</h3>
+        <Icons.History style={{ color: 'var(--color-on-surface-variant)' }} />
       </div>
-      <div className="card-body" style={{ padding: 0 }}>
-        {accesses.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <Icons.History />
-            </div>
-            <p>No hay accesos registrados hoy</p>
+      {accesses.length === 0 ? (
+        <div className="empty-state" style={{ flex: 1 }}>
+          <div className="empty-state-icon">
+            <Icons.History />
           </div>
-        ) : (
-          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Hora</th>
-                  <th>Cliente</th>
-                  <th>Código</th>
-                  <th>Estado</th>
+          <p>No hay accesos registrados hoy</p>
+        </div>
+      ) : (
+        <div className="table-container" style={{ border: 'none', borderRadius: 0, flex: 1, maxHeight: 300, overflowY: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Cliente</th>
+                <th>Código</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accesses.slice(0, 5).map((access) => (
+                <tr key={access.id}>
+                  <td style={{ fontFamily: 'monospace' }}>{formatTime(access.timestamp)}</td>
+                  <td>{access.clientName || 'Desconocido'}</td>
+                  <td style={{ fontFamily: 'monospace' }}>{access.accessCode}</td>
+                  <td>{getResultBadge(access.result)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {accesses.slice(0, 10).map((access) => (
-                  <tr key={access.id}>
-                    <td style={{ fontFamily: 'monospace' }}>{formatTime(access.timestamp)}</td>
-                    <td>{access.clientName || 'Desconocido'}</td>
-                    <td style={{ fontFamily: 'monospace' }}>{access.accessCode}</td>
-                    <td>{getResultBadge(access.result)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
 function RevenueChart({ data }: { data: { month: string; revenue: number }[] }): JSX.Element {
   return (
-    <div className="card chart-card">
-      <div className="card-header">
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Ingresos Mensuales</h3>
+    <div className="bento-card">
+      <div style={{ marginBottom: 16 }}>
+        <h3 className="headline-md" style={{ fontSize: 18 }}>Ingresos Mensuales</h3>
       </div>
-      <div className="card-body chart-body">
+      <div className="chart-body">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ff6b00" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#ff6b00" stopOpacity={0} />
+                <stop offset="5%" stopColor="var(--color-primary-container)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--color-primary-container)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="month" stroke="#a98a7d" fontSize={12} />
-            <YAxis stroke="#a98a7d" fontSize={12} tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-container-high)" />
+            <XAxis dataKey="month" stroke="var(--color-outline)" fontSize={12} />
+            <YAxis stroke="var(--color-outline)" fontSize={12} tickFormatter={(v) => `$${(v / 1000000).toFixed(1)}M`} />
             <Tooltip
               contentStyle={{ 
-                backgroundColor: '#201f1f', 
-                border: '1px solid #2a2a2a',
-                borderRadius: 8,
-                color: '#e5e2e1'
+                backgroundColor: 'var(--color-surface-container)', 
+                border: '1px solid var(--color-surface-container-high)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-on-surface)'
               }}
               formatter={(value: number) => [formatCurrency(value), 'Ingresos']}
             />
             <Area 
               type="monotone" 
               dataKey="revenue" 
-              stroke="#ff6b00" 
+              stroke="var(--color-primary-container)" 
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorRevenue)"
@@ -191,11 +121,11 @@ function PeakHoursChart({ data }: { data: PeakHour[] }): JSX.Element {
   }))
 
   return (
-    <div className="card chart-card">
-      <div className="card-header">
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Horas Pico</h3>
+    <div className="bento-card">
+      <div style={{ marginBottom: 16 }}>
+        <h3 className="headline-md" style={{ fontSize: 18 }}>Horas Pico</h3>
       </div>
-      <div className="card-body chart-body">
+      <div className="chart-body">
         {data.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -206,18 +136,17 @@ function PeakHoursChart({ data }: { data: PeakHour[] }): JSX.Element {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-              <XAxis dataKey="hour" stroke="#a98a7d" fontSize={12} />
-              <YAxis stroke="#a98a7d" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-container-high)" />
+              <XAxis dataKey="hour" stroke="var(--color-outline)" fontSize={12} />
+              <YAxis stroke="var(--color-outline)" fontSize={12} />
               <Tooltip
                 contentStyle={{ 
-                  backgroundColor: '#201f1f', 
-                  border: '1px solid #2a2a2a',
-                  borderRadius: 8,
-                  color: '#e5e2e1'
-                }}
+                  backgroundColor: 'var(--color-surface-container)', 
+                  border: '1px solid var(--color-surface-container-high)',                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-on-surface)'
+              }}
               />
-              <Bar dataKey="count" fill="#ff6b00" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill="var(--color-primary-container)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -233,11 +162,11 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
   }))
 
   return (
-    <div className="card chart-card">
-      <div className="card-header">
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>Planes Más Vendidos</h3>
+    <div className="bento-card">
+      <div style={{ marginBottom: 16 }}>
+        <h3 className="headline-md" style={{ fontSize: 18 }}>Planes Más Vendidos</h3>
       </div>
-      <div className="card-body chart-body">
+      <div className="chart-body">
         {data.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -258,17 +187,16 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
                 dataKey="value"
               >
                 {chartData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={{ 
-                  backgroundColor: '#201f1f', 
-                  border: '1px solid #2a2a2a',
-                  borderRadius: 8,
-                  color: '#e5e2e1'
-                }}
-              />
+                  backgroundColor: 'var(--color-surface-container)', 
+                  border: '1px solid var(--color-surface-container-high)',                borderRadius: 'var(--radius-md)',
+                color: 'var(--color-on-surface)'
+              }}
+            />
             </PieChart>
           </ResponsiveContainer>
         )}
@@ -280,7 +208,7 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
                   width: 12, 
                   height: 12, 
                   borderRadius: 2, 
-                  backgroundColor: COLORS[index % COLORS.length] 
+                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length] 
                 }} />
                 <span style={{ fontSize: 12 }}>{plan.planName}</span>
               </div>
@@ -288,6 +216,40 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function QuickActions({ onAction }: { onAction: (action: string) => void }): JSX.Element {
+  const actions = [
+    { id: 'new-client', label: 'Nuevo Cliente', icon: 'Plus' as const },
+    { id: 'check-access', label: 'Control Acceso', icon: 'Access' as const },
+    { id: 'new-payment', label: 'Registrar Pago', icon: 'CreditCard' as const },
+    { id: 'open-door', label: 'Abrir Puerta', icon: 'Door' as const }
+  ]
+
+  return (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      {actions.map((action) => {
+        const IconComponent = Icons[action.icon]
+        return (
+          <div
+            key={action.id}
+            className="bento-card"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '12px 20px', cursor: 'pointer',
+              flex: '1 1 auto', minWidth: 140, userSelect: 'none'
+            }}
+            onClick={() => onAction(action.id)}
+          >
+            <div style={{ color: 'var(--color-primary-container)', display: 'flex' }}>
+              <IconComponent />
+            </div>
+            <span className="body-lg" style={{ fontSize: 14 }}>{action.label}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -300,10 +262,12 @@ export function DashboardPage(): JSX.Element {
   const [expiringSoon, setExpiringSoon] = useState<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>([])
   const [birthdays, setBirthdays] = useState<{ clientId: string; clientName: string; day: number }[]>([])
   const [inactiveClients, setInactiveClients] = useState<InactiveClient[]>([])
+  const [dashboardPeriod, setDashboardPeriod] = useState<'day' | 'week' | 'month'>('day')
 
-  const loadMetrics = async () => {
+  const loadMetrics = async (periodParam?: 'day' | 'week' | 'month') => {
+    const activePeriod = periodParam || dashboardPeriod
     const [result, revenueResult, expiringResult, birthdayResult, inactiveResult] = await Promise.all([
-      window.electronAPI.dashboard.getMetrics(),
+      window.electronAPI.dashboard.getMetrics(activePeriod),
       window.electronAPI.dashboard.getRevenueByMonth(6),
       window.electronAPI.dashboard.getExpiringSoon(7),
       window.electronAPI.dashboard.getBirthdays(),
@@ -330,9 +294,9 @@ export function DashboardPage(): JSX.Element {
 
   useEffect(() => {
     loadMetrics()
-    const interval = setInterval(loadMetrics, 30000)
+    const interval = setInterval(() => loadMetrics(dashboardPeriod), 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [dashboardPeriod])
 
   const handleQuickAction = async (action: string) => {
     switch (action) {
@@ -341,10 +305,10 @@ export function DashboardPage(): JSX.Element {
         setTriggerNewClientModal(true)
         break
       case 'check-access':
-        navigate('/access')
+        navigate('/logs')
         break
       case 'new-payment':
-        navigate('/memberships')
+        navigate('/payments')
         break
       case 'open-door':
         await window.electronAPI.door.open()
@@ -371,169 +335,211 @@ export function DashboardPage(): JSX.Element {
   if (localLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
-        <div style={{
-          width: 40, height: 40,
-          border: '4px solid rgba(255,107,0,0.2)',
-          borderTopColor: '#ff6b00',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
+        <div className="spinner" />
       </div>
     )
   }
 
+  const periodLabels: Record<string, string> = { day: 'Día', week: 'Semana', month: 'Mes' }
+  const revenueLabel: Record<string, string> = { day: 'Ingresos Hoy', week: 'Ingresos Semana', month: 'Ingresos Mes' }
+
+  const handlePeriodChange = (p: 'day' | 'week' | 'month') => {
+    setDashboardPeriod(p)
+    setLocalLoading(true)
+    loadMetrics(p)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <QuickActions onAction={handleQuickAction} />
 
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1 className="display-lg">Overview</h1>
+          <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
+            Panel de control del gimnasio
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['day', 'week', 'month'] as const).map((p) => (
+            <div
+              key={p}
+              className={`filter-pill${dashboardPeriod === p ? ' active' : ''}`}
+              onClick={() => handlePeriodChange(p)}
+            >
+              {periodLabels[p]}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Metric Cards */}
       <div className="grid grid-6">
-        <KpiCard
-          label="Clientes Totales"
-          value={metrics.totalClients}
-          icon="Users"
-          color="primary"
-        />
-        <KpiCard
-          label="Clientes Activos"
-          value={metrics.activeClients}
-          icon="Check"
-          color="success"
-        />
-        <KpiCard
-          label="Accesos Hoy"
-          value={metrics.todayAccesses}
-          icon="Access"
-          color="primary"
-        />
-        <KpiCard
-          label="Ingresos Mes"
-          value={formatCurrency(metrics.monthRevenue)}
-          icon="CreditCard"
-          color="success"
-        />
-        <KpiCard
-          label="Clientes con Deuda"
-          value={metrics.debtorsCount}
-          icon="Bell"
-          color="error"
-        />
-        <KpiCard
-          label="Inactivos 30d"
-          value={metrics.inactiveClientsCount}
-          icon="Clock"
-          color="warning"
-        />
+        <div className="metric-card kpi-left-border kpi-left-border-primary" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ top: '-20%', right: '-20%', width: 140, height: 140, background: 'var(--color-primary-container)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">Clientes Totales</p>
+            <p className="metric-card-value">{metrics.totalClients}</p>
+          </div>
+        </div>
+        <div className="metric-card kpi-left-border kpi-left-border-success" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ bottom: '-20%', left: '-20%', width: 120, height: 120, background: 'var(--color-success)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">Clientes Activos</p>
+            <p className="metric-card-value">{metrics.activeClients}</p>
+          </div>
+        </div>
+        <div className="metric-card kpi-left-border kpi-left-border-primary" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ top: '10%', right: '-10%', width: 100, height: 100, background: 'var(--color-primary-container)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">Accesos Hoy</p>
+            <p className="metric-card-value">{metrics.todayAccesses}</p>
+          </div>
+        </div>
+        <div className="metric-card kpi-left-border kpi-left-border-success" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ bottom: '-10%', right: '-10%', width: 130, height: 130, background: 'var(--color-success)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">{revenueLabel[dashboardPeriod]}</p>
+            <p className="metric-card-value">{formatCurrency(metrics.monthRevenue)}</p>
+          </div>
+        </div>
+        <div className="metric-card kpi-left-border kpi-left-border-error" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ top: '-30%', left: '30%', width: 110, height: 110, background: 'var(--color-error)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">Clientes con Deuda</p>
+            <p className="metric-card-value">{metrics.debtorsCount}</p>
+          </div>
+        </div>
+        <div className="metric-card kpi-left-border kpi-left-border-warning" style={{ minHeight: 160 }}>
+          <div className="metric-card-blur" style={{ bottom: '-20%', right: '20%', width: 120, height: 120, background: 'var(--color-warning)' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p className="metric-card-label">Inactivos 30d</p>
+            <p className="metric-card-value">{metrics.inactiveClientsCount}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-2">
-        <RevenueChart data={revenueData} />
+      {/* Charts Row: Peak Hours (2/3) + Recent Accesses (1/3) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
         <PeakHoursChart data={metrics.peakHours} />
-      </div>
-
-      <div className="grid grid-2">
-        <TopPlansChart data={metrics.topPlans} />
         <RecentAccesses accesses={metrics.recentAccesses} />
       </div>
 
+      {/* Charts Row: Revenue (1/2) + Top Plans (1/2) */}
+      <div className="grid grid-2">
+        <RevenueChart data={revenueData} />
+        <TopPlansChart data={metrics.topPlans} />
+      </div>
+
+      {/* Info Cards */}
       <div className="grid grid-3">
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icons.Bell style={{ color: 'var(--color-warning)' }} />
+        <div className="bento-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Icons.Bell style={{ color: 'var(--color-warning)' }} />
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Próximos a Vencer (7 días)
             </h3>
           </div>
-          <div className="card-body">
-            {expiringSoon.length === 0 ? (
-              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                No hay membresías próximas a vencer
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {expiringSoon.map((item, i) => (
-                  <div key={i} className={`dashboard-list-item${item.daysLeft <= 1 ? ' dashboard-list-item--urgent' : ''}`}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>
-                    </div>
-                    <div style={{
-                      fontWeight: 700, fontSize: 16,
-                      color: item.daysLeft <= 1 ? 'var(--color-error)' : item.daysLeft <= 3 ? 'var(--color-warning)' : 'var(--color-primary-container)'
-                    }}>
-                      {item.daysLeft}d
-                    </div>
+          {expiringSoon.length === 0 ? (
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+              No hay membresías próximas a vencer
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {expiringSoon.map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)',
+                  borderRadius: 8,
+                  borderLeft: item.daysLeft <= 1 ? '3px solid var(--color-error)' :
+                             item.daysLeft <= 3 ? '3px solid var(--color-warning)' :
+                             '3px solid var(--color-primary-container)'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <div style={{
+                    fontWeight: 700, fontSize: 16,
+                    color: item.daysLeft <= 1 ? 'var(--color-error)' :
+                           item.daysLeft <= 3 ? 'var(--color-warning)' :
+                           'var(--color-primary-container)'
+                  }}>
+                    {item.daysLeft}d
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icons.Calendar style={{ color: 'var(--color-primary-container)' }} />
+        <div className="bento-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Icons.Calendar style={{ color: 'var(--color-primary-container)' }} />
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Cumpleaños del Mes
             </h3>
           </div>
-          <div className="card-body">
-            {birthdays.length === 0 ? (
-              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                No hay cumpleaños este mes
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {birthdays.map((b, i) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container)', borderRadius: 8
+          {birthdays.length === 0 ? (
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+              No hay cumpleaños este mes
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {birthdays.map((b, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)', borderRadius: 8
+                }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    backgroundColor: 'color-mix(in srgb, var(--color-primary-container) 15%, transparent)', color: 'var(--color-primary-container)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 14
                   }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      backgroundColor: 'rgba(255,107,0,0.15)', color: '#ff6b00',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 700, fontSize: 14
-                    }}>
-                      {b.day}
-                    </div>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{b.clientName}</span>
+                    {b.day}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{b.clientName}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Icons.Clock style={{ color: 'var(--color-warning)' }} />
+        <div className="bento-card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Icons.Clock style={{ color: 'var(--color-warning)' }} />
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Inactivos (+30d sin visitar)
             </h3>
           </div>
-          <div className="card-body">
-            {inactiveClients.length === 0 ? (
-              <p style={{ color: 'var(--color-secondary)', fontSize: 13, textAlign: 'center', padding: 16 }}>
-                No hay clientes inactivos
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {inactiveClients.map((item, i) => (
-                  <div key={i} className="dashboard-list-item">
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{item.planName}</div>
-                    </div>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-warning)' }}>
-                      {item.daysSinceLastVisit}d
-                    </div>
+          {inactiveClients.length === 0 ? (
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+              No hay clientes inactivos
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {inactiveClients.map((item, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)', borderRadius: 8
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-warning)' }}>
+                    {item.daysSinceLastVisit}d
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Quick Actions */}
+      <QuickActions onAction={handleQuickAction} />
     </div>
   )
 }

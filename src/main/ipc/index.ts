@@ -82,6 +82,10 @@ import {
   registerMovement, getMovements, getLowStockProducts
 } from '../database/inventory'
 import {
+  getClientRoutines, saveClientRoutine,
+  deleteClientRoutine, getGymSettings, saveGymSettings
+} from '../database/routines'
+import {
   getMeasurements, saveMeasurement, getGoals, saveGoal
 } from '../database/bodyTracking'
 import {
@@ -495,12 +499,14 @@ export function setupIpcHandlers(): void {
 
       if (!activeOrFrozen) {
         updateClientStatus(client.id, 'expired')
+        const debts = getClientDebt(client.id)
         logAccess(accessCode, 'denied_expired', 'Membresía vencida', client.id, client.fullName)
         return {
           success: true,
           data: {
             valid: false,
             client,
+            debt: debts.length > 0 ? debts : undefined,
             message: 'Membresía vencida',
             code: 'denied_expired'
           }
@@ -508,6 +514,7 @@ export function setupIpcHandlers(): void {
       }
 
       if (activeOrFrozen.status === 'frozen') {
+        const debts = getClientDebt(client.id)
         logAccess(accessCode, 'denied_frozen', 'Membresía congelada', client.id, client.fullName)
         return {
           success: true,
@@ -515,6 +522,7 @@ export function setupIpcHandlers(): void {
             valid: false,
             client,
             membership: activeOrFrozen,
+            debt: debts.length > 0 ? debts : undefined,
             message: 'Membresía congelada - contacta recepción',
             code: 'denied_frozen'
           }
@@ -522,6 +530,9 @@ export function setupIpcHandlers(): void {
       }
 
       const membership = activeOrFrozen
+
+      const debts = getClientDebt(client.id)
+      const routines = getClientRoutines(client.id)
 
       logAccess(accessCode, 'granted', 'Acceso permitido', client.id, client.fullName)
       
@@ -531,6 +542,8 @@ export function setupIpcHandlers(): void {
           valid: true,
           client,
           membership,
+          debt: debts.length > 0 ? debts : undefined,
+          routines,
           message: `Bienvenido ${client.fullName}`,
           code: 'granted'
         }
@@ -571,11 +584,11 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('dashboard:getMetrics', async () => {
+  ipcMain.handle('dashboard:getMetrics', async (_, period?: 'day' | 'week' | 'month') => {
     try {
       deactivateExpiredPromotions()
       updateExpiredMemberships()
-      const metrics = getDashboardMetrics()
+      const metrics = getDashboardMetrics(period)
       return { success: true, data: metrics }
     } catch (error: any) {
       log.error('Error getting dashboard metrics:', error)
@@ -1129,6 +1142,51 @@ export function setupIpcHandlers(): void {
     if (auth) return auth
     try { return { success: true, data: sendTemplateToAll(templateId) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('routine:getByClient', async (_, clientId: string) => {
+    try {
+      const routines = getClientRoutines(clientId)
+      return { success: true, data: routines }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('routine:save', async (_, clientId: string, dayOfWeek: number, exercises: any[]) => {
+    try {
+      const routine = saveClientRoutine(clientId, dayOfWeek, exercises)
+      return { success: true, data: routine }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('routine:delete', async (_, clientId: string, dayOfWeek: number) => {
+    try {
+      const deleted = deleteClientRoutine(clientId, dayOfWeek)
+      return { success: true, data: deleted }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('gym:getSettings', async () => {
+    try {
+      return { success: true, data: getGymSettings() }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('gym:saveSettings', async (_, settings: any) => {
+    try {
+      const auth = requireRole('admin')
+      if (auth) return auth
+      return { success: true, data: saveGymSettings(settings) }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
   })
 
   log.info('IPC handlers registered')

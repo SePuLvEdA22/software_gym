@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Product, InventoryMovement } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
 import { formatCurrency } from '@/utils/format'
+import { format, parseISO } from 'date-fns'
 
 const categoryLabels: Record<string, string> = {
-  supplement: 'Suplementos',
-  drink: 'Bebidas',
-  accessory: 'Accesorios',
-  other: 'Otros'
+  supplement: 'Supplements',
+  drink: 'Beverages',
+  accessory: 'Accessories',
+  other: 'Apparel'
 }
 
 const categoryColors: Record<string, string> = {
@@ -17,6 +18,30 @@ const categoryColors: Record<string, string> = {
   drink: 'var(--color-info)',
   accessory: 'var(--color-warning)',
   other: 'var(--color-secondary)'
+}
+
+const filterCategories = [
+  { value: '', label: 'All Items' },
+  { value: 'supplement', label: 'Supplements' },
+  { value: 'other', label: 'Apparel' },
+  { value: 'accessory', label: 'Accessories' },
+  { value: 'drink', label: 'Beverages' },
+]
+
+function getStockLevel(stock: number): 'success' | 'warning' | 'error' {
+  if (stock < 5) return 'error'
+  if (stock <= 20) return 'warning'
+  return 'success'
+}
+
+function getStockLabel(stock: number): string {
+  if (stock < 5) return 'Needs Reorder'
+  if (stock <= 20) return 'Order Soon'
+  return 'In Stock'
+}
+
+function getStockPercent(stock: number): number {
+  return Math.min(Math.round((stock / 50) * 100), 100)
 }
 
 interface ProductFormProps {
@@ -61,21 +86,21 @@ function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Elemen
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-lg">
+      <div className="modal modal-lg glass-panel">
         <form onSubmit={handleSubmit}>
           <div className="modal-header">
-            <h2 className="modal-title">{product ? 'Editar Producto' : 'Nuevo Producto'}</h2>
+            <h2 className="headline-md">{product ? 'Editar Producto' : 'Nuevo Producto'}</h2>
             <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
           </div>
           <div className="modal-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Nombre *</label>
+                <label className="label-md">Nombre *</label>
                 <input type="text" className="form-input" value={form.name}
                   onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Categoría</label>
+                <label className="label-md">Categoría</label>
                 <select className="form-select" value={form.category}
                   onChange={e => setForm(p => ({ ...p, category: e.target.value as Product['category'] }))}>
                   <option value="supplement">Suplementos</option>
@@ -86,36 +111,36 @@ function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Elemen
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Descripción</label>
+              <label className="label-md">Descripción</label>
               <textarea className="form-input" value={form.description}
                 onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                 rows={2} style={{ resize: 'vertical' }} />
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Precio Venta</label>
+                <label className="label-md">Precio Venta</label>
                 <input type="number" className="form-input" value={form.price}
                   onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} min={0} />
               </div>
               <div className="form-group">
-                <label className="form-label">Costo</label>
+                <label className="label-md">Costo</label>
                 <input type="number" className="form-input" value={form.cost}
                   onChange={e => setForm(p => ({ ...p, cost: Number(e.target.value) }))} min={0} />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Stock Actual</label>
+                <label className="label-md">Stock Actual</label>
                 <input type="number" className="form-input" value={form.stock}
                   onChange={e => setForm(p => ({ ...p, stock: Number(e.target.value) }))} min={0} />
               </div>
               <div className="form-group">
-                <label className="form-label">Stock Mínimo</label>
+                <label className="label-md">Stock Mínimo</label>
                 <input type="number" className="form-input" value={form.minStock}
                   onChange={e => setForm(p => ({ ...p, minStock: Number(e.target.value) }))} min={0} />
               </div>
               <div className="form-group">
-                <label className="form-label">Código de Barras</label>
+                <label className="label-md">Código de Barras</label>
                 <input type="text" className="form-input" value={form.barcode}
                   onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))} />
               </div>
@@ -170,16 +195,16 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal glass-panel">
         <form onSubmit={handleSubmit}>
           <div className="modal-header">
-            <h2 className="modal-title">Movimiento: {product.name}</h2>
+            <h2 className="headline-md">Movimiento: {product.name}</h2>
             <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
           </div>
           <div className="modal-body">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Tipo</label>
+                <label className="label-md">Tipo</label>
                 <select className="form-select" value={type}
                   onChange={e => setType(e.target.value as 'in' | 'out')}>
                   <option value="in">Entrada</option>
@@ -187,20 +212,20 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Cantidad</label>
+                <label className="label-md">Cantidad</label>
                 <input type="number" className="form-input" value={quantity}
                   onChange={e => setQuantity(Number(e.target.value))} min={1} />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Precio Unitario</label>
+                <label className="label-md">Precio Unitario</label>
                 <input type="number" className="form-input" value={price}
                   onChange={e => setPrice(Number(e.target.value))} min={0} />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Descripción</label>
+              <label className="label-md">Descripción</label>
               <input type="text" className="form-input" value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Motivo del movimiento" />
@@ -235,6 +260,7 @@ export function InventoryPage(): JSX.Element {
   const [movementsPage, setMovementsPage] = useState(1)
   const [movementsTotalPages, setMovementsTotalPages] = useState(1)
   const [pageSize] = useState(50)
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
 
   const loadProducts = async () => {
     const searchParam = search.trim() || undefined
@@ -262,8 +288,6 @@ export function InventoryPage(): JSX.Element {
     }
   }
 
-  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
-
   useEffect(() => { loadProducts() }, [page, search, selectedCategory])
   useEffect(() => { loadMovements() }, [movementsPage])
   useEffect(() => { loadProducts(); loadMovements(); loadLowStock() }, [])
@@ -289,133 +313,170 @@ export function InventoryPage(): JSX.Element {
     else showToast('error', r.error)
   }
 
+  const uniqueCategories = useMemo(() => {
+    return [...new Set(products.map(p => p.category))].length
+  }, [products])
+
+  const thisMonthSales = useMemo(() => {
+    const now = new Date()
+    return movements
+      .filter(m => {
+        const d = parseISO(m.timestamp)
+        return m.type === 'out' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      })
+      .reduce((sum, m) => sum + m.total, 0)
+  }, [movements])
+
+  const stockFillColor = (stock: number) => {
+    if (stock < 5) return 'var(--color-error)'
+    if (stock <= 20) return 'var(--color-warning)'
+    return 'var(--color-success)'
+  }
+
   return (
     <div className="page">
-      <div className="page-header" style={{ marginBottom: 16 }}>
-        <h2>Inventario</h2>
-        <button className="btn btn-primary" style={{ marginTop: 12, paddingBottom: 12 }} onClick={() => { setEditingProduct(null); setShowForm(true) }}>
-          <Icons.Plus /> Nuevo Producto
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <h1 className="display-lg" style={{ margin: 0 }}>Pro Shop Inventory</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div className="search-box" style={{ flex: 1, minWidth: 220 }}>
+            <Icons.Search />
+            <input type="text" placeholder="Search products..."
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowForm(true) }}>
+            <Icons.Plus /> Add Item
+          </button>
+        </div>
       </div>
 
-      {lowStockProducts.length > 0 && (
-        <div className="card" style={{ borderLeft: '4px solid var(--color-warning)', marginBottom: 20 }}>
-          <div style={{ padding: 16 }}>
-            <h3 style={{ fontSize: 14, color: 'var(--color-warning)', margin: '0 0 8px 0' }}>
-              ⚠️ Alertas de Stock Bajo ({lowStockProducts.length})
-            </h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {lowStockProducts.map(p => (
-                <span key={p.id} className="badge badge-warning">
-                  {p.name}: {p.stock}/{p.minStock}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 0, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
         <button className={`btn ${tab === 'products' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ borderRadius: '8px 0 0 8px' }} onClick={() => setTab('products')}>Productos</button>
+          style={{ borderRadius: '8px 0 0 8px' }} onClick={() => setTab('products')}>Products</button>
         <button className={`btn ${tab === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: '0 8px 8px 0' }}
-          onClick={() => { setTab('movements'); loadMovements() }}>Movimientos</button>
+          onClick={() => { setTab('movements'); loadMovements() }}>Movements</button>
       </div>
 
       {tab === 'products' && (
         <>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            <div className="search-box" style={{ flex: 1 }}>
-              <Icons.Search />
-              <input type="text" placeholder="Buscar producto o código de barras..."
-                value={search} onChange={e => setSearch(e.target.value)} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <div className="metric-card">
+              <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-primary-container)', top: -30, right: -30 }} />
+              <div className="metric-card-label">Total Items</div>
+              <div className="metric-card-value">{totalCount}</div>
             </div>
-            <select className="form-select" style={{ width: 180 }} value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}>
-              <option value="">Todas las categorías</option>
-              <option value="supplement">Suplementos</option>
-              <option value="drink">Bebidas</option>
-              <option value="accessory">Accesorios</option>
-              <option value="other">Otros</option>
-            </select>
+            <div className="metric-card" style={{ borderColor: 'rgba(255, 180, 171, 0.3)' }}>
+              <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-error)', top: -30, right: -30 }} />
+              <div className="metric-card-label" style={{ color: 'var(--color-error)' }}>Low Stock Alerts</div>
+              <div className="metric-card-value" style={{ color: 'var(--color-error)' }}>{lowStockProducts.length}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-info)', top: -30, right: -30 }} />
+              <div className="metric-card-label">Categories</div>
+              <div className="metric-card-value">{uniqueCategories}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-success)', top: -30, right: -30 }} />
+              <div className="metric-card-label">This Month Sales</div>
+              <div className="metric-card-value">{formatCurrency(thisMonthSales)}</div>
+            </div>
           </div>
 
-          <div className="card">
-            <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Categoría</th>
-                    <th>Stock</th>
-                    <th>Stock Mín</th>
-                    <th>Precio</th>
-                    <th>Costo</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map(p => (
-                    <tr key={p.id}>
-                      <td><strong>{p.name}</strong>{p.barcode && <div style={{ fontSize: 11, color: 'var(--color-secondary)' }}>{p.barcode}</div>}</td>
-                      <td><span className="badge" style={{ background: categoryColors[p.category] + '22', color: categoryColors[p.category] }}>{categoryLabels[p.category] || p.category}</span></td>
-                      <td><span style={{ color: p.stock <= p.minStock ? 'var(--color-warning)' : 'inherit', fontWeight: p.stock <= p.minStock ? 700 : 400 }}>{p.stock}</span></td>
-                      <td>{p.minStock}</td>
-                      <td>{formatCurrency(p.price)}</td>
-                      <td>{formatCurrency(p.cost)}</td>
-                      <td>{p.isActive ? <span className="badge badge-success">Activo</span> : <span className="badge badge-error">Inactivo</span>}</td>
-                      <td>
-                        <div className="table-actions">
-                          <button className="btn btn-sm btn-secondary" onClick={() => { setShowMovement(p) }} title="Movimiento"><Icons.Plus /></button>
-                          <button className="btn btn-sm btn-secondary" onClick={() => { setEditingProduct(p); setShowForm(true) }} title="Editar"><Icons.Edit /></button>
-                          <button className="btn btn-sm btn-secondary" style={{ color: 'var(--color-error)' }} onClick={() => handleDelete(p)} title="Eliminar"><Icons.Trash /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            {filterCategories.map(fc => (
+              <button key={fc.value}
+                className={`filter-pill ${selectedCategory === fc.value ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(fc.value)}>
+                {fc.label}
+              </button>
+            ))}
           </div>
+
+          {products.length === 0 ? (
+            <div className="glass-panel" style={{ textAlign: 'center', padding: 48, borderRadius: 12 }}>
+              <p className="headline-md" style={{ color: 'var(--color-on-surface-variant)' }}>No products found</p>
+              <p className="label-md" style={{ color: 'var(--color-on-surface-variant)', marginTop: 8 }}>Try adjusting your search or filter criteria</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+                {products.map(p => {
+                  const level = getStockLevel(p.stock)
+                  const color = stockFillColor(p.stock)
+                  return (
+                    <div key={p.id} className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span className="label-md" style={{ background: categoryColors[p.category] + '22', color: categoryColors[p.category], padding: '2px 10px', borderRadius: 9999 }}>
+                          {categoryLabels[p.category] || p.category}
+                        </span>
+                        <span className={`status-badge-${level}`}>{getStockLabel(p.stock)}</span>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 className="headline-md" style={{ fontSize: 'clamp(16px, 2vw, 20px)', margin: '0 0 4px 0' }}>{p.name}</h3>
+                        <div className="label-xl" style={{ color: 'var(--color-primary-container)', marginBottom: 8 }}>{formatCurrency(p.price)}</div>
+                        {p.barcode && (
+                          <div className="label-md" style={{ color: 'var(--color-on-surface-variant)' }}>SKU: {p.barcode}</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span className="label-md">Stock</span>
+                          <span className="label-md" style={{ color }}>{p.stock} units</span>
+                        </div>
+                        <div className="progress-bar">
+                          <div className="progress-bar-fill" style={{ width: `${getStockPercent(p.stock)}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
+                        <button className="btn btn-sm btn-secondary" onClick={() => { setShowMovement(p) }} title="Movement"><Icons.Plus /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => { setEditingProduct(p); setShowForm(true) }} title="Edit"><Icons.Edit /></button>
+                        <button className="btn btn-sm btn-secondary" style={{ color: 'var(--color-error)', marginLeft: 'auto' }} onClick={() => handleDelete(p)} title="Delete"><Icons.Trash /></button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
+            </>
+          )}
         </>
       )}
 
       {tab === 'movements' && (
-        <div className="card">
+        <div className="glass-panel" style={{ borderRadius: 12, overflow: 'hidden' }}>
           <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th>Producto</th>
-                  <th>Tipo</th>
-                  <th>Cantidad</th>
-                  <th>Precio</th>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Type</th>
+                  <th>Qty</th>
+                  <th>Price</th>
                   <th>Total</th>
-                  <th>Descripción</th>
-                  <th>Usuario</th>
+                  <th>Description</th>
+                  <th>User</th>
                 </tr>
               </thead>
               <tbody>
                 {movements.map(m => (
                   <tr key={m.id}>
-                    <td style={{ fontSize: 13 }}>{new Date(m.timestamp).toLocaleString('es-CO')}</td>
+                    <td style={{ fontSize: 13 }}>{format(parseISO(m.timestamp), 'dd/MM/yyyy HH:mm')}</td>
                     <td>{m.productName}</td>
-                    <td><span className={`badge ${m.type === 'in' ? 'badge-success' : 'badge-error'}`}>{m.type === 'in' ? 'Entrada' : 'Salida'}</span></td>
+                    <td><span className={`status-badge-${m.type === 'in' ? 'success' : 'error'}`}>{m.type === 'in' ? 'In' : 'Out'}</span></td>
                     <td>{m.quantity}</td>
                     <td>{formatCurrency(m.price)}</td>
                     <td>{formatCurrency(m.total)}</td>
-                    <td style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{m.description}</td>
+                    <td style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>{m.description}</td>
                     <td style={{ fontSize: 13 }}>{m.userName}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-              <Pagination page={movementsPage} totalPages={movementsTotalPages} onPageChange={setMovementsPage} size="sm" />
+          <div style={{ padding: '8px 16px' }}>
+            <Pagination page={movementsPage} totalPages={movementsTotalPages} onPageChange={setMovementsPage} size="sm" />
+          </div>
         </div>
       )}
 

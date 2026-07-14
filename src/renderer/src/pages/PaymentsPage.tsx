@@ -22,11 +22,11 @@ function getPaymentMethodLabel(method: string): string {
 function getPaymentMethodBadge(method: string): JSX.Element {
   const pm = paymentMethods.find(p => p.value === method)
   const color = pm?.color || 'var(--color-secondary)'
-  
+
   return (
-    <span 
-      className="badge" 
-      style={{ 
+    <span
+      className="status-badge status-badge-info"
+      style={{
         backgroundColor: `${color}20`,
         color: color,
         border: `1px solid ${color}40`
@@ -35,6 +35,11 @@ function getPaymentMethodBadge(method: string): JSX.Element {
       {getPaymentMethodLabel(method)}
     </span>
   )
+}
+
+function getInitials(name: string): string {
+  if (!name) return '?'
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
 export function PaymentsPage(): JSX.Element {
@@ -89,15 +94,15 @@ export function PaymentsPage(): JSX.Element {
       const paymentsData = result.data.data
       setTotalPages(result.data.totalPages)
       setPayments(paymentsData)
-      
+
       const total = paymentsData.reduce((sum, p) => sum + p.amount, 0)
       const totalDiscount = paymentsData.reduce((sum, p) => sum + (p.discount || 0), 0)
       const byMethod: { [key: string]: number } = {}
-      
+
       for (const payment of paymentsData) {
         byMethod[payment.method] = (byMethod[payment.method] || 0) + payment.amount
       }
-      
+
       setSummary({
         total,
         count: paymentsData.length,
@@ -130,126 +135,149 @@ export function PaymentsPage(): JSX.Element {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 className="display-lg">Billing Overview</h1>
+          <p style={{ color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
+            Track payments, revenue, and membership transactions
+          </p>
+        </div>
+        <button
+          className="btn btn-primary"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          onClick={async () => {
+            if (window.electronAPI?.system?.exportCsv) {
+              const result = await window.electronAPI.system.exportCsv('payments')
+              if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+            }
+          }}
+        >
+          <Icons.Download />
+          Export Report
+        </button>
+      </div>
+
       <div className="grid grid-4">
-          <div className="kpi-card">
-            <p className="kpi-label">Total Recaudado</p>
-            <p className="kpi-value" style={{ color: '#4ade80' }}>
-              {formatCurrency(summary.total)}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Cantidad de Pagos</p>
-            <p className="kpi-value">{summary.count}</p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Promedio por Pago</p>
-            <p className="kpi-value" style={{ fontSize: 28 }}>
-              {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Total Descuentos</p>
-            <p className="kpi-value" style={{ color: '#ff6b00' }}>
-              {formatCurrency(summary.totalDiscount)}
-            </p>
-          </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-success)', width: 120, height: 120, top: -40, right: -20 }} />
+          <p className="metric-card-label">Total Recaudado</p>
+          <p className="metric-card-value" style={{ color: 'var(--color-success)' }}>
+            {formatCurrency(summary.total)}
+          </p>
         </div>
-
-        <div className="grid grid-4">
-          <div className="kpi-card">
-            <p className="kpi-label">Mañana (antes 12pm)</p>
-            <p className="kpi-value" style={{ color: '#60a5fa' }}>
-              {formatCurrency(revenueByTime.morning)}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Tarde (después 12pm)</p>
-            <p className="kpi-value" style={{ color: '#f472b6' }}>
-              {formatCurrency(revenueByTime.afternoon)}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Efectivo</p>
-            <p className="kpi-value" style={{ color: '#4ade80' }}>
-              {formatCurrency(summary.byMethod['cash'] || 0)}
-            </p>
-          </div>
-          <div className="kpi-card">
-            <p className="kpi-label">Anual ({selectedYear})</p>
-            <p className="kpi-value" style={{ color: '#ff6b00' }}>
-              {formatCurrency(yearRevenue)}
-            </p>
-          </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-info)', width: 100, height: 100, top: -30, right: -10 }} />
+          <p className="metric-card-label">Cantidad de Pagos</p>
+          <p className="metric-card-value">{summary.count}</p>
         </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-primary-container)', width: 100, height: 100, bottom: -30, left: -10 }} />
+          <p className="metric-card-label">Promedio por Pago</p>
+          <p className="metric-card-value">
+            {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
+          </p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-primary-container)', width: 100, height: 100, top: -30, right: -10 }} />
+          <p className="metric-card-label">Total Descuentos</p>
+          <p className="metric-card-value" style={{ color: 'var(--color-primary-container)' }}>
+            {formatCurrency(summary.totalDiscount)}
+          </p>
+        </div>
+      </div>
 
-      <div className="card">
-        <div className="card-header" style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16
-        }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600 }}>Historial de Pagos</h3>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <button className="btn btn-secondary btn-sm" onClick={async () => {
-              if (window.electronAPI?.system?.exportCsv) {
-                const result = await window.electronAPI.system.exportCsv('payments')
-                if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
-              }
-            }} title="Exportar CSV">
-              <Icons.Download />
-            </button>
-            <div className="tabs" style={{ borderBottom: 'none' }}>
-              {(['today', 'week', 'month', 'all'] as const).map(range => (
-                <div 
-                  key={range}
-                  className={`tab ${dateRange === range ? 'active' : ''}`}
-                  onClick={() => setDateRange(range)}
-                  style={{ 
-                    padding: '8px 16px', 
-                    fontSize: 13,
-                    borderRadius: 8,
-                    borderBottom: dateRange === range ? '2px solid var(--color-primary-container)' : 'none'
-                  }}
-                >
-                  {range === 'today' ? 'Hoy' 
-                    : range === 'week' ? 'Semana' 
-                    : range === 'month' ? 'Mes' 
-                    : 'Todo'}
-                </div>
-              ))}
+      <div className="grid grid-4">
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-info)', width: 100, height: 100, bottom: -30, left: -10 }} />
+          <p className="metric-card-label">Mañana (antes 12pm)</p>
+          <p className="metric-card-value" style={{ color: 'var(--color-info)' }}>
+            {formatCurrency(revenueByTime.morning)}
+          </p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: '#f472b6', width: 100, height: 100, top: -30, right: -10 }} />
+          <p className="metric-card-label">Tarde (después 12pm)</p>
+          <p className="metric-card-value" style={{ color: '#f472b6' }}>
+            {formatCurrency(revenueByTime.afternoon)}
+          </p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: 'var(--color-success)', width: 100, height: 100, top: -30, left: -10 }} />
+          <p className="metric-card-label">Efectivo</p>
+          <p className="metric-card-value" style={{ color: 'var(--color-success)' }}>
+            {formatCurrency(summary.byMethod['cash'] || 0)}
+          </p>
+        </div>
+        <div className="metric-card">
+          <div className="metric-card-blur" style={{ background: '#a78bfa', width: 100, height: 100, bottom: -30, right: -10 }} />
+          <p className="metric-card-label">Anual ({selectedYear})</p>
+          <p className="metric-card-value" style={{ color: 'var(--color-primary-container)' }}>
+            {formatCurrency(yearRevenue)}
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 24 }}>
+        <div className="bento-card" style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+            padding: 'var(--spacing-md)'
+          }}>
+            <h3 className="headline-md" style={{ paddingLeft: 4 }}>Recent Transactions</h3>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div className="tabs" style={{ borderBottom: 'none' }}>
+                {(['today', 'week', 'month', 'all'] as const).map(range => (
+                  <div
+                    key={range}
+                    className={`tab ${dateRange === range ? 'active' : ''}`}
+                    onClick={() => setDateRange(range)}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: 13,
+                      borderRadius: 8,
+                      borderBottom: dateRange === range ? '2px solid var(--color-primary-container)' : 'none'
+                    }}
+                  >
+                    {range === 'today' ? 'Hoy'
+                      : range === 'week' ? 'Semana'
+                        : range === 'month' ? 'Mes'
+                          : 'Todo'}
+                  </div>
+                ))}
+              </div>
+              <select
+                className="form-select"
+                value={filterMethod}
+                onChange={(e) => setFilterMethod(e.target.value)}
+                style={{ width: 140 }}
+              >
+                <option value="all">Todos los métodos</option>
+                {paymentMethods.map(pm => (
+                  <option key={pm.value} value={pm.value}>{pm.label}</option>
+                ))}
+              </select>
+              <select
+                className="form-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                style={{ width: 110 }}
+              >
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <button className="btn btn-secondary btn-sm" onClick={loadPayments} title="Refresh">
+                <Icons.Refresh />
+              </button>
             </div>
-            <select 
-              className="form-select"
-              value={filterMethod}
-              onChange={(e) => setFilterMethod(e.target.value)}
-              style={{ width: 140 }}
-            >
-              <option value="all">Todos los métodos</option>
-              {paymentMethods.map(pm => (
-                <option key={pm.value} value={pm.value}>{pm.label}</option>
-              ))}
-            </select>
-            <select 
-              className="form-select"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              style={{ width: 110 }}
-            >
-              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-            <button className="btn btn-secondary btn-sm" onClick={loadPayments}>
-              <Icons.Refresh />
-            </button>
           </div>
-        </div>
 
-        <div className="card-body" style={{ padding: 0 }}>
           {payments.length === 0 ? (
-            <div className="empty-state">
+            <div className="empty-state" style={{ padding: 'var(--spacing-xl)' }}>
               <div className="empty-state-icon">
                 <Icons.CreditCard />
               </div>
@@ -260,53 +288,121 @@ export function PaymentsPage(): JSX.Element {
             </div>
           ) : (
             <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Cliente</th>
-                        <th>Descripción</th>
-                        <th>Método</th>
-                        <th style={{ textAlign: 'right' }}>Monto</th>
-                        <th style={{ textAlign: 'right' }}>Desc.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map((payment) => (
-                        <tr key={payment.id}>
-                          <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
-                            {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
-                          </td>
-                          <td style={{ fontWeight: 500 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Method</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                    <th style={{ textAlign: 'right' }}>Discount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className={`avatar-initials ${payment.clientName ? '' : ''}`}>
+                            {getInitials(payment.clientName || '?')}
+                          </div>
+                          <span style={{ fontWeight: 500 }}>
                             {payment.clientName || payment.description || 'Pago'}
-                          </td>
-                          <td>
-                            <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
-                              {payment.description || '-'}
-                            </span>
-                          </td>
-                          <td>{getPaymentMethodBadge(payment.method)}</td>
-                          <td style={{ 
-                            textAlign: 'right', 
-                            fontWeight: 600,
-                            fontFamily: 'monospace'
-                          }}>
-                            {formatCurrency(payment.amount)}
-                          </td>
-                          <td style={{ 
-                            textAlign: 'right', 
-                            fontFamily: 'monospace',
-                            color: payment.discount > 0 ? '#ff6b00' : 'var(--color-secondary)'
-                          }}>
-                            {payment.discount > 0 ? formatCurrency(payment.discount) : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ fontSize: 13 }}>
+                        {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                          {payment.description || '-'}
+                        </span>
+                      </td>
+                      <td>{getPaymentMethodBadge(payment.method)}</td>
+                      <td style={{
+                        textAlign: 'right',
+                        fontWeight: 600,
+                        fontFamily: 'monospace'
+                      }}>
+                        {formatCurrency(payment.amount)}
+                      </td>
+                      <td style={{
+                        textAlign: 'right',
+                        fontFamily: 'monospace',
+                        color: payment.discount > 0 ? 'var(--color-primary-container)' : 'var(--color-on-surface-variant)'
+                      }}>
+                        {payment.discount > 0 ? formatCurrency(payment.discount) : '-'}
+                      </td>
+                      <td>
+                        <span className="status-badge status-badge-success">Paid</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
+          <div style={{ padding: 'var(--spacing-sm) var(--spacing-md)' }}>
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} size="sm" />
+          </div>
+        </div>
+
+        <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0 }}>
+          <div className="bento-card bento-card-highlight">
+            <h3 className="headline-md" style={{ marginBottom: 16 }}>Quick Actions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start', gap: 8, width: '100%' }}
+                onClick={async () => {
+                  if (window.electronAPI?.system?.exportCsv) {
+                    const result = await window.electronAPI.system.exportCsv('payments')
+                    if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+                  }
+                }}
+              >
+                <Icons.Download />
+                Export CSV
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ justifyContent: 'flex-start', gap: 8, width: '100%' }}
+                onClick={loadPayments}
+              >
+                <Icons.Refresh />
+                Refresh Data
+              </button>
+            </div>
+          </div>
+
+          <div className="bento-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary-container)' }} />
+              <h3 className="headline-md">Revenue Insights</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Morning Revenue</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-info)' }}>{formatCurrency(revenueByTime.morning)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Afternoon Revenue</span>
+                <span style={{ fontWeight: 600, color: '#f472b6' }}>{formatCurrency(revenueByTime.afternoon)}</span>
+              </div>
+              <div style={{ height: 1, background: 'var(--color-surface-container-highest)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700 }}>Year Revenue</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-primary-container)' }}>{formatCurrency(yearRevenue)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Total Discounts</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-on-surface-variant)' }}>{formatCurrency(summary.totalDiscount)}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

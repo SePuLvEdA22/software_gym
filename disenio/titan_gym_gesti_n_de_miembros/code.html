@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TITAN GYM - Member Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed": "#002106",
+                        "on-tertiary": "#003910",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#ffbc7c",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "surface": "#131313",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-container": "#00a73e",
+                        "secondary-container": "#fe9400",
+                        "tertiary": "#47e266",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#4b2800",
+                        "on-primary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#313030",
+                        "outline": "#8b90a0",
+                        "surface-dim": "#131313",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-container": "#00285c",
+                        "outline-variant": "#414755",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#633700",
+                        "on-primary": "#002e69",
+                        "background": "#131313",
+                        "on-tertiary-container": "#00320d",
+                        "on-background": "#e5e2e1",
+                        "tertiary-fixed-dim": "#47e266",
+                        "primary-fixed-dim": "#adc6ff",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "tertiary-fixed": "#6cff82",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-fixed": "#ffdcbf",
+                        "on-secondary-fixed": "#2d1600"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "container-padding": "32px",
+                        "unit": "8px",
+                        "touch-target-min": "56px",
+                        "gutter": "24px",
+                        "stack-gap": "16px"
+                    },
+                    fontFamily: {
+                        "label-xl": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"]
+                    },
+                    fontSize: {
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 shadow-sm flex flex-col py-unit px-4 z-40 border-r border-surface-container-high hidden md:flex">
+<!-- Brand -->
+<div class="flex items-center gap-3 px-4 py-6 mb-4">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined icon-filled">fitness_center</span>
+</div>
+<div>
+<h1 class="font-display-lg text-headline-md font-black tracking-tighter text-primary dark:text-primary leading-none">TITAN GYM</h1>
+<p class="font-label-md text-[10px] text-on-surface-variant tracking-widest uppercase mt-1">Elite Performance</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-2 mb-6">
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md h-touch-target-min rounded-xl flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-colors duration-200 shadow-md shadow-primary-container/20 hover:shadow-primary/40 active:scale-95 transition-transform">
+<span class="material-symbols-outlined icon-filled">add_circle</span>
+                New Check-in
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto space-y-1 px-2">
+<!-- Dashboard -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<!-- Members (Active) -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-primary font-bold border-r-4 border-primary bg-primary/10 font-label-md text-label-md active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined icon-filled">group</span>
+                Members
+            </a>
+<!-- Payments -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">payments</span>
+                Payments
+            </a>
+<!-- Classes -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+                Classes
+            </a>
+<!-- Inventory -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                Inventory
+            </a>
+<!-- Settings -->
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</div>
+<!-- Footer Links -->
+<div class="mt-auto pt-4 border-t border-surface-container-high space-y-1 px-2 pb-4">
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 px-4 h-12 rounded-lg text-on-surface-variant font-medium font-label-md text-label-md hover:bg-surface-container-highest transition-colors duration-200 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Log Out
+            </a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface docked full-width top-0 z-30 sticky flex justify-between items-center h-touch-target-min px-container-padding border-b border-surface-container-highest/50 md:w-full">
+<!-- Mobile Menu Trigger -->
+<button class="md:hidden text-on-surface-variant hover:text-primary p-2 -ml-2 rounded-lg">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Search Bar (on_left logic implemented via flex order) -->
+<div class="flex-1 max-w-md hidden sm:flex items-center">
+<div class="relative w-full focus-within:ring-2 focus-within:ring-primary rounded-full transition-shadow">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-high text-on-surface placeholder:text-on-surface-variant border-none rounded-full py-2.5 pl-12 pr-4 font-body-md text-body-md focus:outline-none focus:ring-0" placeholder="Search members..." type="text"/>
+</div>
+</div>
+<!-- Mobile Brand (Visible only on mobile) -->
+<div class="md:hidden font-display-lg-mobile text-headline-md font-extrabold text-primary dark:text-primary tracking-tighter">
+                TITAN
+            </div>
+<!-- Trailing Icons -->
+<div class="flex items-center gap-2 ml-auto">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-opacity rounded-full hover:bg-surface-container-high active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-opacity rounded-full hover:bg-surface-container-high active:scale-95 relative">
+<span class="material-symbols-outlined">bolt</span>
+<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-secondary rounded-full border-2 border-surface"></span>
+</button>
+<button class="ml-2 text-on-surface-variant hover:text-primary transition-opacity rounded-full active:scale-95 overflow-hidden w-10 h-10 border-2 border-transparent hover:border-primary">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a fitness instructor with short dark hair, wearing a sleek black athletic shirt, brightly lit in a modern gym environment with subtle neon blue accents in the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ8D9YZ0P8SIIC7W1RTgQ3e2NG1WLpAwtB0n2XXTyeWLxdLNkvSp6OBgutVfrehdlhEK9S3X_jK4vxjDsuVS7-gtFhL2PfgBjZG-EFrU_xvBLYViB6LyEfU0VpeCfwWVrKv1WZVXGQ0QA4O5JG9_NKUOXUIeYAzCAqSUyJGO0ikVvy6t3bb7VqZgq65XDoddXwd8xZtpCD6cRQXYA2W4Zm_2N3_IzTCNXcdVBkNTURjqLWtPXzM3HBskqsn4Xf4mTBIyJW9YT_MXc"/>
+</button>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="flex-1 p-container-padding flex flex-col gap-8">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface m-0 leading-tight">Member Directory</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-1">Manage all active and pending gym memberships.</p>
+</div>
+<button class="bg-primary text-on-primary font-label-xl text-label-xl h-touch-target-min px-8 rounded-full flex items-center justify-center gap-2 hover:bg-primary-fixed transition-colors duration-200 shadow-[0_0_15px_rgba(173,198,255,0.2)] hover:shadow-[0_0_25px_rgba(173,198,255,0.4)] active:scale-95 self-start sm:self-auto">
+<span class="material-symbols-outlined icon-filled">person_add</span>
+                    Add Member
+                </button>
+</div>
+<!-- Toolbar / Filters -->
+<div class="flex flex-col sm:flex-row gap-4 justify-between items-center bg-surface-container p-4 rounded-xl border border-surface-container-high">
+<!-- Filters -->
+<div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+<button class="bg-primary/20 text-primary border border-primary/30 font-label-md text-label-md px-4 py-2 rounded-full whitespace-nowrap hover:bg-primary/30 transition-colors">
+                        All Members
+                    </button>
+<button class="bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-transparent hover:border-surface-container-highest font-label-md text-label-md px-4 py-2 rounded-full whitespace-nowrap transition-colors">
+                        Active
+                    </button>
+<button class="bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-transparent hover:border-surface-container-highest font-label-md text-label-md px-4 py-2 rounded-full whitespace-nowrap transition-colors">
+                        Pending
+                    </button>
+<button class="bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-transparent hover:border-surface-container-highest font-label-md text-label-md px-4 py-2 rounded-full whitespace-nowrap transition-colors">
+                        Expired
+                    </button>
+</div>
+<!-- Secondary Search / Sort -->
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary font-label-md text-label-md bg-surface-container-high px-4 py-2 rounded-lg transition-colors w-full sm:w-auto justify-center">
+<span class="material-symbols-outlined text-[20px]">sort</span>
+                        Sort by Name
+                    </button>
+<button class="p-2 bg-surface-container-high text-on-surface-variant hover:text-primary rounded-lg transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface-container rounded-xl overflow-hidden border border-surface-container-high shadow-lg">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[800px]">
+<thead>
+<tr class="bg-surface-container-highest/30 border-b border-surface-container-high">
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Member Details</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Membership Type</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Last Check-in</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high">
+<!-- Row 1: Active -->
+<tr class="hover:bg-surface-container-highest/50 transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-surface-container-highest flex-shrink-0">
+<img alt="Member Avatar" class="w-full h-full object-cover" data-alt="Close up portrait of a strong, athletic man in his late 20s, sweating slightly, looking determined. Cinematic high-contrast lighting emphasizing jawline, dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrTM-yfCXc0083SodMQEYtFNvzVnGVXyA6UyXd7bLwY3KsKuEAbOnrY2T2tFfU8op4bqATxuGuLz9uaa0ZDFY95XAgW0lpurR7lkEZUruIMYN7-FQ2aeLQZV0azprSsX3I8NTdzb8dIpo9BVZ_ealWGfIBfpWLLi10zeNY0hleCqmxbUpHFnk9A-6pd5j7PoziZAidy4Xn6AQrc14M1JH0o3T4D4rR8eNht5yfYH0fg5miP4c1X0kC4aq3v22ZFCVfYdfONSpHHys"/>
+</div>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Marcus Thorne</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm mt-0.5">ID: #TG-84920</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 bg-tertiary/10 text-tertiary font-label-md text-label-md px-3 py-1 rounded-full border border-tertiary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary shadow-[0_0_8px_rgba(71,226,102,0.8)]"></span>
+                                        Active
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Pro Elite Plan</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm">Billed Monthly</div>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Today, 06:30 AM</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Pending -->
+<tr class="hover:bg-surface-container-highest/50 transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-surface-container-highest flex-shrink-0 flex items-center justify-center text-on-surface-variant font-bold text-lg">
+                                            SR
+                                        </div>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Sarah Rollins</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm mt-0.5">ID: #TG-84921</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 bg-secondary/10 text-secondary font-label-md text-label-md px-3 py-1 rounded-full border border-secondary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_rgba(255,188,124,0.8)] animate-pulse"></span>
+                                        Pending
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Standard Access</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm">Awaiting Payment</div>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface-variant italic">Never</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Expired -->
+<tr class="hover:bg-surface-container-highest/50 transition-colors group opacity-75 hover:opacity-100">
+<td class="py-4 px-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-surface-container-highest flex-shrink-0">
+<img alt="Member Avatar" class="w-full h-full object-cover grayscale" data-alt="Portrait of an older athletic man with grey hair and beard, wearing a grey performance tee. Shot against an industrial concrete wall with cool blue overhead lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4QQ6vn8C_iR0Y9x56xuKw5kl0TAx4GYyeOqXlaEMQ3IkUpTUdDiuUJa13TP0Ho6r3z35tmLg2KBXDlqKj0LnDSBz0Nn9U_F2U7_SmIlhbTNFtacAiA1IGUTY5FLXPsbxlD1PPKMOQ4D5aqQnJUhGnUY4ZmfgsYiJxV-TUMwbjhYMDxx5EPj_Y8J0c_4qVvN16FPLwr1cuYeuY-VZhM2nEyfiLA0Hzn6vbQACdI3aokikNjKid43F0zsca-lPvS6CPBf_kUxGv6cY"/>
+</div>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">David Chen</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm mt-0.5">ID: #TG-81204</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 bg-error/10 text-error font-label-md text-label-md px-3 py-1 rounded-full border border-error/20">
+<span class="material-symbols-outlined text-[14px]">cancel</span>
+                                        Expired
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface line-through text-on-surface-variant">Annual Pass</div>
+<div class="font-body-md text-body-md text-error text-sm">Ended Oct 12</div>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Oct 10, 2023</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Active -->
+<tr class="hover:bg-surface-container-highest/50 transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high border border-surface-container-highest flex-shrink-0 flex items-center justify-center text-on-surface-variant font-bold text-lg">
+                                            EJ
+                                        </div>
+<div>
+<div class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Elena Jimenez</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm mt-0.5">ID: #TG-85012</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center gap-1.5 bg-tertiary/10 text-tertiary font-label-md text-label-md px-3 py-1 rounded-full border border-tertiary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary shadow-[0_0_8px_rgba(71,226,102,0.8)]"></span>
+                                        Active
+                                    </span>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Pro Elite Plan</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-sm">Billed Monthly</div>
+</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface">Yesterday, 18:45 PM</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="border-t border-surface-container-high p-4 flex items-center justify-between bg-surface-container-highest/20">
+<div class="text-sm font-body-md text-on-surface-variant">
+                        Showing <span class="text-on-surface font-medium">1</span> to <span class="text-on-surface font-medium">4</span> of <span class="text-on-surface font-medium">1,248</span> members
+                    </div>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface disabled:opacity-50 transition-colors" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-primary/20 text-primary font-label-md text-label-md flex items-center justify-center">
+                            1
+                        </button>
+<button class="w-10 h-10 rounded-lg hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md flex items-center justify-center transition-colors">
+                            2
+                        </button>
+<button class="w-10 h-10 rounded-lg hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md flex items-center justify-center transition-colors">
+                            3
+                        </button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Titan Gym Kiosk - Check-In</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:ital,wght@0,700;0,800;1,800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#47e266",
+                        "on-secondary-fixed": "#2d1600",
+                        "on-primary-fixed-variant": "#004493",
+                        "surface-bright": "#393939",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "surface-tint": "#adc6ff",
+                        "tertiary-container": "#00a73e",
+                        "surface-container-highest": "#353534",
+                        "surface-variant": "#353534",
+                        "surface-dim": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-background": "#e5e2e1",
+                        "secondary-container": "#fe9400",
+                        "on-tertiary-fixed": "#002106",
+                        "primary-container": "#4b8eff",
+                        "background": "#131313",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary-fixed": "#ffdcbf",
+                        "surface-container": "#201f1f",
+                        "inverse-primary": "#005bc1",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-error": "#690005",
+                        "primary": "#adc6ff",
+                        "on-secondary": "#4b2800",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#313030",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#6cff82",
+                        "surface": "#131313",
+                        "surface-container-low": "#1c1b1b",
+                        "primary-fixed": "#d8e2ff",
+                        "outline-variant": "#414755",
+                        "on-tertiary-container": "#00320d",
+                        "on-primary": "#002e69",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-primary-container": "#00285c",
+                        "secondary": "#ffbc7c",
+                        "tertiary": "#47e266",
+                        "on-secondary-container": "#633700",
+                        "on-surface": "#e5e2e1",
+                        "on-surface-variant": "#c1c6d7",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "outline": "#8b90a0",
+                        "on-tertiary": "#003910",
+                        "error": "#ffb4ab"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "stack-gap": "16px",
+                        "container-padding": "32px",
+                        "touch-target-min": "56px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"],
+                        "display-lg": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .neon-glow-primary {
+            box-shadow: 0px 4px 20px rgba(173, 198, 255, 0.3);
+        }
+        .neon-glow-secondary {
+            box-shadow: 0px 4px 20px rgba(254, 148, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen overflow-hidden flex font-body-md">
+<!-- SideNavBar (from JSON) -->
+<nav class="bg-surface-container-low border-r border-surface-variant fixed left-0 h-full w-64 flex flex-col py-8 px-4 gap-stack-gap z-20">
+<div class="mb-8 px-4">
+<h1 class="font-headline-md text-headline-md text-primary tracking-tighter italic uppercase">TITAN GYM</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-2">Kiosk Mode</p>
+<p class="font-body-md text-body-md text-on-surface-variant">Station #04</p>
+</div>
+<ul class="flex flex-col gap-2 flex-grow">
+<!-- Active Tab -->
+<li>
+<a class="bg-secondary-container text-on-secondary-container rounded-xl flex items-center gap-4 p-4 shadow-[0px_4px_20px_rgba(254,148,0,0.3)] active:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_scanner</span>
+<span class="font-label-xl text-label-xl">Check-In</span>
+</a>
+</li>
+<!-- Inactive Tabs -->
+<li>
+<a class="text-on-surface-variant flex items-center gap-4 p-4 hover:bg-surface-container-highest transition-all rounded-xl active:translate-x-1" href="#">
+<span class="material-symbols-outlined">badge</span>
+<span class="font-label-xl text-label-xl">Membership</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant flex items-center gap-4 p-4 hover:bg-surface-container-highest transition-all rounded-xl active:translate-x-1" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span class="font-label-xl text-label-xl">Schedules</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant flex items-center gap-4 p-4 hover:bg-surface-container-highest transition-all rounded-xl active:translate-x-1" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-xl text-label-xl">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto px-2">
+<button class="w-full bg-primary-container text-on-primary-container font-label-xl text-label-xl rounded-xl p-4 flex items-center justify-center gap-2 hover:bg-primary-fixed transition-colors neon-glow-primary active:scale-95 min-h-[56px]">
+                Join Now
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 h-full flex flex-col relative p-container-padding bg-surface-dim">
+<!-- TopAppBar (from JSON, modified for layout context) -->
+<header class="flex justify-between items-center w-full pb-6 border-b border-surface-variant bg-surface-dim mb-gutter">
+<div>
+<h2 class="font-display-lg text-display-lg tracking-tighter text-on-surface">Ready to Train?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-1">Scan your ID or enter details manually.</p>
+</div>
+<div class="flex gap-4">
+<button class="w-14 h-14 rounded-full bg-surface-container-high flex items-center justify-center text-primary hover:bg-surface-container-highest transition-colors active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
+</button>
+</div>
+</header>
+<div class="flex-1 flex gap-gutter overflow-y-auto pb-24">
+<!-- Left Column: Check-in Actions -->
+<div class="flex-1 flex flex-col gap-gutter max-w-3xl mx-auto w-full">
+<!-- Main Scan Area -->
+<div class="bg-surface-container flex flex-col items-center justify-center rounded-2xl p-12 border border-surface-variant flex-1 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
+<div class="relative w-64 h-64 mb-8 flex items-center justify-center">
+<!-- Simulated Scanner Ring -->
+<div class="absolute inset-0 rounded-3xl border-4 border-dashed border-primary/30 animate-[spin_10s_linear_infinite]"></div>
+<div class="absolute inset-2 rounded-2xl border border-primary/20 bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover opacity-80 mix-blend-screen" data-alt="A highly detailed, modern QR code graphic design rendered in electric blue lines on a dark grey background, resembling high-tech gym equipment interface elements. The aesthetic is clean, professional, and slightly glowing to indicate it is ready to be scanned." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFhlohstGFOsw11rnXhQ99dSTwP0WO7b-3d5zatwEVZ3qs05N2udnec8YFzbxtucuhfGymYq8f5KEni6ScIjLWHazpUlWAtEePm-g-os2tewf3EOxcp3anGuAM1dQFoOJ9rxDrhCIlxjIBEXYf_H6bK5eI96nKnHGDu6bRRK1Qy9PSxYmajDT3pPbH193X1NWt6O2bCgVaCB8kZ9vWTOSTYSIvzD56darAp-bg2iDE6YHBXH6b1tILIdGRiS_us8Cmk7k-iDsh4MY"/>
+</div>
+<div class="absolute w-full h-1 bg-primary neon-glow-primary animate-[bounce_3s_ease-in-out_infinite]"></div>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Scan to Check-In</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-sm">Hold your digital or physical membership card up to the scanner below the screen.</p>
+</div>
+<!-- Alternative Actions Grid -->
+<div class="grid grid-cols-2 gap-gutter h-40">
+<button class="bg-surface-container-high hover:bg-surface-container-highest border border-surface-variant rounded-2xl flex flex-col items-center justify-center gap-3 transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-primary group-hover:scale-110 transition-transform text-4xl">keyboard</span>
+<span class="font-label-xl text-label-xl text-on-surface">Manual Entry</span>
+</button>
+<button class="bg-surface-container-high hover:bg-surface-container-highest border border-surface-variant rounded-2xl flex flex-col items-center justify-center gap-3 transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-secondary group-hover:scale-110 transition-transform text-4xl">info</span>
+<span class="font-label-xl text-label-xl text-on-surface">Quick Membership Info</span>
+</button>
+</div>
+</div>
+<!-- Right Column: Info Widget -->
+<aside class="w-80 flex flex-col gap-gutter">
+<!-- Class Widget -->
+<div class="bg-surface-container border border-surface-variant rounded-2xl p-6 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+<h4 class="font-label-md text-label-md text-on-surface-variant uppercase mb-4 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span> Live Update
+                    </h4>
+<div class="mb-4">
+<p class="font-headline-md text-headline-md text-on-surface leading-tight mb-1">HIIT Training</p>
+<p class="font-body-lg text-body-lg text-primary">@ 5:30 PM</p>
+</div>
+<div class="bg-surface-container-highest rounded-lg p-3 flex justify-between items-center mb-6">
+<span class="font-body-md text-body-md text-on-surface-variant">Studio A</span>
+<span class="bg-tertiary-container text-on-tertiary-container font-label-md text-xs px-2 py-1 rounded">Spots Open</span>
+</div>
+<button class="w-full bg-transparent border-2 border-primary text-primary font-label-xl text-label-xl rounded-xl py-3 hover:bg-primary/10 transition-colors active:scale-95 min-h-[56px]">
+                        Reserve Spot
+                    </button>
+</div>
+<!-- Stats/Promotion Widget -->
+<div class="bg-surface-container border border-surface-variant rounded-2xl p-6 flex-1 flex flex-col justify-end relative" data-alt="A striking, high-contrast photograph of heavy iron dumbbells resting on a textured black gym floor. The lighting is dramatic and moody, casting deep shadows with cool blue rim lighting to emphasize the rugged, energetic atmosphere of a premium fitness center." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBE9xlxkdfN7HakuSRaVM75w4LktlI6J0k-uzSe2w0LCR43uT-dpyK08sTuB6AmVbHcH1dFeEx94GLAejyy8Uh4Co7m1CGT9aOUpii3WuDvxvpE9Ixx6FsDS-dz1SjildDSnPvrZ-n9dnREEdTAMsg0FepaAn78JTVDKyMUU3TarJkDYFcnhiYJ41AYDhyl2adTlCYPsSwqlvynHwtAjs7eIAl8xRL_odp3AlUJ_7nljoVEw6pTwrw_QaUCMEvWQ9sWcP8Dlg0kDY')">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-surface-container/80 to-transparent rounded-2xl pointer-events-none"></div>
+<div class="relative z-10">
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">New Gear Arrived</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">Check out the pro shop for latest arrivals.</p>
+<button class="font-label-md text-label-md text-primary uppercase tracking-wider flex items-center gap-1 hover:text-primary-fixed transition-colors">
+                            View Shop <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</aside>
+</div>
+<!-- Footer (from JSON) -->
+<footer class="absolute bottom-0 right-0 w-full bg-surface-dim border-t border-surface-variant flex justify-between items-center px-container-padding py-6 z-10">
+<p class="font-label-md text-label-md text-on-surface-variant">© 2024 Titan Fitness Systems</p>
+<div class="flex gap-6">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Support</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Terms of Service</a>
+</div>
+</footer>
+</main>
+</body></html>

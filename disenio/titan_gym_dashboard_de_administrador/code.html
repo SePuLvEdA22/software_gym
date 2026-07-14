@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Titan Gym - Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary-fixed": "#001a41",
+                        "surface-bright": "#393939",
+                        "surface-container": "#201f1f",
+                        "on-tertiary-fixed": "#002106",
+                        "on-tertiary": "#003910",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#2a2a2a",
+                        "secondary": "#ffbc7c",
+                        "secondary-fixed-dim": "#ffb874",
+                        "on-tertiary-fixed-variant": "#00531a",
+                        "surface": "#131313",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-container": "#00a73e",
+                        "secondary-container": "#fe9400",
+                        "tertiary": "#47e266",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#4b2800",
+                        "on-primary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#313030",
+                        "outline": "#8b90a0",
+                        "surface-dim": "#131313",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-container": "#00285c",
+                        "outline-variant": "#414755",
+                        "on-error-container": "#ffdad6",
+                        "surface-variant": "#353534",
+                        "on-secondary-container": "#633700",
+                        "on-primary": "#002e69",
+                        "background": "#131313",
+                        "on-tertiary-container": "#00320d",
+                        "on-background": "#e5e2e1",
+                        "tertiary-fixed-dim": "#47e266",
+                        "primary-fixed-dim": "#adc6ff",
+                        "primary": "#adc6ff",
+                        "surface-tint": "#adc6ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#6a3b00",
+                        "tertiary-fixed": "#6cff82",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary-fixed": "#ffdcbf",
+                        "on-secondary-fixed": "#2d1600"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "32px",
+                        "unit": "8px",
+                        "touch-target-min": "56px",
+                        "gutter": "24px",
+                        "stack-gap": "16px"
+                    },
+                    "fontFamily": {
+                        "label-xl": ["Inter"],
+                        "display-lg-mobile": ["Montserrat"],
+                        "display-lg": ["Montserrat"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Montserrat"]
+                    },
+                    "fontSize": {
+                        "label-xl": ["20px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "38px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .neon-glow {
+            box-shadow: 0 0 20px rgba(173, 198, 255, 0.15);
+        }
+        .neon-glow-active {
+            box-shadow: 0 0 20px rgba(173, 198, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 shadow-sm z-50 flex flex-col py-unit px-4 border-r border-surface-container-high hidden md:flex">
+<div class="mb-8 mt-4 px-4">
+<h1 class="font-display-lg text-headline-md font-black tracking-tighter text-primary dark:text-primary">TITAN GYM</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-1">Elite Performance</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-2">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-primary/10 hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Members</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Payments</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md">Classes</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-container-high space-y-2">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md neon-glow hover:neon-glow-active transition-shadow active:scale-95 mb-4">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Check-in
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-error font-medium hover:bg-surface-container-highest transition-colors duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Log Out</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<main class="flex-1 md:ml-64 min-h-screen bg-background">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface sticky top-0 z-40 flex justify-between items-center h-touch-target-min px-container-padding border-b border-surface-container-high">
+<div class="flex items-center gap-4 md:hidden">
+<button class="text-on-surface-variant p-2 active:scale-95">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-extrabold text-primary dark:text-primary">TITAN GYM</span>
+</div>
+<div class="hidden md:flex flex-1 max-w-md focus-within:ring-2 focus-within:ring-primary rounded-lg bg-surface-container-high overflow-hidden transition-all duration-200">
+<div class="pl-4 pr-2 py-2 flex items-center text-on-surface-variant">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-body-md text-on-surface focus:ring-0 placeholder:text-on-surface-variant/50" placeholder="Search members, classes..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors duration-200 active:scale-95 rounded-full hover:bg-surface-container-highest">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors duration-200 active:scale-95 rounded-full hover:bg-surface-container-highest">
+<span class="material-symbols-outlined">bolt</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors duration-200 active:scale-95 rounded-full hover:bg-surface-container-highest">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<div class="p-container-padding max-w-[1600px] mx-auto space-y-8">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">Overview</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Today's metrics and performance at a glance.</p>
+</div>
+<div class="hidden sm:flex gap-2">
+<button class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors">Day</button>
+<button class="px-4 py-2 rounded-lg bg-primary/20 text-primary font-label-md text-label-md border border-primary/30">Week</button>
+<button class="px-4 py-2 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors">Month</button>
+</div>
+</div>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Card 1 -->
+<div class="bg-[#1E1E1E] rounded-xl p-6 border border-[#333333] relative overflow-hidden group hover:border-primary/50 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">group</span>
+</div>
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
+                            +12%
+                        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Total Members</p>
+<p class="font-headline-md text-[32px] font-bold text-on-surface">2,450</p>
+<!-- Faux Sparkline -->
+<div class="absolute bottom-0 left-0 w-full h-12 opacity-30 group-hover:opacity-100 transition-opacity">
+<svg class="w-full h-full stroke-primary fill-primary/10" preserveaspectratio="none" viewbox="0 0 100 30">
+<path d="M0 30 L0 25 L10 22 L20 28 L30 15 L40 18 L50 10 L60 12 L70 5 L80 8 L90 2 L100 5 L100 30 Z" stroke-width="0"></path>
+<path class="vector-effect-non-scaling-stroke" d="M0 25 L10 22 L20 28 L30 15 L40 18 L50 10 L60 12 L70 5 L80 8 L90 2 L100 5" fill="none" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-[#1E1E1E] rounded-xl p-6 border border-[#333333] relative overflow-hidden group hover:border-secondary/50 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary/10 rounded-lg text-secondary">
+<span class="material-symbols-outlined">directions_run</span>
+</div>
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
+                            +5%
+                        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Daily Attendance</p>
+<p class="font-headline-md text-[32px] font-bold text-on-surface">842</p>
+<div class="absolute bottom-0 left-0 w-full h-12 opacity-30 group-hover:opacity-100 transition-opacity">
+<svg class="w-full h-full stroke-secondary fill-secondary/10" preserveaspectratio="none" viewbox="0 0 100 30">
+<path d="M0 30 L0 20 L15 25 L30 10 L45 15 L60 5 L75 12 L90 2 L100 8 L100 30 Z" stroke-width="0"></path>
+<path class="vector-effect-non-scaling-stroke" d="M0 20 L15 25 L30 10 L45 15 L60 5 L75 12 L90 2 L100 8" fill="none" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-[#1E1E1E] rounded-xl p-6 border border-[#333333] relative overflow-hidden group hover:border-tertiary/50 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary/10 rounded-lg text-tertiary">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
+                            +18%
+                        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Monthly Rev</p>
+<p class="font-headline-md text-[32px] font-bold text-on-surface">$142.5k</p>
+<div class="absolute bottom-0 left-0 w-full h-12 opacity-30 group-hover:opacity-100 transition-opacity">
+<svg class="w-full h-full stroke-tertiary fill-tertiary/10" preserveaspectratio="none" viewbox="0 0 100 30">
+<path d="M0 30 L0 28 L20 25 L40 18 L60 20 L80 10 L100 5 L100 30 Z" stroke-width="0"></path>
+<path class="vector-effect-non-scaling-stroke" d="M0 28 L20 25 L40 18 L60 20 L80 10 L100 5" fill="none" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-[#1E1E1E] rounded-xl p-6 border border-[#333333] relative overflow-hidden group hover:border-primary/50 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">person_add</span>
+</div>
+<span class="flex items-center text-error font-label-md text-label-md bg-error/10 px-2 py-1 rounded">
+<span class="material-symbols-outlined text-[16px] mr-1">trending_down</span>
+                            -2%
+                        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">New Signups</p>
+<p class="font-headline-md text-[32px] font-bold text-on-surface">124</p>
+<div class="absolute bottom-0 left-0 w-full h-12 opacity-30 group-hover:opacity-100 transition-opacity">
+<svg class="w-full h-full stroke-primary fill-primary/10" preserveaspectratio="none" viewbox="0 0 100 30">
+<path d="M0 30 L0 10 L20 15 L40 12 L60 20 L80 18 L100 25 L100 30 Z" stroke-width="0"></path>
+<path class="vector-effect-non-scaling-stroke" d="M0 10 L20 15 L40 12 L60 20 L80 18 L100 25" fill="none" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Complex Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Chart Area (Spans 2 columns) -->
+<div class="lg:col-span-2 bg-[#1E1E1E] rounded-xl border border-[#333333] p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Peak Hours Analysis</h3>
+<p class="font-body-md text-on-surface-variant">Facility utilization over 24h period</p>
+</div>
+<button class="p-2 rounded-lg bg-surface-container-highest hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">more_vert</span>
+</button>
+</div>
+<!-- Faux Bar Chart -->
+<div class="flex-1 flex items-end gap-2 mt-4 relative h-64 border-b border-[#333333] pb-2">
+<!-- Y-axis labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-on-surface-variant font-label-md text-xs -ml-8 pb-8">
+<span>100%</span>
+<span>75%</span>
+<span>50%</span>
+<span>25%</span>
+</div>
+<!-- Bars -->
+<div class="w-full h-full flex items-end gap-1 sm:gap-2 ml-4">
+<div class="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm h-[10%] transition-all cursor-pointer relative group">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface p-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">10%</div>
+</div>
+<div class="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm h-[15%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm h-[20%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/40 hover:bg-primary/60 rounded-t-sm h-[45%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/60 hover:bg-primary/80 rounded-t-sm h-[65%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary rounded-t-sm h-[85%] neon-glow cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary rounded-t-sm h-[95%] neon-glow cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/80 hover:bg-primary rounded-t-sm h-[75%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/60 hover:bg-primary/80 rounded-t-sm h-[55%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/40 hover:bg-primary/60 rounded-t-sm h-[35%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm h-[25%] transition-all cursor-pointer relative group"></div>
+<div class="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t-sm h-[15%] transition-all cursor-pointer relative group"></div>
+</div>
+<!-- X-axis labels -->
+<div class="absolute -bottom-6 left-4 w-[calc(100%-1rem)] flex justify-between text-on-surface-variant font-label-md text-xs">
+<span>6AM</span>
+<span>9AM</span>
+<span>12PM</span>
+<span>3PM</span>
+<span>6PM</span>
+<span>9PM</span>
+</div>
+</div>
+</div>
+<!-- Recent Activity Feed -->
+<div class="bg-[#1E1E1E] rounded-xl border border-[#333333] p-6 flex flex-col h-[400px] lg:h-auto">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Activity</h3>
+<a class="text-primary font-label-md text-label-md hover:underline" href="#">View All</a>
+</div>
+<div class="flex-1 overflow-y-auto space-y-4 pr-2">
+<!-- Activity Item -->
+<div class="flex gap-4">
+<div class="relative mt-1">
+<div class="w-2 h-2 rounded-full bg-tertiary ring-4 ring-tertiary/20"></div>
+<div class="absolute top-4 left-1 w-[1px] h-[calc(100%+16px)] bg-[#333333]"></div>
+</div>
+<div>
+<p class="font-body-md text-on-surface">New membership created</p>
+<p class="font-label-md text-xs text-on-surface-variant mt-1">Sarah Jenkins • Pro Plan</p>
+<p class="font-label-md text-xs text-on-surface-variant/50 mt-1">2 mins ago</p>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4">
+<div class="relative mt-1">
+<div class="w-2 h-2 rounded-full bg-secondary ring-4 ring-secondary/20"></div>
+<div class="absolute top-4 left-1 w-[1px] h-[calc(100%+16px)] bg-[#333333]"></div>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Equipment maintenance logged</p>
+<p class="font-label-md text-xs text-on-surface-variant mt-1">Treadmill #4 • Zone A</p>
+<p class="font-label-md text-xs text-on-surface-variant/50 mt-1">15 mins ago</p>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4">
+<div class="relative mt-1">
+<div class="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20"></div>
+<div class="absolute top-4 left-1 w-[1px] h-[calc(100%+16px)] bg-[#333333]"></div>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Class capacity reached</p>
+<p class="font-label-md text-xs text-on-surface-variant mt-1">HIIT Core (5:00 PM)</p>
+<p class="font-label-md text-xs text-on-surface-variant/50 mt-1">1 hour ago</p>
+</div>
+</div>
+<!-- Activity Item -->
+<div class="flex gap-4">
+<div class="relative mt-1">
+<div class="w-2 h-2 rounded-full bg-error ring-4 ring-error/20"></div>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Payment failed</p>
+<p class="font-label-md text-xs text-on-surface-variant mt-1">John Doe • Basic Plan</p>
+<p class="font-label-md text-xs text-on-surface-variant/50 mt-1">2 hours ago</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

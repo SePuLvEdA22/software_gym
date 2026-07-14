@@ -25,7 +25,10 @@ import {
   BodyMeasurement,
   ClientGoal,
   MessageTemplate,
-  PageResponse
+  PageResponse,
+  ClientRoutine,
+  RoutineExercise,
+  GymSettings
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -129,8 +132,8 @@ const electronAPI = {
   },
 
   dashboard: {
-    getMetrics: (): Promise<IpcResult<DashboardMetrics>> =>
-      ipcRenderer.invoke('dashboard:getMetrics'),
+    getMetrics: (period?: 'day' | 'week' | 'month'): Promise<IpcResult<DashboardMetrics>> =>
+      ipcRenderer.invoke('dashboard:getMetrics', period),
     getRevenueByMonth: (months?: number): Promise<IpcResult<{ month: string; revenue: number }[]>> =>
       ipcRenderer.invoke('dashboard:getRevenueByMonth', months),
     getClientsByStatus: (): Promise<IpcResult<{ [key: string]: number }>> =>
@@ -276,6 +279,22 @@ const electronAPI = {
       ipcRenderer.invoke('messageTemplates:sendToAll', templateId)
   },
 
+  routine: {
+    getByClient: (clientId: string): Promise<IpcResult<ClientRoutine[]>> =>
+      ipcRenderer.invoke('routine:getByClient', clientId),
+    save: (clientId: string, dayOfWeek: number, exercises: RoutineExercise[]): Promise<IpcResult<ClientRoutine>> =>
+      ipcRenderer.invoke('routine:save', clientId, dayOfWeek, exercises),
+    delete: (clientId: string, dayOfWeek: number): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('routine:delete', clientId, dayOfWeek)
+  },
+
+  gym: {
+    getSettings: (): Promise<IpcResult<GymSettings>> =>
+      ipcRenderer.invoke('gym:getSettings'),
+    saveSettings: (settings: Partial<GymSettings>): Promise<IpcResult<GymSettings>> =>
+      ipcRenderer.invoke('gym:saveSettings', settings)
+  },
+
   window: {
     openKiosk: (): Promise<IpcResult<{ isOpen: boolean; alreadyOpen?: boolean }>> =>
       ipcRenderer.invoke('window:open-kiosk'),
@@ -285,12 +304,21 @@ const electronAPI = {
       ipcRenderer.invoke('window:kiosk-status'),
     openClientForm: (clientId?: string): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:open-client-form', clientId),
+    openClientPayments: (clientId: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:open-client-payments', clientId),
+    openClientRenew: (clientId: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:open-client-renew', clientId),
     notifyClientFormSaved: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:notify-client-form-saved'),
     minimize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:minimize-admin'),
     maximize: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('window:maximize-admin')
+      ipcRenderer.invoke('window:maximize-admin'),
+    onNavigatePayments: (callback: (data: { clientId: string }) => void): () => void => {
+      const handler = (_: any, data: { clientId: string }) => callback(data)
+      ipcRenderer.on('navigate:payments', handler)
+      return () => ipcRenderer.removeListener('navigate:payments', handler)
+    }
   },
 
   clientForm: {

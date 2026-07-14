@@ -1,133 +1,137 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
-import { Client, ClientStatus, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
+import { RenewModal } from '@/components/modals/RenewModal'
+import { FreezeModal } from '@/components/modals/FreezeModal'
+import { FreezeHistoryModal } from '@/components/modals/FreezeHistoryModal'
+import { AbonoModal } from '@/components/modals/AbonoModal'
+import { PaymentHistoryModal } from '@/components/modals/PaymentHistoryModal'
+import { AttendanceStatsModal } from '@/components/modals/AttendanceStatsModal'
+import { RoutinesModal } from '@/components/modals/RoutinesModal'
+import { Client, ClientStatus, Membership, ClientDebt, MembershipPlan } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, differenceInDays } from 'date-fns'
+
+function PulseDot() {
+  return (
+    <span
+      className="pulse-dot"
+      style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'currentColor', display: 'inline-block', flexShrink: 0 }}
+    />
+  )
+}
 
 const statusBadge = (status: ClientStatus) => {
   switch (status) {
     case 'active':
-      return <span className="badge badge-success">Activo</span>
+      return (
+        <span className="status-badge status-badge-success">
+          <PulseDot />
+          Activo
+        </span>
+      )
     case 'expired':
-      return <span className="badge badge-error">Vencido</span>
+      return (
+        <span className="status-badge status-badge-error">
+          <PulseDot />
+          Vencido
+        </span>
+      )
     case 'inactive':
-      return <span className="badge badge-default">Inactivo</span>
+      return (
+        <span className="status-badge status-badge-info">
+          <PulseDot />
+          Inactivo
+        </span>
+      )
     case 'suspended':
-      return <span className="badge badge-warning">Suspendido</span>
+      return (
+        <span className="status-badge status-badge-warning">
+          <PulseDot />
+          Suspendido
+        </span>
+      )
   }
 }
 
-function AttendanceStatsModal({ client, onClose }: { client: Client; onClose: () => void }): JSX.Element {
-  const [stats, setStats] = useState<ClientAttendanceStatsType | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const loadStats = async () => {
-    const result = await window.electronAPI.client.getAttendanceStats(client.id)
-    if (result.success && result.data) {
-      setStats(result.data)
-    }
-    setLoading(false)
+function getMembershipStatusBadge(membership: Membership) {
+  if (membership.status === 'frozen') {
+    return (
+      <span className="status-badge status-badge-warning">
+        <PulseDot />
+        Congelado
+      </span>
+    )
   }
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 450 }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Estadísticas de Asistencia</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            <Icons.Close />
-          </button>
-        </div>
-        <div className="modal-body">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-            <div className="avatar" style={{ width: 48, height: 48 }}>
-              {client.photo ? (
-                <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
-              ) : (
-                client.fullName.charAt(0).toUpperCase()
-              )}
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{client.fullName}</div>
-              <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
-                Código: {client.accessCode}
-              </div>
-            </div>
-          </div>
+  const now = new Date()
+  const endDate = parseISO(membership.endDate)
+  const daysLeft = differenceInDays(endDate, now)
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--color-secondary)' }}>
-              Cargando estadísticas...
-            </div>
-          ) : stats ? (
-            <div className="grid grid-2" style={{ gap: 16 }}>
-              <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas Totales</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-primary-container)' }}>
-                  {stats.totalVisits}
-                </div>
-              </div>
-              <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas este Mes</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-success)' }}>
-                  {stats.daysAttendedThisMonth}
-                </div>
-              </div>
-              <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Primera Visita</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
-                  {stats.firstVisit ? format(parseISO(stats.firstVisit), 'dd/MM/yyyy') : 'Sin visitas'}
-                </div>
-              </div>
-              <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Última Visita</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
-                  {stats.lastVisit ? format(parseISO(stats.lastVisit), 'dd/MM/yyyy') : 'Sin visitas'}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--color-secondary)' }}>
-              No se pudieron cargar las estadísticas
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-        </div>
-      </div>
-    </div>
+  if (membership.status === 'expired' || daysLeft < 0) {
+    return (
+      <span className="status-badge status-badge-error">
+        <PulseDot />
+        Vencido
+      </span>
+    )
+  }
+  if (daysLeft <= 7) {
+    return (
+      <span className="status-badge status-badge-warning">
+        <PulseDot />
+        Por vencer ({daysLeft}d)
+      </span>
+    )
+  }
+  return (
+    <span className="status-badge status-badge-success">
+      <PulseDot />
+      Activo ({daysLeft}d)
+    </span>
   )
 }
 
 export function ClientsPage(): JSX.Element {
-  const { clients, setClients, removeClient, triggerNewClientModal, setTriggerNewClientModal, showToast, confirm } = useAppStore()
+  const { clients, setClients, removeClient, plans, setPlans, showToast, confirm } = useAppStore()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all')
-  const [debtorsMap, setDebtorsMap] = useState<{ [clientId: string]: number }>({})
-  const [showStatsModal, setShowStatsModal] = useState(false)
-  const [statsClient, setStatsClient] = useState<Client | null>(null)
-
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
+  const [debtorsMap, setDebtorsMap] = useState<{ [clientId: string]: number }>({})
 
-  const loadClients = async () => {
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [clientMemberships, setClientMemberships] = useState<Membership[]>([])
+  const [clientDebts, setClientDebts] = useState<ClientDebt[]>([])
+
+  const [showRenewModal, setShowRenewModal] = useState(false)
+  const [showFreezeModal, setShowFreezeModal] = useState(false)
+  const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
+  const [selectedMembershipForFreeze, setSelectedMembershipForFreeze] = useState<Membership | null>(null)
+  const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(null)
+  const [showAbonoModal, setShowAbonoModal] = useState(false)
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false)
+  const [selectedMembershipForAbono, setSelectedMembershipForAbono] = useState<{ membership: Membership; balance: number } | null>(null)
+  const [selectedMembershipForPayments, setSelectedMembershipForPayments] = useState<string | null>(null)
+  const [showStatsModal, setShowStatsModal] = useState(false)
+  const [statsClient, setStatsClient] = useState<Client | null>(null)
+  const [showRoutinesModal, setShowRoutinesModal] = useState(false)
+  const [routineClient, setRoutineClient] = useState<Client | null>(null)
+
+  const loadClients = useCallback(async () => {
     const statusParam = filterStatus === 'all' ? undefined : filterStatus
     const result = await window.electronAPI.client.getAll({ status: statusParam, page, pageSize })
     if (result.success && result.data) {
       setClients(result.data.data)
       setTotalPages(result.data.totalPages)
     }
-  }
+  }, [filterStatus, page, pageSize, setClients])
 
-  const loadDebtors = async () => {
+  const loadDebtors = useCallback(async () => {
     try {
       const result = await window.electronAPI.client.getDebtors()
       if (result.success && result.data) {
@@ -138,38 +142,80 @@ export function ClientsPage(): JSX.Element {
         setDebtorsMap(map)
       }
     } catch (e) { console.error('Error loading debtors:', e) }
-  }
+  }, [])
+
+  const loadPlans = useCallback(async () => {
+    const result = await window.electronAPI.plans.getAll()
+    if (result.success && result.data) {
+      setPlans(result.data)
+    }
+  }, [setPlans])
 
   useEffect(() => {
     loadClients()
     loadDebtors()
-  }, [page, filterStatus])
+  }, [loadClients, loadDebtors])
 
   useEffect(() => {
-    if (triggerNewClientModal) {
-      setTriggerNewClientModal(false)
-      window.electronAPI.window.openClientForm()
+    loadPlans()
+  }, [loadPlans])
+
+  // Handle client renew from URL params (kiosk redirect)
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    const clientId = searchParams.get('clientId')
+    const action = searchParams.get('action')
+
+    if (clientId && action === 'renew' && plans.length > 0) {
+      // Clear URL params immediately to prevent re-trigger
+      setSearchParams({}, { replace: true })
+
+      // Fetch the client by ID and open RenewModal
+      const doRenew = async () => {
+        const result = await window.electronAPI.client.getById(clientId)
+        if (result.success && result.data) {
+          setSelectedClient(result.data)
+          // Fetch memberships so the modal knows about active ones
+          const memResult = await window.electronAPI.membership.getByClient(clientId)
+          if (memResult.success && memResult.data) {
+            setClientMemberships(memResult.data)
+          }
+          const debtResult = await window.electronAPI.client.getDebt(clientId)
+          if (debtResult.success && debtResult.data) {
+            setClientDebts(debtResult.data)
+          }
+          setShowRenewModal(true)
+        }
+      }
+      doRenew()
     }
-  }, [triggerNewClientModal, setTriggerNewClientModal])
+  }, [searchParams, plans, setSearchParams])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.clientForm.onSaved(() => {
       loadClients()
       loadDebtors()
+      loadPlans()
     })
     return unsubscribe
-  }, [])
+  }, [loadClients, loadDebtors, loadPlans])
 
-  const handleDelete = async (id: string) => {
-    const ok = await confirm({ title: 'Eliminar cliente', message: '¿Está seguro de eliminar este cliente?', variant: 'danger', confirmLabel: 'Eliminar' })
-    if (!ok) return
-    await window.electronAPI.client.delete(id)
-    removeClient(id)
-    loadClients()
+  const handleClientSelect = async (client: Client) => {
+    setSelectedClient(client)
+    const result = await window.electronAPI.membership.getByClient(client.id)
+    if (result.success && result.data) {
+      setClientMemberships(result.data)
+    }
+    const debtResult = await window.electronAPI.client.getDebt(client.id)
+    if (debtResult.success && debtResult.data) {
+      setClientDebts(debtResult.data)
+    }
   }
 
-  const handleEdit = (client: Client) => {
-    window.electronAPI.window.openClientForm(client.id)
+  const refreshSelectedClient = async () => {
+    if (selectedClient) {
+      await handleClientSelect(selectedClient)
+    }
   }
 
   const handleSearch = async () => {
@@ -187,65 +233,133 @@ export function ClientsPage(): JSX.Element {
     window.electronAPI.window.openClientForm()
   }
 
+  const handleEdit = (client: Client) => {
+    window.electronAPI.window.openClientForm(client.id)
+  }
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({ title: 'Eliminar cliente', message: '¿Está seguro de eliminar este cliente?', variant: 'danger', confirmLabel: 'Eliminar' })
+    if (!ok) return
+    await window.electronAPI.client.delete(id)
+    removeClient(id)
+    if (selectedClient?.id === id) {
+      setSelectedClient(null)
+      setClientMemberships([])
+      setClientDebts([])
+    }
+    loadClients()
+  }
+
+  const handleRenew = (client: Client) => {
+    setSelectedClient(client)
+    setShowRenewModal(true)
+  }
+
+  const handleFreezeClick = (membership: Membership) => {
+    setSelectedMembershipForFreeze(membership)
+    setShowFreezeModal(true)
+  }
+
+  const handleUnfreeze = async (membershipId: string) => {
+    const result = await window.electronAPI.membership.unfreeze(membershipId)
+    if (result.success && result.data) {
+      showToast('success', 'Membresía descongelada. La fecha de vencimiento ha sido extendida.', 'Listo')
+      if (selectedClient) {
+        handleClientSelect(selectedClient)
+      }
+    } else {
+      showToast('error', result.error || 'No se pudo descongelar la membresía', 'Error')
+    }
+  }
+
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage)
     }
   }
 
+  const handleExportCsv = async () => {
+    if (window.electronAPI?.system?.exportCsv) {
+      const result = await window.electronAPI.system.exportCsv('clients')
+      if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+    }
+  }
+
+  const handleFilterChange = (status: ClientStatus | 'all') => {
+    setFilterStatus(status)
+    setPage(1)
+  }
+
+  const activeMembership = selectedClient
+    ? clientMemberships.find(m => m.status === 'active' || m.status === 'frozen') || null
+    : null
+
+  const filterPills: { label: string; value: ClientStatus | 'all' }[] = [
+    { label: 'Todos', value: 'all' },
+    { label: 'Activos', value: 'active' },
+    { label: 'Vencidos', value: 'expired' },
+    { label: 'Inactivos', value: 'inactive' },
+    { label: 'Suspendidos', value: 'suspended' },
+  ]
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        gap: 16
-      }}>
-        <button className="btn btn-secondary" onClick={async () => {
-          if (window.electronAPI?.system?.exportCsv) {
-            const result = await window.electronAPI.system.exportCsv('clients')
-            if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
-          }
-        }} title="Exportar CSV">
-          <Icons.Download />
-        </button>
-        <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-          <input 
-            type="text" 
-            className="search-input"
-            placeholder="Buscar por nombre, documento o código..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            style={{ flex: 1, maxWidth: 400 }}
-          />
-          <select 
-            className="form-select"
-            value={filterStatus}
-            onChange={(e) => {
-              setFilterStatus(e.target.value as ClientStatus | 'all')
-              setPage(1)
-            }}
-            style={{ width: 150 }}
-          >
-            <option value="all">Todos</option>
-            <option value="active">Activos</option>
-            <option value="expired">Vencidos</option>
-            <option value="inactive">Inactivos</option>
-            <option value="suspended">Suspendidos</option>
-          </select>
-          <button className="btn btn-secondary" onClick={handleSearch}>
-            <Icons.Search />
-            Buscar
-          </button>
-        </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 className="headline-md">Directorio de Miembros</h1>
         <button className="btn btn-primary" onClick={handleNewClient}>
           <Icons.Plus />
           Nuevo Cliente
         </button>
       </div>
 
-      <div className="card" style={{ flex: 1 }}>
+      {/* Search & Filters */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '12px 16px',
+          borderRadius: 'var(--radius-lg)',
+          display: 'flex',
+          gap: 16,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div className="search-box" style={{ flex: 1, minWidth: 200, maxWidth: 400 }}>
+          <Icons.Search />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, documento o código..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {filterPills.map((pill) => (
+            <button
+              key={pill.value}
+              className={`filter-pill${filterStatus === pill.value ? ' active' : ''}`}
+              onClick={() => handleFilterChange(pill.value)}
+            >
+              {pill.label}
+            </button>
+          ))}
+        </div>
+
+        <button className="btn btn-secondary" onClick={handleSearch} style={{ flexShrink: 0 }}>
+          <Icons.Search />
+          Buscar
+        </button>
+
+        <button className="btn btn-secondary" onClick={handleExportCsv} title="Exportar CSV" style={{ flexShrink: 0 }}>
+          <Icons.Download />
+        </button>
+      </div>
+
+      {/* Client Table */}
+      <div className="bento-card" style={{ padding: 0, overflow: 'hidden' }}>
         {clients.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -261,7 +375,7 @@ export function ClientsPage(): JSX.Element {
             <table>
               <thead>
                 <tr>
-                  <th>Cliente</th>
+                  <th>Miembro</th>
                   <th>Documento</th>
                   <th>Código</th>
                   <th>Teléfono</th>
@@ -271,10 +385,29 @@ export function ClientsPage(): JSX.Element {
               </thead>
               <tbody>
                 {clients.map((client) => (
-                  <tr key={client.id}>
+                  <tr
+                    key={client.id}
+                    onClick={() => handleClientSelect(client)}
+                    style={{
+                      cursor: 'pointer',
+                      backgroundColor: selectedClient?.id === client.id
+                        ? 'rgba(255, 107, 0, 0.08)'
+                        : undefined
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedClient?.id !== client.id) {
+                        e.currentTarget.style.backgroundColor = 'var(--color-surface-container-low)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedClient?.id !== client.id) {
+                        e.currentTarget.style.backgroundColor = ''
+                      }
+                    }}
+                  >
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div className="avatar">
+                        <div className="avatar-initials">
                           {client.photo ? (
                             <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
                           ) : (
@@ -282,7 +415,7 @@ export function ClientsPage(): JSX.Element {
                           )}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 500 }}>{client.fullName}</div>
+                          <div className="body-lg" style={{ fontWeight: 600 }}>{client.fullName}</div>
                           <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
                             {client.email || 'Sin correo'}
                           </div>
@@ -290,21 +423,22 @@ export function ClientsPage(): JSX.Element {
                       </div>
                     </td>
                     <td>{client.documentId || '-'}</td>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                      <span className="badge badge-default">{client.accessCode}</span>
+                    <td>
+                      <span className="chip">{client.accessCode}</span>
                     </td>
                     <td>{client.phone || '-'}</td>
                     <td>
                       {statusBadge(client.status)}
                       {debtorsMap[client.id] && (
-                        <span className="badge badge-error" style={{ marginLeft: 8 }}>
+                        <span className="status-badge status-badge-error" style={{ marginLeft: 8 }}>
+                          <PulseDot />
                           Deuda: {formatCurrency(debtorsMap[client.id])}
                         </span>
                       )}
                     </td>
                     <td>
-                      <div className="table-actions">
-                        <button 
+                      <div className="table-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
                           className="icon-btn"
                           onClick={() => {
                             setStatsClient(client)
@@ -314,14 +448,22 @@ export function ClientsPage(): JSX.Element {
                         >
                           <Icons.Clock />
                         </button>
-                        <button 
+                        <button
+                          className="icon-btn"
+                          onClick={() => handleRenew(client)}
+                          title="Nueva membresía"
+                          style={{ color: 'var(--color-primary-container)' }}
+                        >
+                          <Icons.Plus />
+                        </button>
+                        <button
                           className="icon-btn"
                           onClick={() => handleEdit(client)}
                           title="Editar"
                         >
                           <Icons.Edit />
                         </button>
-                        <button 
+                        <button
                           className="icon-btn danger"
                           onClick={() => handleDelete(client.id)}
                           title="Eliminar"
@@ -340,12 +482,286 @@ export function ClientsPage(): JSX.Element {
 
       <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
+      {/* Membership Detail Panel */}
+      {selectedClient && (
+        <div className="bento-card">
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="avatar-initials" style={{ width: 40, height: 40, fontSize: 16 }}>
+                {selectedClient.photo ? (
+                  <img src={`data:image/jpeg;base64,${selectedClient.photo}`} alt={selectedClient.fullName} />
+                ) : (
+                  selectedClient.fullName.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{selectedClient.fullName}</h3>
+                <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+                  Código: {selectedClient.accessCode} {selectedClient.documentId ? `| Doc: ${selectedClient.documentId}` : ''}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setRoutineClient(selectedClient)
+                  setShowRoutinesModal(true)
+                }}
+                title="Editar rutina de entrenamiento"
+                style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icons.Dumbbell />
+              </button>
+              {statusBadge(selectedClient.status)}
+            </div>
+          </div>
+          <div className="card-body" style={{ padding: 0 }}>
+            {clientMemberships.length > 0 ? (
+              <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Plan</th>
+                      <th>Inicio</th>
+                      <th>Vence</th>
+                      <th>Estado</th>
+                      <th>Saldo</th>
+                      <th style={{ width: 200 }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clientMemberships.map(membership => {
+                      const debt = clientDebts.find(d => d.membershipId === membership.id)
+                      return (
+                        <tr key={membership.id}>
+                          <td style={{ fontWeight: 500 }}>{membership.planName}</td>
+                          <td>{format(parseISO(membership.startDate), 'dd/MM/yyyy')}</td>
+                          <td>{format(parseISO(membership.endDate), 'dd/MM/yyyy')}</td>
+                          <td>{getMembershipStatusBadge(membership)}</td>
+                          <td>
+                            {debt && debt.balance > 0 ? (
+                              <span className="status-badge status-badge-error">
+                                <PulseDot />
+                                ${debt.balance.toLocaleString('es-CO')}
+                              </span>
+                            ) : (
+                              <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>Al día</span>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              {!activeMembership && (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => handleRenew(selectedClient)}
+                                  title="Nueva membresía"
+                                >
+                                  <Icons.Plus />
+                                  Renovar
+                                </button>
+                              )}
+                              {membership.status === 'active' && (
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => handleFreezeClick(membership)}
+                                  title="Congelar membresía"
+                                  style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Icons.Snowflake />
+                                </button>
+                              )}
+                              {membership.status === 'frozen' && (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => handleUnfreeze(membership.id)}
+                                  title="Descongelar membresía"
+                                  style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Icons.Play />
+                                </button>
+                              )}
+                              {debt && debt.balance > 0 && (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => {
+                                    setSelectedMembershipForAbono({ membership, balance: debt.balance })
+                                    setShowAbonoModal(true)
+                                  }}
+                                  title="Registrar abono"
+                                  style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Icons.Plus />
+                                </button>
+                              )}
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => {
+                                  setSelectedMembershipForPayments(membership.id)
+                                  setShowPaymentHistoryModal(true)
+                                }}
+                                title="Ver pagos"
+                                style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Icons.Search />
+                              </button>
+                              {(membership.status === 'frozen') && (
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setSelectedMembershipForHistory(membership.id)
+                                    setShowFreezeHistoryModal(true)
+                                  }}
+                                  title="Historial de congelaciones"
+                                  style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Icons.Clock />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state" style={{ padding: 24 }}>
+                <div className="empty-state-icon">
+                  <Icons.Membership />
+                </div>
+                <p>Este cliente no tiene membresías registradas</p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleRenew(selectedClient)}
+                  style={{ marginTop: 8 }}
+                >
+                  <Icons.Plus />
+                  Crear Membresía
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Plans Display */}
+      {plans.length > 0 && (
+        <div className="bento-card">
+          <div className="card-header">
+            <h3 style={{ fontSize: 16, fontWeight: 600 }}>Planes Disponibles</h3>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-4" style={{ gap: 20 }}>
+              {plans.map(plan => (
+                <div key={plan.id} className="metric-card" style={{ cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h4 style={{ fontWeight: 600 }}>{plan.name}</h4>
+                    <span className="chip">{plan.durationDays}d</span>
+                  </div>
+                  <div className="metric-card-value">
+                    {formatCurrency(plan.price)}
+                  </div>
+                  <div className="metric-card-label" style={{ marginBottom: 0 }}>
+                    {plan.description}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      {showRenewModal && selectedClient && (
+        <RenewModal
+          client={selectedClient}
+          activeMembership={activeMembership}
+          plans={plans}
+          onClose={() => {
+            setShowRenewModal(false)
+          }}
+          onSuccess={() => {
+            loadClients()
+            loadDebtors()
+            if (selectedClient) {
+              handleClientSelect(selectedClient)
+            }
+          }}
+        />
+      )}
+
+      {showFreezeModal && selectedMembershipForFreeze && (
+        <FreezeModal
+          membership={selectedMembershipForFreeze}
+          onClose={() => {
+            setShowFreezeModal(false)
+            setSelectedMembershipForFreeze(null)
+          }}
+          onSuccess={() => {
+            loadClients()
+            if (selectedClient) {
+              handleClientSelect(selectedClient)
+            }
+          }}
+        />
+      )}
+
+      {showFreezeHistoryModal && selectedMembershipForHistory && (
+        <FreezeHistoryModal
+          membershipId={selectedMembershipForHistory}
+          onClose={() => {
+            setShowFreezeHistoryModal(false)
+            setSelectedMembershipForHistory(null)
+          }}
+        />
+      )}
+
+      {showAbonoModal && selectedMembershipForAbono && (
+        <AbonoModal
+          client={selectedClient!}
+          membership={selectedMembershipForAbono.membership}
+          balance={selectedMembershipForAbono.balance}
+          onClose={() => {
+            setShowAbonoModal(false)
+            setSelectedMembershipForAbono(null)
+          }}
+          onSuccess={() => {
+            loadClients()
+            if (selectedClient) {
+              handleClientSelect(selectedClient)
+            }
+          }}
+        />
+      )}
+
+      {showPaymentHistoryModal && selectedMembershipForPayments && (
+        <PaymentHistoryModal
+          membershipId={selectedMembershipForPayments}
+          onClose={() => {
+            setShowPaymentHistoryModal(false)
+            setSelectedMembershipForPayments(null)
+          }}
+        />
+      )}
+
       {showStatsModal && statsClient && (
         <AttendanceStatsModal
           client={statsClient}
           onClose={() => {
             setShowStatsModal(false)
             setStatsClient(null)
+          }}
+        />
+      )}
+
+      {showRoutinesModal && routineClient && (
+        <RoutinesModal
+          client={routineClient}
+          onClose={() => {
+            setShowRoutinesModal(false)
+            setRoutineClient(null)
           }}
         />
       )}
