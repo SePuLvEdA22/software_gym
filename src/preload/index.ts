@@ -197,7 +197,11 @@ const electronAPI = {
     getHistory: (options?: { clientId?: string; page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<WhatsappMessage>>> =>
       ipcRenderer.invoke('whatsapp:getHistory', options),
     checkReminders: (): Promise<IpcResult<{ sent: number }>> =>
-      ipcRenderer.invoke('whatsapp:checkReminders')
+      ipcRenderer.invoke('whatsapp:checkReminders'),
+    sendExpiryReminderToClient: (clientId: string): Promise<IpcResult<{ success: boolean; message?: string }>> =>
+      ipcRenderer.invoke('whatsapp:sendExpiryReminderToClient', clientId),
+    sendTestMessage: (phone: string): Promise<IpcResult<{ success: boolean; message?: string }>> =>
+      ipcRenderer.invoke('whatsapp:sendTestMessage', phone)
   },
 
   promotion: {
@@ -228,6 +232,8 @@ const electronAPI = {
       ipcRenderer.invoke('system:get-auto-start'),
     setAutoStart: (enabled: boolean): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:set-auto-start', enabled),
+    restartReminderInterval: (): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('system:restartReminderInterval'),
     updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:updateAdmin', data)
   },
@@ -276,7 +282,9 @@ const electronAPI = {
     sendToClient: (templateId: string, clientId: string): Promise<IpcResult<{ sent: boolean; message?: string }>> =>
       ipcRenderer.invoke('messageTemplates:sendToClient', templateId, clientId),
     sendToAll: (templateId: string): Promise<IpcResult<{ sent: number; failed: number }>> =>
-      ipcRenderer.invoke('messageTemplates:sendToAll', templateId)
+      ipcRenderer.invoke('messageTemplates:sendToAll', templateId),
+    sendToExpiring: (templateId: string, days: number): Promise<IpcResult<{ sent: number; failed: number }>> =>
+      ipcRenderer.invoke('messageTemplates:sendToExpiring', templateId, days)
   },
 
   routine: {
@@ -308,6 +316,8 @@ const electronAPI = {
       ipcRenderer.invoke('window:open-client-payments', clientId),
     openClientRenew: (clientId: string): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:open-client-renew', clientId),
+    openKioskRenew: (clientId: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:open-kiosk-renew', clientId),
     notifyClientFormSaved: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:notify-client-form-saved'),
     minimize: (): Promise<IpcResult<null>> =>

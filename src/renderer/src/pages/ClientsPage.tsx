@@ -504,6 +504,21 @@ export function ClientsPage(): JSX.Element {
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button
                 className="btn btn-secondary btn-sm"
+                onClick={async () => {
+                  const result = await window.electronAPI.whatsapp.sendExpiryReminderToClient(selectedClient.id)
+                  if (result.success && result.data?.success) {
+                    showToast('success', `Recordatorio enviado a ${result.data.message}`, 'Enviado')
+                  } else {
+                    showToast('warning', result.data?.message || 'No se pudo enviar recordatorio. Verifica que el cliente tenga membresía activa o vencida recientemente.', 'Info')
+                  }
+                }}
+                title="Enviar recordatorio WhatsApp"
+                style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icons.Bell />
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
                 onClick={() => {
                   setRoutineClient(selectedClient)
                   setShowRoutinesModal(true)

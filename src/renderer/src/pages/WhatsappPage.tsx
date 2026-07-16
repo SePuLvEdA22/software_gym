@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
 import { WhatsappMessage, MessageType, MessageStatus } from '../../../shared/types'
@@ -25,12 +26,14 @@ function getStatusBadge(status: MessageStatus): JSX.Element {
 }
 
 export function WhatsappPage(): JSX.Element {
+  const showToast = useAppStore((state) => state.showToast)
   const [messages, setMessages] = useState<WhatsappMessage[]>([])
   const [filterType, setFilterType] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
+  const [sendingReminders, setSendingReminders] = useState(false)
 
   const loadMessages = useCallback(async (p?: number) => {
     try {
@@ -43,6 +46,28 @@ export function WhatsappPage(): JSX.Element {
       console.error('Error loading WhatsApp history:', e)
     }
   }, [page, pageSize])
+
+  const handleSendReminders = async () => {
+    setSendingReminders(true)
+    try {
+      const result = await window.electronAPI.whatsapp.checkReminders()
+      if (result.success && result.data) {
+        const sent = result.data.sent
+        if (sent > 0) {
+          showToast('success', `${sent} recordatorio(s) enviado(s) correctamente`, 'Recordatorios')
+        } else {
+          showToast('info', 'No se encontraron clientes para notificar en este momento', 'Sin novedades')
+        }
+        loadMessages(1)
+      } else {
+        showToast('error', result.error || 'Error al enviar recordatorios', 'Error')
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Error desconocido', 'Error')
+    } finally {
+      setSendingReminders(false)
+    }
+  }
 
   useEffect(() => {
     loadMessages()
@@ -93,6 +118,15 @@ export function WhatsappPage(): JSX.Element {
             Notificaciones Enviadas
           </h3>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button 
+              className={`btn ${sendingReminders ? 'btn-secondary' : 'btn-primary'} btn-sm`}
+              onClick={handleSendReminders}
+              disabled={sendingReminders}
+              title="Enviar recordatorios a clientes próximos a vencer"
+            >
+              <Icons.Bell />
+              {sendingReminders ? 'Enviando...' : 'Enviar Recordatorios'}
+            </button>
             <select className="form-select" value={filterType}
               onChange={e => setFilterType(e.target.value)} style={{ width: 200 }}>
               <option value="all">Todos los tipos</option>

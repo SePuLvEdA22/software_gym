@@ -75,7 +75,9 @@ import {
   sendWelcomeMessage,
   sendPaymentConfirmation,
   getMessageHistory,
-  checkAndSendExpiryReminders
+  checkAndSendExpiryReminders,
+  sendExpiryReminderToClient,
+  sendTestMessage
 } from '../whatsapp/index'
 import {
   getAllProducts, getProductById, createProduct, updateProduct, deleteProduct,
@@ -90,7 +92,8 @@ import {
 } from '../database/bodyTracking'
 import {
   getTemplates, getTemplateById, createTemplate, updateTemplate, deleteTemplate,
-  sendTemplateToClient, sendTemplateToAll
+  sendTemplateToClient, sendTemplateToAll,
+  sendTemplateToExpiring
 } from '../database/messageTemplates'
 import { backupDatabase, restoreDatabase } from '../database/index'
 import { AccessValidation, ClientStatus, UserRole } from '../../shared/types'
@@ -379,6 +382,14 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('membership:createWithPayment', async (_, clientId, planId, amount, method, startDate, notes, discount) => {
     try {
       const result = createMembershipWithPayment(clientId, planId, amount, method, startDate, notes, discount)
+      
+      // Auto-enviar mensajes WhatsApp si está habilitado
+      if (result.membership && getWhatsappConfig().enabled) {
+        sendWelcomeMessage(clientId).catch(err => log.error('Error sending welcome:', err))
+        sendPaymentConfirmation(clientId, result.membership.planName, result.membership.endDate)
+          .catch(err => log.error('Error sending payment confirmation:', err))
+      }
+      
       return { success: !!result.membership, data: result, error: result.error }
     } catch (error: any) {
       log.error('Error creating membership with payment:', error)
@@ -430,6 +441,16 @@ export function setupIpcHandlers(): void {
     try {
       validateOrThrow(RecordPaymentSchema, { clientId, amount, method, description, membershipId, notes, discount })
       const payment = recordPayment(clientId, amount, method, description, membershipId, notes, discount)
+      
+      // Auto-enviar confirmación de pago si WhatsApp está habilitado
+      if (getWhatsappConfig().enabled && membershipId) {
+        const membership = getActiveMembership(clientId)
+        if (membership) {
+          sendPaymentConfirmation(clientId, membership.planName, membership.endDate)
+            .catch(err => log.error('Error sending payment confirmation:', err))
+        }
+      }
+      
       return { success: true, data: payment }
     } catch (error: any) {
       log.error('Error recording payment:', error)
@@ -929,6 +950,26 @@ export function setupIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle('whatsapp:sendExpiryReminderToClient', async (_, clientId: string) => {
+    try {
+      const result = await sendExpiryReminderToClient(clientId)
+      return { success: result.success, data: result }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('whatsapp:sendTestMessage', async (_, phone: string) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const result = await sendTestMessage(phone)
+      return { success: result.success, data: result }
+    } catch (error: any) {
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
   ipcMain.handle('system:backupDb', async () => {
     const auth = requireRole('admin')
     if (auth) return auth
@@ -1141,6 +1182,13 @@ export function setupIpcHandlers(): void {
     const auth = requireRole('admin')
     if (auth) return auth
     try { return { success: true, data: sendTemplateToAll(templateId) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('messageTemplates:sendToExpiring', async (_, templateId: string, days: number) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try { return { success: true, data: sendTemplateToExpiring(templateId, days) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 

@@ -274,6 +274,49 @@ function createClientFormWindow(clientId?: string): BrowserWindow {
   return window
 }
 
+let kioskRenewWindow: BrowserWindow | null = null
+
+function createKioskRenewWindow(clientId: string): BrowserWindow {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+
+  const window = new BrowserWindow({
+    width: Math.min(900, width - 100),
+    height: Math.min(height - 100, 750),
+    minWidth: 700,
+    minHeight: 600,
+    resizable: true,
+    show: false,
+    autoHideMenuBar: true,
+    title: 'Renovar Membresía - BodyFitGym Kiosco',
+    webPreferences: {
+      preload: getPreloadPath(),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    icon: join(__dirname, '../../resources/icon.png')
+  })
+
+  window.on('ready-to-show', () => {
+    window.show()
+  })
+
+  const hash = `/kiosk-renew?id=${encodeURIComponent(clientId)}`
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#' + hash)
+  } else {
+    window.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  }
+
+  window.on('closed', () => {
+    kioskRenewWindow = null
+  })
+
+  log.info(`Kiosk renew window created for client: ${clientId}`)
+  return window
+}
+
 function setupWindowControls(): void {
   ipcMain.handle('window:open-kiosk', async () => {
     try {
@@ -326,6 +369,20 @@ function setupWindowControls(): void {
   ipcMain.handle('window:kiosk-status', async () => {
     const isOpen = kioskWindow !== null && !kioskWindow.isDestroyed() && kioskWindow.isVisible()
     return { success: true, data: { isOpen } }
+  })
+
+  ipcMain.handle('window:open-kiosk-renew', async (_, clientId: string) => {
+    try {
+      if (kioskRenewWindow && !kioskRenewWindow.isDestroyed()) {
+        kioskRenewWindow.removeAllListeners('closed')
+        kioskRenewWindow.close()
+      }
+      kioskRenewWindow = createKioskRenewWindow(clientId)
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error opening kiosk renew window:', error)
+      return { success: false, error: error.message }
+    }
   })
 
   ipcMain.handle('window:open-client-form', async (_, clientId?: string) => {
@@ -602,18 +659,34 @@ app.whenReady().then(async () => {
     log.info(`Startup reminder check: ${reminderResult.sent} sent`)
   }
 
-  setInterval(async () => {
-    try {
-      if (getWhatsappConfig().enabled) {
-        const result = await checkAndSendExpiryReminders()
-        if (result.sent > 0) {
-          log.info(`Periodic reminder check: ${result.sent} sent`)
+  // Store interval reference for dynamic updates
+  let reminderInterval: ReturnType<typeof setInterval> | null = null
+
+  function startReminderInterval(): void {
+    if (reminderInterval) clearInterval(reminderInterval)
+    const intervalMs = (getWhatsappConfig().checkIntervalHours || 6) * 60 * 60 * 1000
+    log.info(`Starting reminder interval: every ${getWhatsappConfig().checkIntervalHours || 6} hours`)
+    reminderInterval = setInterval(async () => {
+      try {
+        if (getWhatsappConfig().enabled) {
+          const result = await checkAndSendExpiryReminders()
+          if (result.sent > 0) {
+            log.info(`Periodic reminder check: ${result.sent} sent`)
+          }
         }
+      } catch (e) {
+        log.error('Periodic reminder check error:', e)
       }
-    } catch (e) {
-      log.error('Periodic reminder check error:', e)
-    }
-  }, (getWhatsappConfig().checkIntervalHours || 6) * 60 * 60 * 1000)
+    }, intervalMs)
+  }
+
+  startReminderInterval()
+
+  // Allow dynamic interval restart when config changes
+  ipcMain.handle('system:restartReminderInterval', async () => {
+    startReminderInterval()
+    return { success: true }
+  })
 
   app.on('activate', () => {
     const windows = BrowserWindow.getAllWindows()

@@ -61,6 +61,16 @@ export function MessagesPage(): JSX.Element {
     setSendModal(null)
   }
 
+  const handleSendToExpiring = async (templateId: string) => {
+    const r = await window.electronAPI.messageTemplates.sendToExpiring(templateId, 7)
+    if (r.success) {
+      showToast('success', `Plantilla enviada a ${r.data.sent} clientes por vencer (${r.data.failed} fallidos)`)
+    } else {
+      showToast('error', r.error || 'Error al enviar')
+    }
+    setSendModal(null)
+  }
+
   const filteredClients = clients.filter(c =>
     c.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.phone.includes(searchQuery)
@@ -125,9 +135,18 @@ export function MessagesPage(): JSX.Element {
             </div>
             <div className="modal-body">
               <p style={{ marginBottom: 16, fontSize: 14 }}>Seleccione el destinatario:</p>
-              <button className="btn btn-primary" style={{ width: '100%', marginBottom: 12 }} onClick={() => setSendModal({ ...sendModal, all: true, client: undefined })}>
-                Enviar a TODOS los clientes activos
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setSendModal({ ...sendModal, all: true, client: undefined })}>
+                  Enviar a TODOS los clientes activos
+                </button>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => handleSendToExpiring(sendModal.template.id)}
+                >
+                  Enviar a clientes por vencer (7 días)
+                </button>
+              </div>
               <div style={{ borderTop: '1px solid var(--color-border)', margin: '12px 0', textAlign: 'center', paddingTop: 12, color: 'var(--color-secondary)', fontSize: 13 }}>
                 O enviar a un cliente específico:
               </div>

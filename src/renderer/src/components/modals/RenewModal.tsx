@@ -221,7 +221,13 @@ export function RenewModal({ client, activeMembership, plans, onClose, onSuccess
                 value={discount || ''}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '')
-                  setDiscount(val ? Number(val) : 0)
+                  const newDiscount = val ? Number(val) : 0
+                  setDiscount(newDiscount)
+                  // Re-clamp amount si excede el nuevo máximo por el descuento
+                  if (selectedPlanData) {
+                    const maxAllowed = Math.max(0, selectedPlanData.price - newDiscount)
+                    setAmount(prev => Math.min(prev, maxAllowed))
+                  }
                 }}
                 placeholder="0"
               />
@@ -261,7 +267,9 @@ export function RenewModal({ client, activeMembership, plans, onClose, onSuccess
                   value={amount || ''}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '')
-                    setAmount(val ? Number(val) : 0)
+                    const numericVal = val ? Number(val) : 0
+                    const maxAllowed = selectedPlanData ? Math.max(0, selectedPlanData.price - discount) : Infinity
+                    setAmount(Math.min(numericVal, maxAllowed))
                   }}
                   placeholder="0"
                 />

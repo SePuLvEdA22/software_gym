@@ -7,13 +7,13 @@ import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types
 type SettingsSection = 'plans' | 'staff' | 'facility' | 'branding' | 'hardware' | 'whatsapp' | 'system'
 
 const SETTINGS_NAV: { id: SettingsSection; label: string; icon: React.ReactNode }[] = [
-  { id: 'plans', label: 'Membership Plans', icon: <Icons.Membership /> },
-  { id: 'staff', label: 'Staff & Roles', icon: <Icons.User /> },
-  { id: 'facility', label: 'Facility Info', icon: <Icons.Door /> },
-  { id: 'branding', label: 'Branding', icon: <Icons.Sun /> },
-  { id: 'hardware', label: 'Hardware Integration', icon: <Icons.Settings /> },
+  { id: 'plans', label: 'Planes de Membresía', icon: <Icons.Membership /> },
+  { id: 'staff', label: 'Personal y Roles', icon: <Icons.User /> },
+  { id: 'facility', label: 'Info del Gimnasio', icon: <Icons.Door /> },
+  { id: 'branding', label: 'Marca y Apariencia', icon: <Icons.Sun /> },
+  { id: 'hardware', label: 'Integración de Hardware', icon: <Icons.Settings /> },
   { id: 'whatsapp', label: 'WhatsApp', icon: <Icons.Bell /> },
-  { id: 'system', label: 'System', icon: <Icons.Shield /> },
+  { id: 'system', label: 'Sistema', icon: <Icons.Shield /> },
 ]
 
 export function SettingsPage(): JSX.Element {
@@ -367,6 +367,10 @@ export function SettingsPage(): JSX.Element {
         const result = await window.electronAPI.whatsapp.saveConfig(whatsappConfig)
         if (result.success) {
           showToast('success', 'Configuración de WhatsApp guardada correctamente', 'Guardado')
+          // Reiniciar el intervalo de recordatorios para reflejar los cambios
+          if (window.electronAPI?.system?.restartReminderInterval) {
+            await window.electronAPI.system.restartReminderInterval()
+          }
         } else {
           showToast('error', result.error || 'Error al guardar', 'Error')
         }
@@ -444,7 +448,7 @@ export function SettingsPage(): JSX.Element {
     return (
       <div className="card-body" style={{ padding: 0 }}>
         <div className="form-group">
-          <label className="form-label">Gym Name *</label>
+          <label className="form-label">Nombre del Gimnasio *</label>
           <input
             type="text"
             className="form-input"
@@ -455,7 +459,7 @@ export function SettingsPage(): JSX.Element {
         </div>
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Address</label>
+            <label className="form-label">Dirección</label>
             <input
               type="text"
               className="form-input"
@@ -465,7 +469,7 @@ export function SettingsPage(): JSX.Element {
             />
           </div>
           <div className="form-group">
-            <label className="form-label">Phone</label>
+            <label className="form-label">Teléfono</label>
             <input
               type="text"
               className="form-input"
@@ -476,22 +480,22 @@ export function SettingsPage(): JSX.Element {
           </div>
         </div>
         <div className="form-group">
-          <label className="form-label">Welcome Message</label>
+          <label className="form-label">Mensaje de Bienvenida</label>
           <input
             type="text"
             className="form-input"
             value={gymForm.welcomeMessage}
             onChange={(e) => setGymForm(prev => ({ ...prev, welcomeMessage: e.target.value }))}
-            placeholder="Bienvenido a BodyFitGym"
+            placeholder="Bienvenido, nos complace que seas parte de nuestro equipo."
           />
           <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-            Shown on the kiosk check-in screen
+            Se muestra en la pantalla de check-in del kiosco
           </p>
         </div>
         <div style={{ marginTop: 24 }}>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <Icons.Check />
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? 'Guardando...' : 'Guardar Configuración'}
           </button>
         </div>
       </div>
@@ -501,9 +505,9 @@ export function SettingsPage(): JSX.Element {
   return (
     <div className="flex-col gap-md">
       <div>
-        <h1 className="display-lg">System Settings</h1>
+        <h1 className="display-lg">Configuración del Sistema</h1>
         <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', marginTop: 8 }}>
-          Configure your gym's membership plans, staff permissions, facility hardware, and branding preferences.
+          Configure los planes de membresía, permisos del personal, hardware e imagen de su gimnasio.
         </p>
       </div>
 
@@ -526,14 +530,14 @@ export function SettingsPage(): JSX.Element {
             <>
               <div className="flex-row-between" style={{ marginBottom: 24 }}>
                 <div>
-                  <h2 className="headline-md">Membership Plans</h2>
+                  <h2 className="headline-md">Planes de Membresía</h2>
                   <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', margin: '4px 0 0' }}>
-                    Manage subscription tiers and pricing for your gym
+                    Administre los niveles de suscripción y precios de su gimnasio
                   </p>
                 </div>
                 <button className="btn btn-primary" onClick={openNewPlan}>
                   <Icons.Plus />
-                  New Plan
+                  Nuevo Plan
                 </button>
               </div>
 
@@ -546,12 +550,12 @@ export function SettingsPage(): JSX.Element {
                         <span className="chip" style={{ marginTop: 4, display: 'inline-block' }}>{plan.type}</span>
                       </div>
                       <span className={`status-badge-${plan.isActive ? 'success' : 'error'}`} style={{ borderRadius: '5px', padding: '3px'}}>
-                        {plan.isActive ? 'Active' : 'Inactive'}
+                        {plan.isActive ? 'Activo' : 'Inactivo'}
                       </span>
                     </div>
                     <div>
                       <span className="plan-card-price">${plan.price.toLocaleString('es-CO')}</span>
-                      <span className="plan-card-duration">/ {plan.durationDays} days</span>
+                      <span className="plan-card-duration">/ {plan.durationDays} días</span>
                     </div>
                     {plan.description && (
                       <p className="plan-card-description">{plan.description}</p>
@@ -572,7 +576,7 @@ export function SettingsPage(): JSX.Element {
                 {plans.length === 0 && (
                   <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                     <div className="empty-state-icon"><Icons.Membership /></div>
-                    <p>No membership plans yet. Click "New Plan" to create one.</p>
+                    <p>No hay planes de membresía aún. Haga clic en "Nuevo Plan" para crear uno.</p>
                   </div>
                 )}
               </div>
@@ -580,21 +584,21 @@ export function SettingsPage(): JSX.Element {
               <div style={{ marginTop: 32 }}>
                 <div className="flex-row-between" style={{ marginBottom: 20 }}>
                   <div>
-                    <h2 className="headline-md">Promotions & Discounts</h2>
+                    <h2 className="headline-md">Promociones y Descuentos</h2>
                     <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', margin: '4px 0 0' }}>
-                      Time-limited offers to attract new members
+                      Ofertas por tiempo limitado para atraer nuevos miembros
                     </p>
                   </div>
                   <button className="btn btn-primary" onClick={openNewPromo}>
                     <Icons.Plus />
-                    New Promotion
+                    Nueva Promoción
                   </button>
                 </div>
 
                 {promotions.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-state-icon"><Icons.TrendingUp /></div>
-                    <p>No promotions yet. Click "New Promotion" to create one.</p>
+                    <p>No hay promociones aún. Haga clic en "Nueva Promoción" para crear una.</p>
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
@@ -605,7 +609,7 @@ export function SettingsPage(): JSX.Element {
                           <div className="plan-card-header">
                             <h3 className="headline-md" style={{ margin: 0, fontSize: 16 }}>{promo.name}</h3>
                             <span className={`status-badge-${promo.isActive ? 'success' : 'error'}`}>
-                              {promo.isActive ? 'Active' : 'Inactive'}
+                              {promo.isActive ? 'Activa' : 'Inactiva'}
                             </span>
                           </div>
                           <span className="chip" style={{ alignSelf: 'flex-start' }}>
@@ -640,15 +644,15 @@ export function SettingsPage(): JSX.Element {
           {settingsSection === 'staff' && (
             <div className="card" style={{ border: 'none', background: 'transparent', padding: 0 }}>
               <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
-                <h2 className="headline-md" style={{ margin: 0 }}>Staff & Roles</h2>
+                <h2 className="headline-md" style={{ margin: 0 }}>Personal y Roles</h2>
                 <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                  Manage administrator credentials and access control
+                  Administre las credenciales de administradores y control de acceso
                 </p>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Username</label>
+                    <label className="form-label">Nombre de Usuario</label>
                     <input 
                       type="text" 
                       className="form-input"
@@ -659,10 +663,10 @@ export function SettingsPage(): JSX.Element {
                 </div>
 
                 <div style={{ margin: '20px 0', borderTop: '1px solid var(--color-border)', opacity: 0.3 }} />
-                <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Change Password</h3>
+                <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Cambiar Contraseña</h3>
                 <div className="form-row-3">
                   <div className="form-group">
-                    <label className="form-label">Current Password</label>
+                    <label className="form-label">Contraseña Actual</label>
                     <input 
                       type="password" 
                       className="form-input"
@@ -671,7 +675,7 @@ export function SettingsPage(): JSX.Element {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">New Password</label>
+                    <label className="form-label">Nueva Contraseña</label>
                     <input 
                       type="password" 
                       className="form-input"
@@ -680,7 +684,7 @@ export function SettingsPage(): JSX.Element {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Confirm Password</label>
+                    <label className="form-label">Confirmar Contraseña</label>
                     <input 
                       type="password" 
                       className="form-input"
@@ -693,7 +697,7 @@ export function SettingsPage(): JSX.Element {
                 <div style={{ marginTop: 24 }}>
                   <button className="btn btn-primary" onClick={handleSaveAdmin}>
                     <Icons.Check />
-                    Update User
+                    Actualizar Usuario
                   </button>
                 </div>
               </div>
@@ -706,19 +710,19 @@ export function SettingsPage(): JSX.Element {
                 <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                   <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Icons.Door />
-                    Kiosk Display
+                    Pantalla Kiosco
                   </h2>
                   <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                    Configure the check-in kiosk for member self-service
+                    Configure el kiosco de check-in para que los miembros accedan por su cuenta
                   </p>
                 </div>
                 <div className="card-body" style={{ padding: 0 }}>
                   <div className="glass-panel" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
                     <Icons.Calendar />
                     <div>
-                      <span style={{ fontWeight: 600 }}>Dual Display System:</span>
+                      <span style={{ fontWeight: 600 }}>Sistema de Doble Pantalla:</span>
                       <span style={{ marginLeft: 8, color: 'var(--color-secondary)', fontSize: 13 }}>
-                        The kiosk opens in a SEPARATE window, ideal for a second monitor at the gym entrance.
+                        El kiosco se abre en una ventana SEPARADA, ideal para un segundo monitor en la entrada del gimnasio.
                       </span>
                     </div>
                   </div>
@@ -733,12 +737,12 @@ export function SettingsPage(): JSX.Element {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <p className="metric-card-label" style={{ margin: 0 }}>Kiosk Status</p>
+                          <p className="metric-card-label" style={{ margin: 0 }}>Estado del Kiosco</p>
                           <p className="metric-card-value" style={{ 
                             fontSize: 24,
                             color: kioskOpen ? 'var(--color-success)' : 'var(--color-secondary)'
                           }}>
-                            {kioskOpen ? 'ACTIVE' : 'INACTIVE'}
+                            {kioskOpen ? 'ACTIVO' : 'INACTIVO'}
                           </p>
                         </div>
                         <div style={{ 
@@ -754,12 +758,12 @@ export function SettingsPage(): JSX.Element {
                       {!kioskOpen ? (
                         <button className="btn btn-primary btn-lg" onClick={handleOpenKiosk} style={{ justifyContent: 'center' }}>
                           <Icons.Door />
-                          Open Kiosk Display
+                          Abrir Pantalla Kiosco
                         </button>
                       ) : (
                         <button className="btn btn-danger btn-lg" onClick={handleCloseKiosk} style={{ justifyContent: 'center' }}>
                           <Icons.X />
-                          Close Kiosk Display
+                          Cerrar Pantalla Kiosco
                         </button>
                       )}
                     </div>
@@ -768,30 +772,30 @@ export function SettingsPage(): JSX.Element {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                     <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'rgba(255, 107, 0, 0.08)' }}>
                       <Icons.User />
-                      <div><span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Monitor 1:</span> Admin Panel (Reception)</div>
+                      <div><span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Monitor 1:</span> Panel Admin (Recepción)</div>
                     </div>
                     <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'rgba(74, 222, 128, 0.08)' }}>
                       <Icons.Door />
-                      <div><span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Monitor 2:</span> Kiosk Display (Entrance)</div>
+                      <div><span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Monitor 2:</span> Pantalla Kiosco (Entrada)</div>
                     </div>
                   </div>
 
                   <div className="glass-panel" style={{ padding: 20 }}>
                     <h4 className="label-md" style={{ marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Auto-start Configuration
+                      Configuración de Inicio Automático
                     </h4>
                     <p className="body-lg" style={{ color: 'var(--color-secondary)', lineHeight: 1.6, fontSize: 13 }}>
-                      To configure which mode opens on app start, use the <code className="chip" style={{ fontFamily: 'monospace', fontSize: 12 }}>GYM_MODE</code> environment variable:
+                      Para configurar qué modo se abre al iniciar, use la variable de entorno <code className="chip" style={{ fontFamily: 'monospace', fontSize: 12 }}>GYM_MODE</code>:
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, fontFamily: 'monospace', fontSize: 13 }}>
                       <div className="glass-panel" style={{ padding: '8px 12px' }}>
-                        <code>GYM_MODE=both</code> → Admin + Kiosk (default)
+                        <code>GYM_MODE=both</code> → Admin + Kiosco (por defecto)
                       </div>
                       <div className="glass-panel" style={{ padding: '8px 12px' }}>
-                        <code>GYM_MODE=admin</code> → Admin only
+                        <code>GYM_MODE=admin</code> → Solo Admin
                       </div>
                       <div className="glass-panel" style={{ padding: '8px 12px' }}>
-                        <code>GYM_MODE=kiosk</code> → Kiosk only
+                        <code>GYM_MODE=kiosk</code> → Solo Kiosco
                       </div>
                     </div>
                   </div>
@@ -802,10 +806,10 @@ export function SettingsPage(): JSX.Element {
                 <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                   <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Icons.Door />
-                    Gym Information
+                    Información del Gimnasio
                   </h2>
                   <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                    Configure your gym's name, address, and welcome message displayed on the kiosk
+                    Configure el nombre, dirección y mensaje de bienvenida que se muestra en el kiosco
                   </p>
                 </div>
                 <GymSettingsForm />
@@ -818,33 +822,33 @@ export function SettingsPage(): JSX.Element {
               <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                 <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icons.Sun />
-                  Branding
+                  Marca y Apariencia
                 </h2>
                 <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                  Customize the look and feel of your gym management panel
+                  Personalice la apariencia de su panel de administración
                 </p>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
                 <div className="glass-panel" style={{ padding: 20 }}>
-                  <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Theme</h3>
+                  <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Tema</h3>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <button
                       className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => setTheme('dark')}
                       style={{ flex: 1, justifyContent: 'center' }}
                     >
-                      🌙 Dark
+                      🌙 Oscuro
                     </button>
                     <button
                       className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => setTheme('light')}
                       style={{ flex: 1, justifyContent: 'center' }}
                     >
-                      ☀️ Light
+                      ☀️ Claro
                     </button>
                   </div>
                   <p className="body-lg" style={{ color: 'var(--color-secondary)', marginTop: 12, fontSize: 13 }}>
-                    Switch between dark and light themes. Your preference is saved automatically.
+                    Cambie entre temas oscuro y claro. Su preferencia se guarda automáticamente.
                   </p>
                 </div>
               </div>
@@ -856,20 +860,20 @@ export function SettingsPage(): JSX.Element {
               <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                 <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icons.Settings />
-                  Hardware Integration
+                  Integración de Hardware
                 </h2>
                 <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                  Configure connected hardware devices for door access and entry control
+                  Configure los dispositivos de hardware conectados para el control de acceso
                 </p>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
                 <div className="form-group">
-                  <label className="form-label">Connection Type</label>
+                  <label className="form-label">Tipo de Conexión</label>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {([
-                      { value: 'mock', label: 'Simulation', desc: 'No real hardware' },
-                      { value: 'http', label: 'HTTP/HTTPS', desc: 'TCP/IP Relay or ZKTeco' },
-                      { value: 'serial', label: 'Serial Port', desc: 'RS232 / RS485 / USB' }
+                      { value: 'mock', label: 'Simulación', desc: 'Sin hardware real' },
+                      { value: 'http', label: 'HTTP/HTTPS', desc: 'Relé TCP/IP o ZKTeco' },
+                      { value: 'serial', label: 'Puerto Serie', desc: 'RS232 / RS485 / USB' }
                     ] as const).map(opt => (
                       <label key={opt.value} className="glass-panel" style={{
                         flex: 1, minWidth: 180, cursor: 'pointer', padding: 16,
@@ -895,15 +899,15 @@ export function SettingsPage(): JSX.Element {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Open Duration (ms)</label>
+                    <label className="form-label">Duración Abierto (ms)</label>
                     <input
                       type="number"
                       className="form-input"
                       value={doorConfig.openDuration}
-                      onChange={(e) => setDoorConfig(prev => ({ ...prev, openDuration: Number(e.target.value) }))}
+                      onChange={(e) => setDoorConfig(prev => ({ ...prev, openDuration: Number(e.target.value.replace(/^0+(?=\d)/, '')) || 0 }))}
                     />
                     <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-                      How long the door stays unlocked
+                      Cuánto tiempo permanece la puerta abierta
                     </p>
                   </div>
                 </div>
@@ -913,7 +917,7 @@ export function SettingsPage(): JSX.Element {
                 {doorConfig.connectionType === 'http' && (
                   <>
                     <div className="form-group">
-                      <label className="form-label">Relay URL</label>
+                      <label className="form-label">URL del Relé</label>
                       <input
                         type="text"
                         className="form-input"
@@ -924,7 +928,7 @@ export function SettingsPage(): JSX.Element {
                     </div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label className="form-label">HTTP Method</label>
+                        <label className="form-label">Método HTTP</label>
                         <select
                           className="form-select"
                           value={doorConfig.httpMethod}
@@ -936,7 +940,7 @@ export function SettingsPage(): JSX.Element {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Headers (optional)</label>
+                      <label className="form-label">Encabezados (opcional)</label>
                       <textarea
                         className="form-textarea"
                         value={doorConfig.httpHeaders}
@@ -946,7 +950,7 @@ export function SettingsPage(): JSX.Element {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Body (optional, for POST)</label>
+                      <label className="form-label">Cuerpo (opcional, para POST)</label>
                       <textarea
                         className="form-textarea"
                         value={doorConfig.httpBody}
@@ -962,7 +966,7 @@ export function SettingsPage(): JSX.Element {
                   <>
                     <div className="form-row">
                       <div className="form-group">
-                        <label className="form-label">Serial Port</label>
+                        <label className="form-label">Puerto Serie</label>
                         <input
                           type="text"
                           className="form-input"
@@ -972,7 +976,7 @@ export function SettingsPage(): JSX.Element {
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Baud Rate</label>
+                        <label className="form-label">Velocidad (Baudios)</label>
                         <select
                           className="form-select"
                           value={doorConfig.baudRate}
@@ -987,7 +991,7 @@ export function SettingsPage(): JSX.Element {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Serial Command</label>
+                      <label className="form-label">Comando Serie</label>
                       <input
                         type="text"
                         className="form-input"
@@ -1006,7 +1010,7 @@ export function SettingsPage(): JSX.Element {
                   </button>
                   {doorConfig.connectionType !== 'mock' && (
                     <button className="btn btn-secondary" onClick={handleTestConnection}>
-                      Test Connection
+                      Probar Conexión
                     </button>
                   )}
                 </div>
@@ -1019,10 +1023,10 @@ export function SettingsPage(): JSX.Element {
               <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                 <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icons.Bell />
-                  WhatsApp Notifications
+                  Notificaciones WhatsApp
                 </h2>
                 <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                  Send automated reminders and alerts to members via WhatsApp
+                  Envíe recordatorios y alertas automáticas a los miembros vía WhatsApp
                 </p>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
@@ -1033,7 +1037,7 @@ export function SettingsPage(): JSX.Element {
                       checked={whatsappConfig.enabled}
                       onChange={(e) => setWhatsappConfig(prev => ({ ...prev, enabled: e.target.checked }))}
                     />
-                    <span style={{ fontWeight: 500 }}>Enable WhatsApp notifications</span>
+                    <span style={{ fontWeight: 500 }}>Activar notificaciones WhatsApp</span>
                   </label>
                 </div>
 
@@ -1042,7 +1046,7 @@ export function SettingsPage(): JSX.Element {
                     <div style={{ margin: '20px 0', borderTop: '1px solid var(--color-border)', opacity: 0.3 }} />
                     <div className="form-row">
                       <div className="form-group">
-                        <label className="form-label">Provider</label>
+                        <label className="form-label">Proveedor</label>
                         <select 
                           className="form-select"
                           value={whatsappConfig.provider}
@@ -1051,11 +1055,11 @@ export function SettingsPage(): JSX.Element {
                             provider: e.target.value as any
                           }))}
                         >
-                          <option value="mock">Simulation Mode</option>
+                          <option value="mock">Modo Simulación</option>
                           <option value="whatsapp_cloud">WhatsApp Cloud API (Meta)</option>
                           <option value="evolution_api">Evolution API</option>
                           <option value="twilio">Twilio</option>
-                          <option value="custom">Custom API</option>
+                          <option value="custom">API Personalizada</option>
                         </select>
                       </div>
                     </div>
@@ -1064,20 +1068,21 @@ export function SettingsPage(): JSX.Element {
                       <>
                         {whatsappConfig.provider === 'whatsapp_cloud' && (
                           <div className="form-group">
-                            <label className="form-label">Phone Number ID</label>
+                            <label className="form-label">ID del Número de Teléfono
+</label>
                             <input 
                               type="text" 
                               className="form-input"
                               value={whatsappConfig.phoneNumberId}
                               onChange={(e) => setWhatsappConfig(prev => ({ ...prev, phoneNumberId: e.target.value }))}
-                              placeholder="Numeric ID from Meta Business"
+                              placeholder="ID numérico de Meta Business"
                             />
                           </div>
                         )}
                         <div className="form-row">
                           {whatsappConfig.provider !== 'whatsapp_cloud' && (
                             <div className="form-group">
-                              <label className="form-label">API URL</label>
+                              <label className="form-label">URL de la API</label>
                               <input 
                                 type="text" 
                                 className="form-input"
@@ -1088,7 +1093,7 @@ export function SettingsPage(): JSX.Element {
                             </div>
                           )}
                           <div className="form-group">
-                            <label className="form-label">API Key / Token</label>
+                            <label className="form-label">Clave API / Token</label>
                             <input 
                               type="password" 
                               className="form-input"
@@ -1100,13 +1105,13 @@ export function SettingsPage(): JSX.Element {
                         </div>
                         {whatsappConfig.provider === 'evolution_api' && (
                           <div className="form-group">
-                            <label className="form-label">Instance ID</label>
+                            <label className="form-label">ID de Instancia</label>
                             <input 
                               type="text" 
                               className="form-input"
                               value={whatsappConfig.instanceId}
                               onChange={(e) => setWhatsappConfig(prev => ({ ...prev, instanceId: e.target.value }))}
-                              placeholder="Instance ID"
+                              placeholder="ID de Instancia"
                             />
                           </div>
                         )}
@@ -1114,7 +1119,7 @@ export function SettingsPage(): JSX.Element {
                     )}
 
                     <div style={{ margin: '20px 0', borderTop: '1px solid var(--color-border)', opacity: 0.3 }} />
-                    <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 20 }}>Automatic Reminders</h3>
+                    <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 20 }}>Recordatorios Automáticos</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                         <input 
@@ -1125,7 +1130,7 @@ export function SettingsPage(): JSX.Element {
                             reminders: { ...prev.reminders, threeDays: e.target.checked }
                           }))}
                         />
-                        <span>3 days before expiry</span>
+                        <span>3 días antes del vencimiento</span>
                       </label>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                         <input 
@@ -1136,7 +1141,7 @@ export function SettingsPage(): JSX.Element {
                             reminders: { ...prev.reminders, oneDay: e.target.checked }
                           }))}
                         />
-                        <span>1 day before expiry</span>
+                        <span>1 día antes del vencimiento</span>
                       </label>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                         <input 
@@ -1147,32 +1152,48 @@ export function SettingsPage(): JSX.Element {
                             reminders: { ...prev.reminders, sameDay: e.target.checked }
                           }))}
                         />
-                        <span>Same day of expiry</span>
+                        <span>El mismo día del vencimiento</span>
                       </label>
                     </div>
                     <div style={{ marginTop: 16 }}>
-                      <label className="form-label">Check interval (hours)</label>
+                      <label className="form-label">Intervalo de revisión (horas)</label>
                       <input
                         type="number"
                         className="form-input"
-                        value={whatsappConfig.checkIntervalHours}
-                        onChange={(e) => setWhatsappConfig(prev => ({ ...prev, checkIntervalHours: Math.max(1, Number(e.target.value)) }))}
+                        value={whatsappConfig.checkIntervalHours}                          onChange={(e) => setWhatsappConfig(prev => ({ ...prev, checkIntervalHours: Math.max(1, Number(e.target.value.replace(/^0+(?=\d)/, ''))) }))}
                         min={1}
                         max={168}
                         style={{ width: 120 }}
                       />
                       <small style={{ display: 'block', color: 'var(--color-secondary)', marginTop: 4 }}>
-                        How often to check and send automatic reminders (min 1, max 168)
+                        Cada cuánto revisar y enviar recordatorios (mín 1, máx 168)
                       </small>
                     </div>
                   </>
                 )}
 
-                <div style={{ marginTop: 24 }}>
+                <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                   <button className="btn btn-primary" onClick={handleSaveWhatsapp}>
                     <Icons.Check />
-                    Save Configuration
+                    Guardar Configuración
                   </button>
+                  {whatsappConfig.enabled && (
+                    <button className="btn btn-secondary" onClick={async () => {
+                      const phone = prompt('Ingresa el número de teléfono para enviar mensaje de prueba (Ej: 573001234567):')
+                      if (!phone) return
+                      if (window.electronAPI?.whatsapp?.sendTestMessage) {
+                        const result = await window.electronAPI.whatsapp.sendTestMessage(phone)
+                        if (result.success) {
+                          showToast('success', result.data?.message || 'Mensaje de prueba enviado', 'Prueba OK')
+                        } else {
+                          showToast('error', result.data?.message || result.error || 'Error al enviar prueba', 'Error')
+                        }
+                      }
+                    }}>
+                      <Icons.Bell />
+                      Enviar Mensaje de Prueba
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1183,10 +1204,10 @@ export function SettingsPage(): JSX.Element {
               <div className="card-header" style={{ padding: '0 0 20px', background: 'transparent' }}>
                 <h2 className="headline-md" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Icons.Shield />
-                  System
+                  Sistema
                 </h2>
                 <p className="body-lg" style={{ color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                  General system settings, auto-start, and database management
+                  Configuración general, inicio automático y administración de base de datos
                 </p>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
@@ -1201,48 +1222,48 @@ export function SettingsPage(): JSX.Element {
                             await window.electronAPI.system.setAutoStart(enabled)
                           }
                         }} />
-                      <span style={{ fontWeight: 500 }}>Start automatically with Windows</span>
+                      <span style={{ fontWeight: 500 }}>Iniciar automáticamente con Windows</span>
                     </label>
                     <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
-                      The app will launch automatically when the gym PC starts
+                      La aplicación se iniciará automáticamente cuando encienda el PC del gimnasio
                     </p>
                   </div>
                 </div>
 
                 <div className="glass-panel" style={{ padding: 20 }}>
-                  <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Database Backup</h3>
+                  <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Respaldo de Base de Datos</h3>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button className="btn btn-primary" onClick={async () => {
                       if (window.electronAPI?.system?.backupDb) {
                         const result = await window.electronAPI.system.backupDb()
                         if (result.success) {
-                          showToast('success', `Backup saved to: ${result.data}`, 'Backup Successful')
+                          showToast('success', `Respaldo guardado en: ${result.data}`, 'Respaldo Exitoso')
                         } else if (result.error !== 'Canceled') {
-                          showToast('error', result.error || 'Error creating backup', 'Error')
+                          showToast('error', result.error || 'Error al crear respaldo', 'Error')
                         }
                       }
                     }}>
                       <Icons.Download />
-                      Backup Database
+                      Respaldar Base de Datos
                     </button>
                     <button className="btn btn-secondary" onClick={async () => {
                       if (window.electronAPI?.system?.restoreDb) {
-                        const ok = await confirm({ title: 'Restore database', message: 'Restore database? Unsaved changes will be lost.', variant: 'warning', confirmLabel: 'Restore' })
+                        const ok = await confirm({ title: 'Restaurar base de datos', message: '¿Restaurar base de datos? Los cambios no guardados se perderán.', variant: 'warning', confirmLabel: 'Restaurar' })
                         if (!ok) return
                         const result = await window.electronAPI.system.restoreDb()
                         if (result.success) {
-                          showToast('success', 'Database restored. Restart the app.', 'Restore Successful')
+                          showToast('success', 'Base de datos restaurada. Reinicie la aplicación.', 'Restauración Exitosa')
                         } else if (result.error !== 'Canceled') {
-                          showToast('error', result.error || 'Error restoring database', 'Error')
+                          showToast('error', result.error || 'Error al restaurar base de datos', 'Error')
                         }
                       }
                     }}>
                       <Icons.Upload />
-                      Restore Database
+                      Restaurar Base de Datos
                     </button>
                   </div>
                   <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 8 }}>
-                    The database contains clients, memberships, payments, access logs, and configuration.
+                    La base de datos contiene clientes, membresías, pagos, registros de acceso y configuración.
                   </p>
                 </div>
 
@@ -1262,21 +1283,21 @@ export function SettingsPage(): JSX.Element {
           <div className="glass-panel" style={{ width: 480, maxHeight: '90vh', overflow: 'auto', padding: 0 }}>
             <div className="card-header" style={{ padding: 20, borderBottom: '1px solid var(--color-border)' }}>
               <h3 className="headline-md" style={{ margin: 0 }}>
-                {editingPromo ? 'Edit Promotion' : 'New Promotion'}
+                {editingPromo ? 'Editar Promoción' : 'Nueva Promoción'}
               </h3>
             </div>
             <div style={{ padding: 24 }}>
               <div className="form-group">
-                <label className="form-label">Name *</label>
+                <label className="form-label">Nombre *</label>
                 <input className="form-input" value={promoForm.name}
                   onChange={e => setPromoForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g.: Summer Special" />
+                  placeholder="Ej: Promoción Verano" />
               </div>
               <div className="form-group">
                 <label className="form-label">Plan *</label>
                 <select className="form-select" value={promoForm.planId}
                   onChange={e => setPromoForm(prev => ({ ...prev, planId: e.target.value }))}>
-                  <option value="">Select a plan</option>
+                  <option value="">Seleccione un plan</option>
                   {plans.filter(p => p.isActive).map(plan => (
                     <option key={plan.id} value={plan.id}>{plan.name} - ${plan.price.toLocaleString('es-CO')}</option>
                   ))}
@@ -1284,39 +1305,42 @@ export function SettingsPage(): JSX.Element {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Discount Type</label>
+                  <label className="form-label">Tipo de Descuento</label>
                   <select className="form-select" value={promoForm.discountType}
                     onChange={e => setPromoForm(prev => ({ ...prev, discountType: e.target.value as 'percentage' | 'fixed' }))}>
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount ($)</option>
+                    <option value="percentage">Porcentaje (%)</option>
+                    <option value="fixed">Monto Fijo ($)</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Value *</label>
-                  <input type="number" className="form-input" value={promoForm.discountValue}
-                    onChange={e => setPromoForm(prev => ({ ...prev, discountValue: Number(e.target.value) }))}
-                    min={0} placeholder={promoForm.discountType === 'percentage' ? 'e.g.: 20' : 'e.g.: 50000'} />
+                  <label className="form-label">Valor *</label>
+                  <input type="number" className="form-input" value={promoForm.discountValue || ''}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                      setPromoForm(prev => ({ ...prev, discountValue: raw === '' ? 0 : Number(raw) }))
+                    }}
+                    min={0} placeholder={promoForm.discountType === 'percentage' ? 'Ej: 20' : 'Ej: 50000'} />
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Start Date *</label>
+                  <label className="form-label">Fecha Inicio *</label>
                   <input type="date" className="form-input" value={promoForm.startDate}
                     onChange={e => setPromoForm(prev => ({ ...prev, startDate: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">End Date *</label>
+                  <label className="form-label">Fecha Fin *</label>
                   <input type="date" className="form-input" value={promoForm.endDate}
                     onChange={e => setPromoForm(prev => ({ ...prev, endDate: e.target.value }))} />
                 </div>
               </div>
               <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" onClick={() => setShowPromoModal(false)}>
-                  Cancel
+                  Cancelar
                 </button>
                 <button className="btn btn-primary" onClick={savePromo}>
                   <Icons.Check />
-                  {editingPromo ? 'Update' : 'Create'}
+                  {editingPromo ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
             </div>
@@ -1333,53 +1357,58 @@ export function SettingsPage(): JSX.Element {
           <div className="glass-panel" style={{ width: 480, maxHeight: '90vh', overflow: 'auto', padding: 0 }}>
             <div className="card-header" style={{ padding: 20, borderBottom: '1px solid var(--color-border)' }}>
               <h3 className="headline-md" style={{ margin: 0 }}>
-                {editingPlan ? 'Edit Plan' : 'New Plan'}
+                {editingPlan ? 'Editar Plan' : 'Nuevo Plan'}
               </h3>
             </div>
             <div style={{ padding: 24 }}>
               <div className="form-group">
-                <label className="form-label">Name *</label>
+                <label className="form-label">Nombre *</label>
                 <input className="form-input" value={planForm.name}
                   onChange={e => handlePlanFormChange('name', e.target.value)}
-                  placeholder="e.g.: Monthly Premium" />
+                  placeholder="Ej: Premium Mensual" />
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Type</label>
+                  <label className="form-label">Tipo</label>
                   <select className="form-select" value={planForm.type}
                     onChange={e => handlePlanFormChange('type', e.target.value)}>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">15 Days</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="semiannual">Semi-Annual</option>
-                    <option value="annual">Annual</option>
+                    <option value="daily">Diario</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="biweekly">15 Días</option>
+                    <option value="monthly">Mensual</option>
+                    <option value="quarterly">Trimestral</option>
+                    <option value="semiannual">Semestral</option>
+                    <option value="annual">Anual</option>
                   </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Duration (days) *</label>
-                  <input type="number" className="form-input" value={planForm.durationDays}
-                    onChange={e => handlePlanFormChange('durationDays', Number(e.target.value))} min={1} />
+                </div>              <div className="form-group">
+                <label className="form-label">Duración (días) *</label>
+                <input type="number" className="form-input" value={planForm.durationDays || ''}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    handlePlanFormChange('durationDays', raw === '' ? 0 : Number(raw))
+                  }} min={1} placeholder="Ej: 30" />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Price *</label>
-                <input type="number" className="form-input" value={planForm.price}
-                  onChange={e => handlePlanFormChange('price', Number(e.target.value))} min={0} />
+                <label className="form-label">Precio *</label>
+                <input type="number" className="form-input" value={planForm.price || ''}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    handlePlanFormChange('price', raw === '' ? 0 : Number(raw))
+                  }} min={0} placeholder="Ej: 50000" />
               </div>
               <div className="form-group">
-                <label className="form-label">Description</label>
+                <label className="form-label">Descripción</label>
                 <textarea className="form-textarea" value={planForm.description}
                   onChange={e => handlePlanFormChange('description', e.target.value)} rows={2} />
               </div>
               <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button className="btn btn-secondary" onClick={() => setShowPlanModal(false)}>
-                  Cancel
+                  Cancelar
                 </button>
                 <button className="btn btn-primary" onClick={savePlan}>
                   <Icons.Check />
-                  {editingPlan ? 'Update' : 'Create'}
+                  {editingPlan ? 'Actualizar' : 'Crear'}
                 </button>
               </div>
             </div>

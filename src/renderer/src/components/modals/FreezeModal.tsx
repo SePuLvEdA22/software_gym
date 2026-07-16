@@ -73,7 +73,10 @@ export function FreezeModal({ membership, onClose, onSuccess }: FreezeModalProps
               type="number"
               className="form-input"
               value={plannedDays}
-              onChange={(e) => setPlannedDays(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                setPlannedDays(raw === '' ? '' : Number(raw))
+              }}
               placeholder="Dejar vacío si es indefinido"
               min={1}
             />

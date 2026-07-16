@@ -19,13 +19,13 @@ interface ValidationResult {
 const DAY_INDEX_FROM_DOW = [6, 0, 1, 2, 3, 4, 5]
 
 const DAYS = [
-  { key: 'Lunes', icon: 'directions_run', label: 'Cardio & Core' },
-  { key: 'Martes', icon: 'fitness_center', label: 'Upper Body' },
-  { key: 'Miércoles', icon: 'self_improvement', label: 'Active Recovery' },
-  { key: 'Jueves', icon: 'fitness_center', label: 'Lower Body' },
-  { key: 'Viernes', icon: 'sports_gymnastics', label: 'Full Body HIIT' },
-  { key: 'Sábado', icon: 'pool', label: 'Optional / Swim' },
-  { key: 'Domingo', icon: 'bed', label: 'Rest Day', dimmed: true }
+  { key: 'Lunes', icon: 'directions_run', label: 'Cardio y Abdomen' },
+  { key: 'Martes', icon: 'fitness_center', label: 'Tren Superior' },
+  { key: 'Miércoles', icon: 'self_improvement', label: 'Recuperación Activa' },
+  { key: 'Jueves', icon: 'fitness_center', label: 'Tren Inferior' },
+  { key: 'Viernes', icon: 'sports_gymnastics', label: 'HIIT Cuerpo Completo' },
+  { key: 'Sábado', icon: 'pool', label: 'Opcional / Natación' },
+  { key: 'Domingo', icon: 'bed', label: 'Descanso', dimmed: true }
 ]
 
 const glass: React.CSSProperties = {
@@ -72,7 +72,7 @@ function IdleScreen({
   onBackspace: () => void
   onCheckIn: () => void
 }): JSX.Element {
-  const maxDots = 6
+  const maxDots = Math.max(6, Math.min(accessCode.length || 6, 12))
   const filled = accessCode.slice(0, maxDots).length
 
   const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -136,13 +136,16 @@ function IdleScreen({
         position: 'relative'
       }}>
         {/* Welcome Section */}
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: 420 }}>
           <h2 style={{
-            fontSize: 44, fontWeight: 800, color: 'var(--color-on-surface)', margin: 0,
-            letterSpacing: '-0.02em', lineHeight: '52px',
-            fontFamily: "'Montserrat', sans-serif"
+            fontSize: 'clamp(16px, 2.8vw, 26px)', fontWeight: 800,
+            color: 'var(--color-on-surface)', margin: 0,
+            letterSpacing: '-0.02em', lineHeight: 1.3,
+            fontFamily: "'Montserrat', sans-serif",
+            overflowWrap: 'break-word', wordBreak: 'break-word',
+            hyphens: 'auto'
           }}>
-            {settings?.welcomeMessage || 'BIENVENIDO'}
+            {settings?.welcomeMessage || 'Bienvenido, nos complace que seas parte de nuestro equipo.'}
           </h2>
           <p style={{
             fontSize: 17, fontWeight: 500, color: 'var(--color-on-surface-variant)', marginTop: 8,
@@ -230,7 +233,7 @@ function IdleScreen({
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            Check-In
+            Ingresar
           </button>
         </div>
 
@@ -733,7 +736,7 @@ export function KioskPage(): JSX.Element {
 
   const goToRenew = () => {
     if (client) {
-      window.electronAPI.window.openClientRenew(client.id)
+      window.electronAPI.window.openKioskRenew(client.id)
     }
   }
 

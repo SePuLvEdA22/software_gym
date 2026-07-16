@@ -13,7 +13,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'Dashboard', path: '/', roles: ['admin', 'reception', 'accounting'] },
+  { id: 'dashboard', label: 'Panel Principal', icon: 'Dashboard', path: '/', roles: ['admin', 'reception', 'accounting'] },
   { id: 'clients', label: 'Clientes', icon: 'Users', path: '/clients' },
   { id: 'payments', label: 'Pagos', icon: 'CreditCard', path: '/payments', roles: ['admin', 'reception', 'accounting'] },
   { id: 'inventory', label: 'Inventario', icon: 'Package', path: '/inventory', roles: ['admin', 'reception', 'accounting'] },

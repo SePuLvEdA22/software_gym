@@ -23,7 +23,7 @@ let config: DoorConfig = {
   httpBody: '',
   portName: 'COM3',
   baudRate: 9600,
-  serialCommand: ''
+  serialCommand: '@'
 }
 
 export function getDoorConfig(): DoorConfig {

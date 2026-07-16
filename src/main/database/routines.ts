@@ -82,7 +82,7 @@ export function getGymSettings(): GymSettings {
     gym_name: 'BODYFITGYM',
     gym_address: '',
     gym_phone: '',
-    gym_welcome_message: 'Bienvenido'
+    gym_welcome_message: 'Bienvenido, nos complace que seas parte de nuestro equipo.'
   }
   const result: Record<string, string> = { ...defaults }
   for (const key of keys) {

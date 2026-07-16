@@ -513,8 +513,18 @@ function runMigrations(db: SqlJsDatabase): void {
           insert.run('gym_name', 'BODYFITGYM')
           insert.run('gym_address', 'AV 4 CALLE 4 Y 5 MOLINOS DEL NORTE')
           insert.run('gym_phone', '3124962338')
-          insert.run('gym_welcome_message', 'Bienvenido a BodyFitGym')
+          insert.run('gym_welcome_message', 'Bienvenido, nos complace que seas parte de nuestro equipo.')
         }
+      }
+    },
+    {
+      name: '010_update_welcome_message',
+      run: (db) => {
+        const update = db.prepare(`
+          INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `)
+        update.run('gym_welcome_message', 'Bienvenido, nos complace que seas parte de nuestro equipo.')
       }
     }
   ]

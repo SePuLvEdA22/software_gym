@@ -152,9 +152,9 @@ export function PaymentsPage(): JSX.Element {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="display-lg">Billing Overview</h1>
+          <h1 className="display-lg">Resumen de Facturación</h1>
           <p style={{ color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
-            Track payments, revenue, and membership transactions
+            Monitoree pagos, ingresos y transacciones de membresías
           </p>
         </div>
         <button
@@ -168,7 +168,7 @@ export function PaymentsPage(): JSX.Element {
           }}
         >
           <Icons.Download />
-          Export Report
+          Exportar Reporte
         </button>
       </div>
 
@@ -242,7 +242,7 @@ export function PaymentsPage(): JSX.Element {
             gap: 16,
             padding: 'var(--spacing-md)'
           }}>
-            <h3 className="headline-md" style={{ paddingLeft: 4 }}>Recent Transactions</h3>
+            <h3 className="headline-md" style={{ paddingLeft: 4 }}>Transacciones Recientes</h3>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div className="tabs" style={{ borderBottom: 'none' }}>
                 {(['today', 'week', 'month', 'all'] as const).map(range => (
@@ -278,14 +278,17 @@ export function PaymentsPage(): JSX.Element {
               <select
                 className="form-select"
                 value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                  setSelectedYear(raw === '' ? new Date().getFullYear() : Number(raw))
+                }}
                 style={{ width: 110 }}
               >
                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(year => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
-              <button className="btn btn-secondary btn-sm" onClick={loadPayments} title="Refresh">
+              <button className="btn btn-secondary btn-sm" onClick={loadPayments} title="Actualizar">
                 <Icons.Refresh />
               </button>
             </div>
@@ -306,13 +309,13 @@ export function PaymentsPage(): JSX.Element {
               <table>
                 <thead>
                   <tr>
-                    <th>Member</th>
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Method</th>
-                    <th style={{ textAlign: 'right' }}>Amount</th>
-                    <th style={{ textAlign: 'right' }}>Discount</th>
-                    <th>Status</th>
+                    <th>Miembro</th>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Método</th>
+                    <th style={{ textAlign: 'right' }}>Monto</th>
+                    <th style={{ textAlign: 'right' }}>Descuento</th>
+                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,7 +355,7 @@ export function PaymentsPage(): JSX.Element {
                         {payment.discount > 0 ? formatCurrency(payment.discount) : '-'}
                       </td>
                       <td>
-                        <span className="status-badge status-badge-success">Paid</span>
+                        <span className="status-badge status-badge-success">Pagado</span>
                       </td>
                     </tr>
                   ))}
@@ -367,7 +370,7 @@ export function PaymentsPage(): JSX.Element {
 
         <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0 }}>
           <div className="bento-card bento-card-highlight">
-            <h3 className="headline-md" style={{ marginBottom: 16 }}>Quick Actions</h3>
+            <h3 className="headline-md" style={{ marginBottom: 16 }}>Acciones Rápidas</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
                 className="btn btn-secondary"
@@ -380,7 +383,7 @@ export function PaymentsPage(): JSX.Element {
                 }}
               >
                 <Icons.Download />
-                Export CSV
+                Exportar CSV
               </button>
               <button
                 className="btn btn-secondary"
@@ -388,7 +391,7 @@ export function PaymentsPage(): JSX.Element {
                 onClick={loadPayments}
               >
                 <Icons.Refresh />
-                Refresh Data
+                Actualizar Datos
               </button>
             </div>
           </div>
@@ -396,24 +399,24 @@ export function PaymentsPage(): JSX.Element {
           <div className="bento-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary-container)' }} />
-              <h3 className="headline-md">Revenue Insights</h3>
+              <h3 className="headline-md">Análisis de Ingresos</h3>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Morning Revenue</span>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Ingresos Mañana</span>
                 <span style={{ fontWeight: 600, color: 'var(--color-info)' }}>{formatCurrency(revenueByTime.morning)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Afternoon Revenue</span>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Ingresos Tarde</span>
                 <span style={{ fontWeight: 600, color: '#f472b6' }}>{formatCurrency(revenueByTime.afternoon)}</span>
               </div>
               <div style={{ height: 1, background: 'var(--color-surface-container-highest)' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700 }}>Year Revenue</span>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700 }}>Ingresos Anuales</span>
                 <span style={{ fontWeight: 700, color: 'var(--color-primary-container)' }}>{formatCurrency(yearRevenue)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Total Discounts</span>
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Total Descuentos</span>
                 <span style={{ fontWeight: 600, color: 'var(--color-on-surface-variant)' }}>{formatCurrency(summary.totalDiscount)}</span>
               </div>
             </div>

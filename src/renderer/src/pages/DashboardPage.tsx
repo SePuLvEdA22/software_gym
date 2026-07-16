@@ -162,11 +162,11 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
   }))
 
   return (
-    <div className="bento-card">
+    <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: 16 }}>
         <h3 className="headline-md" style={{ fontSize: 18 }}>Planes Más Vendidos</h3>
       </div>
-      <div className="chart-body">
+      <div className="chart-body" style={{ flex: 1 }}>
         {data.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
@@ -200,22 +200,51 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
             </PieChart>
           </ResponsiveContainer>
         )}
-        {data.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16, justifyContent: 'center' }}>
-            {data.map((plan, index) => (
-              <div key={plan.planName} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ 
-                  width: 12, 
-                  height: 12, 
-                  borderRadius: 2, 
-                  backgroundColor: CHART_COLORS[index % CHART_COLORS.length] 
-                }} />
-                <span style={{ fontSize: 12 }}>{plan.planName}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+      {/* Legend outside chart-body so it's not constrained by fixed height */}
+      {data.length > 0 && (
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: 8, 
+          marginTop: 8, 
+          justifyContent: 'center',
+          padding: '4px 0',
+          borderTop: '1px solid var(--color-surface-container-high)'
+        }}>
+          {data.map((plan, index) => (
+            <div key={plan.planName} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 4,
+                padding: '2px 8px',
+                borderRadius: 4,
+                backgroundColor: 'var(--color-surface-container-high)',
+              }}
+              title={plan.planName}
+            >
+              <div style={{ 
+                width: 10, 
+                height: 10, 
+                borderRadius: 2, 
+                flexShrink: 0,
+                backgroundColor: CHART_COLORS[index % CHART_COLORS.length] 
+              }} />
+              <span style={{ 
+                fontSize: 11, 
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 60
+              }}>
+                {plan.planName}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -256,7 +285,7 @@ function QuickActions({ onAction }: { onAction: (action: string) => void }): JSX
 
 export function DashboardPage(): JSX.Element {
   const navigate = useNavigate()
-  const { dashboardMetrics, setDashboardMetrics, setTriggerNewClientModal } = useAppStore()
+  const { dashboardMetrics, setDashboardMetrics, setTriggerNewClientModal, showToast } = useAppStore()
   const [localLoading, setLocalLoading] = useState(true)
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([])
   const [expiringSoon, setExpiringSoon] = useState<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>([])
@@ -355,7 +384,7 @@ export function DashboardPage(): JSX.Element {
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1 className="display-lg">Overview</h1>
+          <h1 className="display-lg">Panel General</h1>
           <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
             Panel de control del gimnasio
           </p>
@@ -433,8 +462,8 @@ export function DashboardPage(): JSX.Element {
 
       {/* Info Cards */}
       <div className="grid grid-3">
-        <div className="bento-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Bell style={{ color: 'var(--color-warning)' }} />
             <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Próximos a Vencer (7 días)
@@ -445,36 +474,57 @@ export function DashboardPage(): JSX.Element {
               No hay membresías próximas a vencer
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {expiringSoon.map((item, i) => (
-                <div key={i} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)',
-                  borderRadius: 8,
-                  borderLeft: item.daysLeft <= 1 ? '3px solid var(--color-error)' :
-                             item.daysLeft <= 3 ? '3px solid var(--color-warning)' :
-                             '3px solid var(--color-primary-container)'
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
-                  </div>
-                  <div style={{
-                    fontWeight: 700, fontSize: 16,
-                    color: item.daysLeft <= 1 ? 'var(--color-error)' :
-                           item.daysLeft <= 3 ? 'var(--color-warning)' :
-                           'var(--color-primary-container)'
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
+                {expiringSoon.map((item, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)',
+                    borderRadius: 8,
+                    borderLeft: item.daysLeft <= 1 ? '3px solid var(--color-error)' :
+                               item.daysLeft <= 3 ? '3px solid var(--color-warning)' :
+                               '3px solid var(--color-primary-container)'
                   }}>
-                    {item.daysLeft}d
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
+                    </div>
+                    <div style={{
+                      fontWeight: 700, fontSize: 16,
+                      color: item.daysLeft <= 1 ? 'var(--color-error)' :
+                             item.daysLeft <= 3 ? 'var(--color-warning)' :
+                             'var(--color-primary-container)'
+                    }}>
+                      {item.daysLeft}d
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <button 
+                className="btn btn-primary btn-sm" 
+                style={{ width: '100%', marginTop: 12, justifyContent: 'center', flexShrink: 0 }}
+                onClick={async () => {
+                  const result = await window.electronAPI.whatsapp.checkReminders()
+                  if (result.success && result.data) {
+                    const sent = result.data.sent
+                    if (sent > 0) {
+                      showToast('success', `${sent} recordatorio(s) enviado(s)`, 'Recordatorios')
+                    } else {
+                      showToast('info', 'No se encontraron clientes para notificar', 'Sin novedades')
+                    }
+                    loadMetrics()
+                  }
+                }}
+              >
+                <Icons.Bell />
+                Enviar Recordatorios
+              </button>
+            </>
           )}
         </div>
 
-        <div className="bento-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Calendar style={{ color: 'var(--color-primary-container)' }} />
             <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Cumpleaños del Mes
@@ -485,7 +535,7 @@ export function DashboardPage(): JSX.Element {
               No hay cumpleaños este mes
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
               {birthdays.map((b, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -506,8 +556,8 @@ export function DashboardPage(): JSX.Element {
           )}
         </div>
 
-        <div className="bento-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Clock style={{ color: 'var(--color-warning)' }} />
             <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
               Inactivos (+30d sin visitar)
@@ -518,7 +568,7 @@ export function DashboardPage(): JSX.Element {
               No hay clientes inactivos
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
               {inactiveClients.map((item, i) => (
                 <div key={i} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',

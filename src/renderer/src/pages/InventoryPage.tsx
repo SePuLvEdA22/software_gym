@@ -7,10 +7,10 @@ import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 
 const categoryLabels: Record<string, string> = {
-  supplement: 'Supplements',
-  drink: 'Beverages',
-  accessory: 'Accessories',
-  other: 'Apparel'
+  supplement: 'Suplementos',
+  drink: 'Bebidas',
+  accessory: 'Accesorios',
+  other: 'Ropa y Otros'
 }
 
 const categoryColors: Record<string, string> = {
@@ -21,11 +21,11 @@ const categoryColors: Record<string, string> = {
 }
 
 const filterCategories = [
-  { value: '', label: 'All Items' },
-  { value: 'supplement', label: 'Supplements' },
-  { value: 'other', label: 'Apparel' },
-  { value: 'accessory', label: 'Accessories' },
-  { value: 'drink', label: 'Beverages' },
+  { value: '', label: 'Todos los Productos' },
+  { value: 'supplement', label: 'Suplementos' },
+  { value: 'other', label: 'Ropa y Otros' },
+  { value: 'accessory', label: 'Accesorios' },
+  { value: 'drink', label: 'Bebidas' },
 ]
 
 function getStockLevel(stock: number): 'success' | 'warning' | 'error' {
@@ -35,9 +35,9 @@ function getStockLevel(stock: number): 'success' | 'warning' | 'error' {
 }
 
 function getStockLabel(stock: number): string {
-  if (stock < 5) return 'Needs Reorder'
-  if (stock <= 20) return 'Order Soon'
-  return 'In Stock'
+  if (stock < 5) return 'Por Reordenar'
+  if (stock <= 20) return 'Ordenar Pronto'
+  return 'En Stock'
 }
 
 function getStockPercent(stock: number): number {
@@ -120,24 +120,36 @@ function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Elemen
               <div className="form-group">
                 <label className="label-md">Precio Venta</label>
                 <input type="number" className="form-input" value={form.price}
-                  onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} min={0} />
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    setForm(p => ({ ...p, price: raw === '' ? 0 : Number(raw) }))
+                  }} min={0} />
               </div>
               <div className="form-group">
                 <label className="label-md">Costo</label>
                 <input type="number" className="form-input" value={form.cost}
-                  onChange={e => setForm(p => ({ ...p, cost: Number(e.target.value) }))} min={0} />
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    setForm(p => ({ ...p, cost: raw === '' ? 0 : Number(raw) }))
+                  }} min={0} />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label className="label-md">Stock Actual</label>
                 <input type="number" className="form-input" value={form.stock}
-                  onChange={e => setForm(p => ({ ...p, stock: Number(e.target.value) }))} min={0} />
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    setForm(p => ({ ...p, stock: raw === '' ? 0 : Number(raw) }))
+                  }} min={0} />
               </div>
               <div className="form-group">
                 <label className="label-md">Stock Mínimo</label>
                 <input type="number" className="form-input" value={form.minStock}
-                  onChange={e => setForm(p => ({ ...p, minStock: Number(e.target.value) }))} min={0} />
+                  onChange={e => {
+                    const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                    setForm(p => ({ ...p, minStock: raw === '' ? 0 : Number(raw) }))
+                  }} min={0} />
               </div>
               <div className="form-group">
                 <label className="label-md">Código de Barras</label>
@@ -214,14 +226,14 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
               <div className="form-group">
                 <label className="label-md">Cantidad</label>
                 <input type="number" className="form-input" value={quantity}
-                  onChange={e => setQuantity(Number(e.target.value))} min={1} />
+                  onChange={e => setQuantity(Number(e.target.value.replace(/^0+(?=\d)/, '')) || 1)} min={1} />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label className="label-md">Precio Unitario</label>
                 <input type="number" className="form-input" value={price}
-                  onChange={e => setPrice(Number(e.target.value))} min={0} />
+                  onChange={e => setPrice(Number(e.target.value.replace(/^0+(?=\d)/, '')) || 0)} min={0} />
               </div>
             </div>
             <div className="form-group">
@@ -336,25 +348,25 @@ export function InventoryPage(): JSX.Element {
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <h1 className="display-lg" style={{ margin: 0 }}>Pro Shop Inventory</h1>
+        <h1 className="display-lg" style={{ margin: 0 }}>Inventario de Tienda</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div className="search-box" style={{ flex: 1, minWidth: 220 }}>
             <Icons.Search />
-            <input type="text" placeholder="Search products..."
+            <input type="text" placeholder="Buscar productos..."
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowForm(true) }}>
-            <Icons.Plus /> Add Item
+            <Icons.Plus /> Agregar Producto
           </button>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
         <button className={`btn ${tab === 'products' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ borderRadius: '8px 0 0 8px' }} onClick={() => setTab('products')}>Products</button>
+          style={{ borderRadius: '8px 0 0 8px' }} onClick={() => setTab('products')}>Productos</button>
         <button className={`btn ${tab === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ borderRadius: '0 8px 8px 0' }}
-          onClick={() => { setTab('movements'); loadMovements() }}>Movements</button>
+          onClick={() => { setTab('movements'); loadMovements() }}>Movimientos</button>
       </div>
 
       {tab === 'products' && (
@@ -362,22 +374,22 @@ export function InventoryPage(): JSX.Element {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
             <div className="metric-card">
               <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-primary-container)', top: -30, right: -30 }} />
-              <div className="metric-card-label">Total Items</div>
+              <div className="metric-card-label">Total Productos</div>
               <div className="metric-card-value">{totalCount}</div>
             </div>
             <div className="metric-card" style={{ borderColor: 'rgba(255, 180, 171, 0.3)' }}>
               <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-error)', top: -30, right: -30 }} />
-              <div className="metric-card-label" style={{ color: 'var(--color-error)' }}>Low Stock Alerts</div>
+              <div className="metric-card-label" style={{ color: 'var(--color-error)' }}>Stock Bajo</div>
               <div className="metric-card-value" style={{ color: 'var(--color-error)' }}>{lowStockProducts.length}</div>
             </div>
             <div className="metric-card">
               <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-info)', top: -30, right: -30 }} />
-              <div className="metric-card-label">Categories</div>
+              <div className="metric-card-label">Categorías</div>
               <div className="metric-card-value">{uniqueCategories}</div>
             </div>
             <div className="metric-card">
               <div className="metric-card-blur" style={{ width: 120, height: 120, background: 'var(--color-success)', top: -30, right: -30 }} />
-              <div className="metric-card-label">This Month Sales</div>
+              <div className="metric-card-label">Ventas del Mes</div>
               <div className="metric-card-value">{formatCurrency(thisMonthSales)}</div>
             </div>
           </div>
@@ -394,8 +406,8 @@ export function InventoryPage(): JSX.Element {
 
           {products.length === 0 ? (
             <div className="glass-panel" style={{ textAlign: 'center', padding: 48, borderRadius: 12 }}>
-              <p className="headline-md" style={{ color: 'var(--color-on-surface-variant)' }}>No products found</p>
-              <p className="label-md" style={{ color: 'var(--color-on-surface-variant)', marginTop: 8 }}>Try adjusting your search or filter criteria</p>
+              <p className="headline-md" style={{ color: 'var(--color-on-surface-variant)' }}>No se encontraron productos</p>
+              <p className="label-md" style={{ color: 'var(--color-on-surface-variant)', marginTop: 8 }}>Ajuste su búsqueda o filtros</p>
             </div>
           ) : (
             <>
@@ -415,22 +427,22 @@ export function InventoryPage(): JSX.Element {
                         <h3 className="headline-md" style={{ fontSize: 'clamp(16px, 2vw, 20px)', margin: '0 0 4px 0' }}>{p.name}</h3>
                         <div className="label-xl" style={{ color: 'var(--color-primary-container)', marginBottom: 8 }}>{formatCurrency(p.price)}</div>
                         {p.barcode && (
-                          <div className="label-md" style={{ color: 'var(--color-on-surface-variant)' }}>SKU: {p.barcode}</div>
+                          <div className="label-md" style={{ color: 'var(--color-on-surface-variant)' }}>Código: {p.barcode}</div>
                         )}
                       </div>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                           <span className="label-md">Stock</span>
-                          <span className="label-md" style={{ color }}>{p.stock} units</span>
+                          <span className="label-md" style={{ color }}>{p.stock} unds</span>
                         </div>
                         <div className="progress-bar">
                           <div className="progress-bar-fill" style={{ width: `${getStockPercent(p.stock)}%`, backgroundColor: color }} />
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { setShowMovement(p) }} title="Movement"><Icons.Plus /></button>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { setEditingProduct(p); setShowForm(true) }} title="Edit"><Icons.Edit /></button>
-                        <button className="btn btn-sm btn-secondary" style={{ color: 'var(--color-error)', marginLeft: 'auto' }} onClick={() => handleDelete(p)} title="Delete"><Icons.Trash /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => { setShowMovement(p) }} title="Movimiento"><Icons.Plus /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => { setEditingProduct(p); setShowForm(true) }} title="Editar"><Icons.Edit /></button>
+                        <button className="btn btn-sm btn-secondary" style={{ color: 'var(--color-error)', marginLeft: 'auto' }} onClick={() => handleDelete(p)} title="Eliminar"><Icons.Trash /></button>
                       </div>
                     </div>
                   )
@@ -448,14 +460,14 @@ export function InventoryPage(): JSX.Element {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Product</th>
-                  <th>Type</th>
-                  <th>Qty</th>
-                  <th>Price</th>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Cant</th>
+                  <th>Precio</th>
                   <th>Total</th>
-                  <th>Description</th>
-                  <th>User</th>
+                  <th>Descripción</th>
+                  <th>Usuario</th>
                 </tr>
               </thead>
               <tbody>
@@ -463,7 +475,7 @@ export function InventoryPage(): JSX.Element {
                   <tr key={m.id}>
                     <td style={{ fontSize: 13 }}>{format(parseISO(m.timestamp), 'dd/MM/yyyy HH:mm')}</td>
                     <td>{m.productName}</td>
-                    <td><span className={`status-badge-${m.type === 'in' ? 'success' : 'error'}`}>{m.type === 'in' ? 'In' : 'Out'}</span></td>
+                    <td><span className={`status-badge-${m.type === 'in' ? 'success' : 'error'}`}>{m.type === 'in' ? 'Entrada' : 'Salida'}</span></td>
                     <td>{m.quantity}</td>
                     <td>{formatCurrency(m.price)}</td>
                     <td>{formatCurrency(m.total)}</td>

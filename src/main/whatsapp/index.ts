@@ -275,14 +275,20 @@ export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
   const todayStr = formatISO(today)
   const threeDaysFromNow = formatISO(addDays(today, 3))
   
+  const thirtyDaysAgo = formatISO(addDays(today, -30))
+
   const candidates = db.prepare(`
     SELECT c.id, c.full_name, c.phone, m.plan_name, m.end_date
     FROM clients c
-    JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
+    JOIN memberships m ON m.client_id = c.id
     WHERE c.status = 'active'
-      AND m.end_date BETWEEN ? AND ?
+      AND (
+        (m.status = 'active' AND m.end_date BETWEEN ? AND ?)
+        OR
+        (m.status = 'expired' AND m.end_date BETWEEN ? AND ?)
+      )
     ORDER BY m.end_date ASC
-  `).all(todayStr, threeDaysFromNow) as { id: string; full_name: string; phone: string; plan_name: string; end_date: string }[]
+  `).all(todayStr, threeDaysFromNow, thirtyDaysAgo, todayStr) as { id: string; full_name: string; phone: string; plan_name: string; end_date: string }[]
   
   let sentCount = 0
   
@@ -318,9 +324,18 @@ export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
         sentCount++
       }
     }
+
+    if (daysLeft < 0 && daysLeft > -30) {
+      // Membership already expired (within last 30 days), send expired message
+      if (!wasAlreadySentToday(row.id, 'membership_expired')) {
+        const message = generateExpiredMessage(row.full_name)
+        await sendMessage(row.id, phone, 'membership_expired', message)
+        sentCount++
+      }
+    }
   }
   
-  log.info(`Sent ${sentCount} expiry reminders`)
+  log.info(`Sent ${sentCount} expiry reminders/expired messages`)
   return { sent: sentCount }
 }
 
@@ -380,6 +395,82 @@ function formatPhoneNumber(phone: string): string | null {
   }
   
   return cleaned
+}
+
+export async function sendExpiryReminderToClient(clientId: string): Promise<{ success: boolean; message?: string }> {
+  const db = getDatabase()
+  
+  const client = db.prepare(`
+    SELECT c.id, c.full_name, c.phone, m.plan_name, m.end_date, m.status
+    FROM clients c
+    JOIN memberships m ON m.client_id = c.id
+    WHERE c.id = ? AND (m.status = 'active' OR m.status = 'expired')
+    ORDER BY m.end_date DESC
+    LIMIT 1
+  `).get(clientId) as { id: string; full_name: string; phone: string; plan_name: string; end_date: string; status: string } | undefined
+
+  if (!client) return { success: false, message: 'Cliente no encontrado o sin membresía' }
+
+  const phone = formatPhoneNumber(client.phone)
+  if (!phone) return { success: false, message: 'Número de teléfono inválido' }
+
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const endDate = new Date(client.end_date)
+  endDate.setHours(0, 0, 0, 0)
+  const daysLeft = differenceInDays(endDate, now)
+
+  let messageType: MessageType
+  let message: string
+
+  if (daysLeft < 0) {
+    messageType = 'membership_expired'
+    message = generateExpiredMessage(client.full_name)
+  } else if (daysLeft === 0) {
+    messageType = 'expiry_reminder_same_day'
+    message = generateExpiryReminderMessage(client.full_name, 0, client.plan_name)
+  } else if (daysLeft === 1) {
+    messageType = 'expiry_reminder_1d'
+    message = generateExpiryReminderMessage(client.full_name, 1, client.plan_name)
+  } else {
+    messageType = 'expiry_reminder_3d'
+    message = generateExpiryReminderMessage(client.full_name, daysLeft, client.plan_name)
+  }
+
+  const result = await sendMessage(clientId, phone, messageType, message)
+  return { success: result.success, message: client.full_name }
+}
+
+export async function sendTestMessage(phone: string): Promise<{ success: boolean; message?: string }> {
+  const formattedPhone = formatPhoneNumber(phone)
+  if (!formattedPhone) return { success: false, message: 'Número de teléfono inválido. Debe tener al menos 10 dígitos.' }
+
+  const testMsg = '🧪 Mensaje de prueba desde BodyFitGym. Si recibes esto, tu configuración de WhatsApp funciona correctamente.'
+  
+  if (!config.enabled || config.provider === 'mock') {
+    log.info(`[WHATSAPP TEST MOCK] To: ${formattedPhone}`)
+    log.info(`Test message: ${testMsg}`)
+    return { success: true, message: 'Modo simulación: mensaje registrado en logs' }
+  }
+
+  try {
+    const result = await sendViaProvider(formattedPhone, testMsg)
+    if (result.success) {
+      // Store test message in history
+      const db = getDatabase()
+      const messageId = uuidv4()
+      db.prepare(`
+        INSERT INTO whatsapp_messages (id, client_id, phone, message_type, message, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(messageId, '__test__', formattedPhone, 'welcome', testMsg, 'sent', formatISO(new Date()))
+
+      return { success: true, message: 'Mensaje de prueba enviado correctamente' }
+    }
+    return { success: false, message: 'Error al enviar mensaje de prueba' }
+  } catch (error: any) {
+    log.error('Error sending test message:', error)
+    return { success: false, message: error.message || 'Error desconocido' }
+  }
 }
 
 export function getMessageHistory(options?: { clientId?: string; page?: number; pageSize?: number }): PageResponse<WhatsappMessage> {

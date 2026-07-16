@@ -19,6 +19,113 @@ const roleColors: Record<UserRole, string> = {
   accounting: 'var(--color-warning)'
 }
 
+interface PermissionDef {
+  id: string
+  label: string
+}
+
+interface PermissionGroup {
+  label: string
+  permissions: PermissionDef[]
+}
+
+const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    label: 'Panel Principal',
+    permissions: [
+      { id: 'dashboard.view', label: 'Ver dashboard' },
+    ],
+  },
+  {
+    label: 'Clientes',
+    permissions: [
+      { id: 'clients.view', label: 'Ver clientes' },
+      { id: 'clients.create', label: 'Crear clientes' },
+      { id: 'clients.edit', label: 'Editar clientes' },
+      { id: 'clients.delete', label: 'Eliminar clientes' },
+    ],
+  },
+  {
+    label: 'Pagos',
+    permissions: [
+      { id: 'payments.view', label: 'Ver pagos' },
+      { id: 'payments.create', label: 'Registrar pagos' },
+    ],
+  },
+  {
+    label: 'Membresías',
+    permissions: [
+      { id: 'memberships.view', label: 'Ver membresías' },
+      { id: 'memberships.create', label: 'Crear membresías' },
+      { id: 'memberships.freeze', label: 'Congelar/Descongelar' },
+    ],
+  },
+  {
+    label: 'Inventario',
+    permissions: [
+      { id: 'inventory.view', label: 'Ver inventario' },
+      { id: 'inventory.create', label: 'Agregar productos' },
+      { id: 'inventory.edit', label: 'Editar productos' },
+      { id: 'inventory.delete', label: 'Eliminar productos' },
+    ],
+  },
+  {
+    label: 'Seguimiento',
+    permissions: [
+      { id: 'tracking.view', label: 'Ver seguimiento' },
+      { id: 'tracking.edit', label: 'Editar medidas/objetivos' },
+    ],
+  },
+  {
+    label: 'Reportes',
+    permissions: [
+      { id: 'reports.view', label: 'Ver reportes' },
+      { id: 'reports.export', label: 'Exportar datos' },
+    ],
+  },
+  {
+    label: 'Notificaciones',
+    permissions: [
+      { id: 'messages.view', label: 'Ver mensajes' },
+      { id: 'messages.send', label: 'Enviar mensajes' },
+      { id: 'whatsapp.view', label: 'Ver historial WhatsApp' },
+    ],
+  },
+  {
+    label: 'Historial de Accesos',
+    permissions: [
+      { id: 'logs.view', label: 'Ver historial' },
+    ],
+  },
+  {
+    label: 'Configuración',
+    permissions: [
+      { id: 'settings.view', label: 'Ver configuración' },
+      { id: 'settings.edit', label: 'Editar configuración' },
+    ],
+  },
+  {
+    label: 'Usuarios',
+    permissions: [
+      { id: 'users.view', label: 'Ver usuarios' },
+      { id: 'users.create', label: 'Crear usuarios' },
+      { id: 'users.edit', label: 'Editar usuarios' },
+      { id: 'users.delete', label: 'Eliminar usuarios' },
+    ],
+  },
+  {
+    label: 'Puerta',
+    permissions: [
+      { id: 'door.open', label: 'Abrir puerta' },
+      { id: 'door.configure', label: 'Configurar puerta' },
+    ],
+  },
+]
+
+function getAllPermissionIds(): string[] {
+  return PERMISSION_GROUPS.flatMap(g => g.permissions.map(p => p.id))
+}
+
 interface UserFormProps {
   user?: User | null
   onClose: () => void
@@ -33,10 +140,37 @@ function UserForm({ user, onClose, onSave }: UserFormProps): JSX.Element {
     password: '',
     confirmPassword: '',
     role: (user?.role || 'reception') as UserRole,
-    permissions: user?.permissions.join(', ') || '',
+    permissions: user?.permissions || [],
     isActive: user?.isActive ?? true
   })
   const [loading, setLoading] = useState(false)
+
+  const togglePermission = (permId: string) => {
+    setForm(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permId)
+        ? prev.permissions.filter(p => p !== permId)
+        : [...prev.permissions, permId]
+    }))
+  }
+
+  const selectGroup = (group: PermissionGroup, select: boolean) => {
+    const groupIds = group.permissions.map(p => p.id)
+    setForm(prev => ({
+      ...prev,
+      permissions: select
+        ? [...new Set([...prev.permissions, ...groupIds])]
+        : prev.permissions.filter(p => !groupIds.includes(p))
+    }))
+  }
+
+  const selectAll = () => {
+    setForm(prev => ({ ...prev, permissions: getAllPermissionIds() }))
+  }
+
+  const deselectAll = () => {
+    setForm(prev => ({ ...prev, permissions: [] }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,13 +188,12 @@ function UserForm({ user, onClose, onSave }: UserFormProps): JSX.Element {
     }
     setLoading(true)
     try {
-      const permissions = form.permissions ? form.permissions.split(',').map((p: string) => p.trim()).filter(Boolean) : []
       if (user) {
         const result = await window.electronAPI.user.update(user.id, {
           username: form.username,
           fullName: form.fullName,
           role: form.role,
-          permissions,
+          permissions: form.permissions,
           isActive: form.isActive,
           ...(form.password ? { password: form.password } : {})
         })
@@ -76,7 +209,7 @@ function UserForm({ user, onClose, onSave }: UserFormProps): JSX.Element {
           fullName: form.fullName,
           password: form.password,
           role: form.role,
-          permissions
+          permissions: form.permissions
         })
         if (result.success) {
           showToast('success', 'Usuario creado exitosamente')
@@ -94,10 +227,12 @@ function UserForm({ user, onClose, onSave }: UserFormProps): JSX.Element {
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-lg">
+      <div className="modal modal-xl">
         <form onSubmit={handleSubmit}>
           <div className="modal-header">
-            <h2 className="modal-title">{user ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
+            <div>
+              <h2 className="modal-title" style={{ margin: 0 }}>{user ? 'Editar Usuario' : 'Nuevo Usuario'}</h2>
+            </div>
             <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
           </div>
           <div className="modal-body">
@@ -149,14 +284,91 @@ function UserForm({ user, onClose, onSave }: UserFormProps): JSX.Element {
                 </select>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Permisos (separados por coma)</label>
-              <input type="text" className="form-input" value={form.permissions}
-                onChange={e => setForm(p => ({ ...p, permissions: e.target.value }))}
-                placeholder="ej: clients.view, clients.edit, payments.view" />
-              <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-                Usa "*" para todos los permisos. Ejemplo: clients.view, clients.edit, reports.view
+
+            {/* Permissions Section */}
+            <div style={{ marginTop: 24, borderTop: '1px solid var(--color-surface-container-high)', paddingTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: 15, marginBottom: 0 }}>Permisos</label>
+                  <p style={{ fontSize: 12, color: 'var(--color-secondary)', margin: '4px 0 0' }}>
+                    Seleccione los permisos que tendrá este usuario
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={selectAll}>
+                    Seleccionar Todo
+                  </button>
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={deselectAll}>
+                    Limpiar
+                  </button>
+                </div>
               </div>
+
+              <div style={{ maxHeight: 360, overflowY: 'auto', paddingRight: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {PERMISSION_GROUPS.map((group, gi) => (
+                    <div key={group.label}>
+                      {gi > 0 && <div style={{ height: 1, backgroundColor: 'var(--color-surface-container-high)', margin: '4px 0' }} />}
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '6px 8px', marginBottom: 4,
+                          borderRadius: 8, cursor: 'pointer', userSelect: 'none',
+                          backgroundColor: 'var(--color-surface-container-low)'
+                        }}
+                        onClick={() => selectGroup(group, !group.permissions.every(p => form.permissions.includes(p.id)))}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-container-high)' }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--color-surface-container-low)' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={group.permissions.every(p => form.permissions.includes(p.id))}
+                          readOnly
+                          style={{ accentColor: 'var(--color-primary-container)' }}
+                        />
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>{group.label}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 28 }}>
+                        {group.permissions.map(perm => {
+                          const isChecked = form.permissions.includes(perm.id)
+                          return (
+                            <label key={perm.id}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                cursor: 'pointer', padding: '5px 8px',
+                                borderRadius: 6, userSelect: 'none'
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-surface-container-high)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => togglePermission(perm.id)}
+                                style={{ accentColor: 'var(--color-primary-container)' }}
+                              />
+                              <span style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                                {perm.label}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {form.permissions.length > 0 && (
+                <div style={{
+                  marginTop: 12, padding: '8px 12px',
+                  backgroundColor: 'var(--color-surface-container-high)',
+                  borderRadius: 8,
+                  fontSize: 12, color: 'var(--color-secondary)'
+                }}>
+                  {form.permissions.length} permiso{form.permissions.length !== 1 ? 's' : ''} seleccionado{form.permissions.length !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
           </div>
           <div className="modal-footer">

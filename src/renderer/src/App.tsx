@@ -17,11 +17,12 @@ import { UsersPage } from '@/pages/UsersPage'
 import { InventoryPage } from '@/pages/InventoryPage'
 import { BodyTrackingPage } from '@/pages/BodyTrackingPage'
 import { MessagesPage } from '@/pages/MessagesPage'
+import { KioskRenewPage } from '@/pages/KioskRenewPage'
 import type { UserRole } from '@shared/types'
 
 function getPageTitle(pathname: string): string {
   switch (pathname) {
-    case '/': return 'Dashboard'
+    case '/': return 'Panel Principal'
     case '/clients': return 'Clientes y Membresías'
     case '/payments': return 'Pagos'
     case '/logs': return 'Historial de Accesos'
@@ -164,10 +165,11 @@ export function App(): JSX.Element {
       <HashRouter>
         <Routes>
           <Route path="/kiosk" element={<KioskPage />} />
-          <Route path="/client-form" element={<ClientFormPage />} />
-          <Route path="/*" element={
-            <>
-              <LoginPage onLoginSuccess={async () => {
+        <Route path="/kiosk-renew" element={<KioskRenewPage />} />
+        <Route path="/client-form" element={<ClientFormPage />} />
+        <Route path="/*" element={
+          <>
+            <LoginPage onLoginSuccess={async () => {
                 const r = await window.electronAPI.auth.checkSession()
                 if (r.success) {
                   setCurrentUser(r.data)
@@ -186,6 +188,7 @@ export function App(): JSX.Element {
     <HashRouter>
       <Routes>
         <Route path="/kiosk" element={<KioskPage />} />
+        <Route path="/kiosk-renew" element={<KioskRenewPage />} />
         <Route path="/client-form" element={<ClientFormPage />} />
         <Route path="/*" element={
           <>

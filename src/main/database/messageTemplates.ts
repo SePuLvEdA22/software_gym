@@ -1,6 +1,7 @@
 import { getDatabase } from './index'
 import { MessageTemplate } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
+import { formatISO } from 'date-fns'
 import { sendMessage } from '../whatsapp/index'
 
 interface DbMessageTemplate {
@@ -135,6 +136,44 @@ export function sendTemplateToAll(templateId: string): { sent: number; failed: n
     const r = sendTemplateToClient(templateId, c.id)
     if (r.sent) sent++
     else failed++
+  }
+
+  return { sent, failed }
+}
+
+export function sendTemplateToExpiring(templateId: string, days: number): { sent: number; failed: number } {
+  const db = getDatabase()
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const future = new Date(now)
+  future.setDate(future.getDate() + days)
+  const futureStr = formatISO(future)
+
+  const expiringClients = db.prepare(`
+    SELECT c.id, c.full_name, c.document_id, c.phone, m.plan_name, m.end_date
+    FROM memberships m
+    JOIN clients c ON c.id = m.client_id
+    WHERE m.status = 'active'
+      AND m.end_date >= ?
+      AND m.end_date <= ?
+    ORDER BY m.end_date ASC
+  `).all(formatISO(now), futureStr) as { id: string; full_name: string; document_id: string; phone: string; plan_name: string; end_date: string }[]
+
+  if (expiringClients.length === 0) {
+    return { sent: 0, failed: 0 }
+  }
+
+  let sent = 0
+  let failed = 0
+
+  for (const client of expiringClients) {
+    try {
+      const r = sendTemplateToClient(templateId, client.id)
+      if (r.sent) sent++
+      else failed++
+    } catch {
+      failed++
+    }
   }
 
   return { sent, failed }

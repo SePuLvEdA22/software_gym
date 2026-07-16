@@ -159,7 +159,10 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
                         type="number"
                         className="form-input"
                         value={ex.sets}
-                        onChange={(e) => updateExercise(i, 'sets', Number(e.target.value))}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                          updateExercise(i, 'sets', raw === '' ? 0 : Number(raw))
+                        }}
                         placeholder="Sets"
                         min={1}
                         style={{ flex: '0 1 70px', padding: '8px 12px', width: 70 }}
