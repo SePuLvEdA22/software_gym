@@ -232,6 +232,8 @@ const electronAPI = {
       ipcRenderer.invoke('system:get-auto-start'),
     setAutoStart: (enabled: boolean): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:set-auto-start', enabled),
+    getAppVersion: (): Promise<IpcResult<string>> =>
+      ipcRenderer.invoke('system:get-app-version'),
     restartReminderInterval: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:restartReminderInterval'),
     updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>

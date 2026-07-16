@@ -567,6 +567,14 @@ ipcMain.handle('system:get-auto-start', async () => {
   }
 })
 
+ipcMain.handle('system:get-app-version', async () => {
+  try {
+    return { success: true, data: app.getVersion() }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+})
+
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {

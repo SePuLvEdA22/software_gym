@@ -15,6 +15,14 @@ export function UpdateChecker(): JSX.Element {
   const [progress, setProgress] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
   const [version, setVersion] = useState('')
+  const [currentVersion, setCurrentVersion] = useState('1.0.0')
+
+  useEffect(() => {
+    // Cargar versión actual desde la app
+    window.electronAPI?.system?.getAppVersion().then((r: any) => {
+      if (r.success && r.data) setCurrentVersion(r.data)
+    })
+  }, [])
 
   useEffect(() => {
     const cleanups: (() => void)[] = []
@@ -78,7 +86,7 @@ export function UpdateChecker(): JSX.Element {
       </div>
       <div className="card-body">
         <p style={{ fontSize: 13, color: 'var(--color-secondary)', marginBottom: 16 }}>
-          Versión actual: 1.0.0
+          Versión actual: {currentVersion}
         </p>
 
         {status === 'checking' && (
