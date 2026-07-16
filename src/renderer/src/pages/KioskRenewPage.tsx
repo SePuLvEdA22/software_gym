@@ -51,7 +51,8 @@ export function KioskRenewPage(): JSX.Element {
       return
     }
     loadData(clientId)
-  }, [clientId, loadData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId])
 
   const handleClose = () => {
     window.close()
