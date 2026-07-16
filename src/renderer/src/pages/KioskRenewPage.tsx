@@ -1,0 +1,104 @@
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { RenewModal } from '@/components/modals/RenewModal'
+import { ToastContainer } from '@/components/ToastContainer'
+import { Icons } from '@/components/Icons'
+import type { Client, Membership, MembershipPlan } from '../../shared/types'
+
+export function KioskRenewPage(): JSX.Element {
+  const [searchParams] = useSearchParams()
+  const clientId = searchParams.get('id')
+
+  const [client, setClient] = useState<Client | null>(null)
+  const [plans, setPlans] = useState<MembershipPlan[]>([])
+  const [activeMembership, setActiveMembership] = useState<Membership | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadData = async (id: string) => {
+    try {
+      const [clientResult, plansResult, membershipsResult] = await Promise.all([
+        window.electronAPI.client.getById(id),
+        window.electronAPI.plan.getAll(),
+        window.electronAPI.membership.getByClient(id)
+      ])
+
+      if (!clientResult.success || !clientResult.data) {
+        setError('Cliente no encontrado')
+        setLoading(false)
+        return
+      }
+
+      setClient(clientResult.data as Client)
+      setPlans((plansResult.data || []) as MembershipPlan[])
+
+      const memberships = (membershipsResult.data || []) as Membership[]
+      const active = memberships.find(
+        (m: Membership) => m.status === 'active' || m.status === 'frozen'
+      )
+      setActiveMembership(active || null)
+      setLoading(false)
+    } catch (e) {
+      setError('Error al cargar datos del cliente')
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!clientId) {
+      setError('No se especificó un cliente')
+      setLoading(false)
+      return
+    }
+    loadData(clientId)
+  }, [clientId, loadData])
+
+  const handleClose = () => {
+    window.close()
+  }
+
+  const handleSuccess = () => {
+    setTimeout(() => window.close(), 1500)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" />
+          <p style={{ marginTop: 16, color: 'var(--color-secondary)' }}>Cargando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !client) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
+        <div style={{ textAlign: 'center', padding: 32 }}>
+          <Icons.Bell style={{ width: 48, height: 48, color: 'var(--color-error)', marginBottom: 16 }} />
+          <h2 style={{ marginBottom: 8 }}>Error</h2>
+          <p style={{ color: 'var(--color-on-surface-variant)', marginBottom: 24 }}>{error || 'Cliente no encontrado'}</p>
+          <button className="btn btn-primary" onClick={handleClose}>Cerrar</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div style={{ background: 'var(--color-bg)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 720 }}>
+          <RenewModal
+            client={client}
+            activeMembership={activeMembership}
+            plans={plans}
+            onClose={handleClose}
+            onSuccess={handleSuccess}
+          />
+        </div>
+      </div>
+      <ToastContainer />
+    </>
+  )
+}
