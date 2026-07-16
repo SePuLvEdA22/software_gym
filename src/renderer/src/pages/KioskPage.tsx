@@ -338,21 +338,33 @@ function IdleScreen({
     return debts.reduce((sum, d) => sum + d.balance, 0)
   }, [debts])
 
-  const debtColor = totalDebt <= 0 ? 'var(--color-tertiary)' : 'var(--color-error)'
+  const debtColor = totalDebt <= 0
+    ? (isExpired ? 'var(--color-on-surface-variant)' : 'var(--color-success)')
+    : 'var(--color-error)'
   const debtText = totalDebt <= 0 ? 'Sin Deuda' : 'Pendiente'
 
   const expiryDate = membership
     ? format(parseISO(membership.endDate), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
     : '—'
 
-  const statusColor = isExpired ? 'var(--color-error)' : 'var(--color-tertiary)'
+  const statusColor = isExpired ? 'var(--color-error)' : 'var(--color-success)'
 
   return (
     <div style={{
       height: '100vh', backgroundColor: 'var(--color-background)',
       fontFamily: "'Montserrat', 'Inter', sans-serif",
-      display: 'flex', flexDirection: 'column', overflow: 'hidden'
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      position: 'relative'
     }}>
+      {/* Ambient glow */}
+      <div style={{
+        position: 'absolute', top: '5%', right: '-5%',
+        width: '45vw', height: '45vw', borderRadius: '50%',
+        background: isExpired
+          ? 'color-mix(in srgb, var(--color-error) 6%, transparent)'
+          : 'color-mix(in srgb, var(--color-success) 6%, transparent)',
+        filter: 'blur(140px)', pointerEvents: 'none', zIndex: 0
+      }} />
       <main style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <header style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexShrink: 0
@@ -361,9 +373,17 @@ function IdleScreen({
             <h2 style={{ fontSize: 32, lineHeight: '38px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0, letterSpacing: '-0.02em' }}>
               Registro de Ingreso
             </h2>
-            <p style={{ color: 'var(--color-on-surface-variant)', fontWeight: 500, marginTop: 4, fontSize: 16 }}>
-              Revise los detalles y estado del miembro
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%',
+                backgroundColor: statusColor,
+                boxShadow: `0 0 8px ${statusColor}`,
+                animation: 'kiosk-pulse 2s ease-in-out infinite'
+              }} />
+              <span style={{ color: statusColor, fontWeight: 600, fontSize: 15 }}>
+                {isExpired ? 'Acceso Denegado — Membresía Vencida' : 'Acceso Permitido — Membresía Activa'}
+              </span>
+            </div>
           </div>
           <ClockWidget />
         </header>
@@ -385,7 +405,7 @@ function IdleScreen({
                 borderRadius: '16px 16px 0 0',
                 background: isExpired
                   ? 'linear-gradient(to bottom, rgba(255,180,171,0.15), transparent)'
-                  : 'linear-gradient(to bottom, rgba(255,107,0,0.15), transparent)',
+                  : 'linear-gradient(to bottom, rgba(74,222,128,0.15), transparent)',
                 pointerEvents: 'none'
               }} />
               <div style={{ position: 'relative', marginBottom: 24, marginTop: 16 }}>
@@ -435,7 +455,7 @@ function IdleScreen({
                   <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>ID (Clave)</span>
                   <span style={{
                     fontSize: 18, fontFamily: 'monospace', fontWeight: 700,
-                    color: 'var(--color-primary)', letterSpacing: '0.05em'
+                    color: statusColor, letterSpacing: '0.05em'
                   }}>
                     {client.accessCode}
                   </span>
@@ -492,10 +512,10 @@ function IdleScreen({
                 <div style={{
                   ...glass, borderRadius: 12, padding: 20,
                   display: 'flex', flexDirection: 'column',
-                  borderLeft: `4px solid var(--color-primary)`
+                  borderLeft: `4px solid ${statusColor}`
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <MaterialIcon name="calendar_month" style={{ color: 'var(--color-primary)', fontSize: 20 }} />
+                    <MaterialIcon name="calendar_month" style={{ color: statusColor, fontSize: 20 }} />
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Vencimiento</span>
                   </div>
                   <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0, textTransform: 'capitalize' }}>
@@ -518,8 +538,8 @@ function IdleScreen({
                 flexShrink: 0,
                 display: 'flex', alignItems: 'center', gap: 8
               }}>
-                <MaterialIcon name="fitness_center" style={{ color: 'var(--color-primary)', fontSize: 18 }} />
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary)' }}>Rutina Semanal</span>
+                <MaterialIcon name="fitness_center" style={{ color: statusColor, fontSize: 18 }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: statusColor }}>Rutina Semanal</span>
               </div>
 
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -537,7 +557,7 @@ function IdleScreen({
                         marginBottom: 6
                       }}>
                         <MaterialIcon name={dayInfo.icon} style={{
-                          color: isWeekend ? 'var(--color-on-surface-variant)' : 'var(--color-primary)',
+                          color: isWeekend ? 'var(--color-on-surface-variant)' : statusColor,
                           fontSize: 15
                         }} />
                         <span style={{
@@ -564,7 +584,7 @@ function IdleScreen({
                                   width: 20, height: 20, borderRadius: '50%',
                                   backgroundColor: 'var(--color-surface-container-high)',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: 9, fontWeight: 700, color: 'var(--color-primary)'
+                                  fontSize: 9, fontWeight: 700, color: statusColor
                                 }}>{i + 1}</span>
                                 <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--color-on-surface)' }}>{ex.name}</span>
                               </div>
@@ -602,6 +622,7 @@ function IdleScreen({
 
       <style>{`
         * { user-select: none; }
+        @keyframes kiosk-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
       `}</style>
     </div>
   )

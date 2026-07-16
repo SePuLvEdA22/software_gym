@@ -19,7 +19,7 @@ export function KioskRenewPage(): JSX.Element {
     try {
       const [clientResult, plansResult, membershipsResult] = await Promise.all([
         window.electronAPI.client.getById(id),
-        window.electronAPI.plan.getAll(),
+        window.electronAPI.plans.getAll(),
         window.electronAPI.membership.getByClient(id)
       ])
 
