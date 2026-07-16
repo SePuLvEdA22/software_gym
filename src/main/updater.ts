@@ -6,6 +6,7 @@ const { autoUpdater } = pkg; //cambio realizado por Helger
 
 autoUpdater.logger = log
 autoUpdater.autoDownload = false
+autoUpdater.allowPrerelease = true
 
 export function initUpdater(mainWindow: BrowserWindow): void {
   autoUpdater.on('checking-for-update', () => {
