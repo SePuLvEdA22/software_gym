@@ -234,9 +234,9 @@ function createKioskWindowAuto(): BrowserWindow {
 }
 
 function createClientFormWindow(clientId?: string): BrowserWindow {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const { height } = screen.getPrimaryDisplay().workAreaSize
 
-  const window = new BrowserWindow({      minWidth: 900,
+  const window = new BrowserWindow({
     height: Math.min(height - 100, 800),
     minWidth: 800,
     minHeight: 600,
@@ -419,8 +419,8 @@ function setupWindowControls(): void {
         adminWindow = createAdminWindow()
       }
 
-      adminWindow.show()
-      adminWindow.focus()
+      adminWindow!.show()
+      adminWindow!.focus()
 
       // Navigate directly via URL hash so it works even if React hasn't mounted yet
       const navigateJs = `window.location.hash = '#/clients?clientId=${encodeURIComponent(clientId)}&action=renew'`

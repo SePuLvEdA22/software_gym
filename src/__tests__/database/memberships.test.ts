@@ -222,7 +222,7 @@ describe('Memberships Database', () => {
       expect(result).not.toBeNull()
       expect(result!.membership).not.toBeNull()
       expect(result!.payment).not.toBeNull()
-      expect(result!.payment.amount).toBe(30000)
+      expect(result!.payment!.amount).toBe(30000)
     })
 
     it('should record a standalone payment', () => {
