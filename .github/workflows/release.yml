@@ -1,0 +1,60 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Ej: v1.0.1, v2.0.0
+
+permissions:
+  contents: write  # Necesario para crear releases y subir artifacts
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+
+  release:
+    name: Build and Publish
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Construir y publicar a GitHub Releases
+      # electron-builder genera automáticamente:
+      #   - latest.yml (metadatos para electron-updater)
+      #   - BodyFitGym Setup X.X.X.exe (instalador NSIS)
+      #   - BodyFitGym X.X.X.exe (portable)
+      #
+      # --publish always  → sube artifacts + latest.yml a GitHub Releases
+      # GH_TOKEN           → token de autenticación (GITHUB_TOKEN funciona)
+      - name: Build and Publish
+        run: npm run build:win -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Subir los instaladores como artefactos adicionales del workflow
+      - name: Upload Installer Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: BodyFitGym-Windows
+          path: dist/*
+          if-no-files-found: error
