@@ -131,7 +131,7 @@ export function updateClient(id: string, data: Partial<Client>): Client | null {
     }
   }
 
-  let photoPath: string | null = undefined
+  let photoPath: string | null = null
   if (data.photo !== undefined) {
     photoPath = savePhotoFile(id, data.photo)
   }
@@ -205,7 +205,7 @@ export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): {
   
   query += ' ORDER BY full_name ASC LIMIT ? OFFSET ?'
   const stmt = db.prepare(query)
-  const results = stmt.all(...params, pageSize, offset) as DbClient[]
+  const results = stmt.all(...params, pageSize, offset) as unknown as DbClient[]
   
   return {
     data: results.map(mapDbClient),
@@ -229,7 +229,7 @@ export function searchClients(query: string): Client[] {
     LIMIT 50
   `)
   
-  const results = stmt.all(searchPattern, searchPattern, searchPattern, searchPattern) as DbClient[]
+  const results = stmt.all(searchPattern, searchPattern, searchPattern, searchPattern) as unknown as DbClient[]
   
   return results.map(mapDbClient)
 }

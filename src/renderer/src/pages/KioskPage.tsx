@@ -315,11 +315,9 @@ function IdleScreen({
       `}</style>
     </div>
   )
-}
-
-function ResultScreen({
-  client, membership, validationResult, debts, routines, onReset, onRenew
-}: {
+}function ResultScreen({
+      client, membership, validationResult, debts, routines, onRenew
+    }: {
   client: Client
   membership?: Membership
   validationResult: ValidationResult

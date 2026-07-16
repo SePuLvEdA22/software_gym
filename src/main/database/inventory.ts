@@ -96,7 +96,7 @@ export function getAllProducts(activeOnly = true, page = 1, pageSize = 50, searc
   const safePage = Math.min(page, totalPages)
   const offset = (safePage - 1) * pageSize
   query += ' ORDER BY name ASC LIMIT ? OFFSET ?'
-  const rows = db.prepare(query).all(...params, pageSize, offset) as DbProduct[]
+  const rows = db.prepare(query).all(...params, pageSize, offset) as unknown as DbProduct[]
   return { data: rows.map(mapDbProduct), total, page: safePage, totalPages }
 }
 
@@ -192,7 +192,7 @@ export function getMovements(productId?: string, page = 1, pageSize = 50): PageR
   const safePage = Math.min(page, totalPages)
   const offset = (safePage - 1) * pageSize
   query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?'
-  const rows = db.prepare(query).all(...params, pageSize, offset) as DbMovement[]
+  const rows = db.prepare(query).all(...params, pageSize, offset) as unknown as DbMovement[]
   return { data: rows.map(mapDbMovement), total, page: safePage, totalPages }
 }
 

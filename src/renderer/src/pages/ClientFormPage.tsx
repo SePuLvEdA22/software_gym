@@ -23,7 +23,7 @@ function getClientIdFromUrl(): string | null {
 export function ClientFormPage(): JSX.Element {
   const clientId = getClientIdFromUrl()
   const isEditing = !!clientId
-  const [client, setClient] = useState<Client | null>(null)
+  const [, setClient] = useState<Client | null>(null)
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
 

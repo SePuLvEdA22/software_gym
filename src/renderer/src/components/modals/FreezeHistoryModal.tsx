@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icons } from '@/components/Icons'
-import { FreezeHistory } from '../../../shared/types'
+import { FreezeHistory } from '@shared/types'
 import { format, parseISO } from 'date-fns'
 
 interface FreezeHistoryModalProps {

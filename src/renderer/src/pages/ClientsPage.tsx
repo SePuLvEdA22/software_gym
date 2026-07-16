@@ -10,7 +10,7 @@ import { AbonoModal } from '@/components/modals/AbonoModal'
 import { PaymentHistoryModal } from '@/components/modals/PaymentHistoryModal'
 import { AttendanceStatsModal } from '@/components/modals/AttendanceStatsModal'
 import { RoutinesModal } from '@/components/modals/RoutinesModal'
-import { Client, ClientStatus, Membership, ClientDebt, MembershipPlan } from '../../../shared/types'
+import { Client, ClientStatus, Membership, ClientDebt } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO, differenceInDays } from 'date-fns'
 
@@ -212,11 +212,11 @@ export function ClientsPage(): JSX.Element {
     }
   }
 
-  const refreshSelectedClient = async () => {
-    if (selectedClient) {
-      await handleClientSelect(selectedClient)
-    }
-  }
+  // const refreshSelectedClient = async () => {
+  //   if (selectedClient) {
+  //     await handleClientSelect(selectedClient)
+  //   }
+  // }
 
   const handleSearch = async () => {
     if (searchQuery.trim()) {

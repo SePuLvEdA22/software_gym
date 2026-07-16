@@ -102,7 +102,7 @@ export function getAllUsers(page = 1, pageSize = 50): PageResponse<User> {
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, totalPages)
   const offset = (safePage - 1) * pageSize
-  const rows = db.prepare('SELECT * FROM users ORDER BY full_name ASC LIMIT ? OFFSET ?').all(pageSize, offset) as DbUser[]
+  const rows = db.prepare('SELECT * FROM users ORDER BY full_name ASC LIMIT ? OFFSET ?').all(pageSize, offset) as unknown as DbUser[]
   return { data: rows.map(mapDbUser), total, page: safePage, totalPages }
 }
 
@@ -202,7 +202,7 @@ export function getChangeLogs(page = 1, pageSize = 50, tableName?: string): Page
   const safePage = Math.min(page, totalPages)
   const offset = (safePage - 1) * pageSize
   query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?'
-  const rows = db.prepare(query).all(...params, pageSize, offset) as ChangeLog[]
+  const rows = db.prepare(query).all(...params, pageSize, offset) as unknown as ChangeLog[]
   return { data: rows, total, page: safePage, totalPages }
 }
 

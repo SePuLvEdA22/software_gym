@@ -1,7 +1,6 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
 import { CreateClientSchema, UpdateClientSchema, CreateUserSchema, RecordPaymentSchema } from '../../shared/schemas'
-import { ZodError } from 'zod'
 
 function validateOrThrow(schema: import('zod').ZodType, data: unknown): void {
   const result = schema.safeParse(data)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icons } from '@/components/Icons'
-import { Payment } from '../../../shared/types'
+import { Payment } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 

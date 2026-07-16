@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Membership } from '../../../shared/types'
+import { Membership } from '@shared/types'
 import { format, parseISO } from 'date-fns'
 
 interface FreezeModalProps {

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { RenewModal } from '@/components/modals/RenewModal'
 import { ToastContainer } from '@/components/ToastContainer'
 import { Icons } from '@/components/Icons'
-import type { Client, Membership, MembershipPlan } from '../../shared/types'
+import type { Client, Membership, MembershipPlan } from '@shared/types'
 
 export function KioskRenewPage(): JSX.Element {
   const [searchParams] = useSearchParams()

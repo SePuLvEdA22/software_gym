@@ -200,15 +200,17 @@ describe('Memberships Database', () => {
       const plan = createPlan({ name: '1-Day Plan', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)
       expect(m).not.toBeNull()
+      if (!m) throw new Error('Membership not created')
 
       const pastDate = new Date(Date.now() - 86400000).toISOString()
-      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m!.id)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m.id)
 
       const count = updateExpiredMemberships()
       expect(count).toBeGreaterThanOrEqual(1)
 
       const active = getActiveMembership(c.id)
       expect(active).toBeNull()
+      expect(c.id).toBeDefined()
     })
   })
 

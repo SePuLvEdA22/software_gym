@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { initDatabase, closeDatabase } from '../../main/database/index'
-import { createClient } from '../../main/database/clients'
 import {
   logAccess,
   getAccessLogs,
@@ -8,22 +7,6 @@ import {
   getClientAccessLogs,
   getTodayAccessCount,
 } from '../../main/database/memberships'
-import type { Client } from '../../shared/types'
-
-const sampleClient: Omit<Client, 'id' | 'registrationDate'> = {
-  fullName: 'Acceso Test',
-  documentId: 'ACC-001',
-  birthDate: '1990-01-01',
-  gender: 'male',
-  phone: '3009998877',
-  email: 'access@example.com',
-  address: 'Calle Acceso',
-  photo: null,
-  accessCode: 'ACC001',
-  status: 'active',
-  emergencyContact: { name: '', phone: '', relationship: '', notes: '' },
-}
-
 describe('Access Logs', () => {
   beforeAll(async () => {
     await initDatabase()

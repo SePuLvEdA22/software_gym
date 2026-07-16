@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Client, Membership, MembershipPlan, PaymentMethod } from '../../../shared/types'
+import { Client, Membership, MembershipPlan, PaymentMethod } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parse, parseISO, addDays, isValid } from 'date-fns'
 

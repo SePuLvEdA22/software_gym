@@ -3,6 +3,7 @@ import { join } from 'path'
 import { existsSync, mkdirSync, copyFileSync, unlinkSync, writeFileSync, readFileSync } from 'fs'
 import bcrypt from 'bcryptjs'
 import log from 'electron-log'
+// @ts-expect-error sql.js has no type declarations
 import initSqlJs from 'sql.js'
 
 type SqlJsDb = Awaited<ReturnType<typeof initSqlJs>> extends { Database: infer D } ? D : never
@@ -126,7 +127,7 @@ function getSqlJs(): Promise<Awaited<ReturnType<typeof initSqlJs>>> {
   if (!sqlInitPromise) {
     sqlInitPromise = initSqlJs()
   }
-  return sqlInitPromise
+  return sqlInitPromise!
 }
 
 export function getDatabasePath(): string {

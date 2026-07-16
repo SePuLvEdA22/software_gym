@@ -25,7 +25,7 @@ export function UpdateChecker(): JSX.Element {
         setErrorMsg('')
       }))
 
-      cleanups.push(window.electronAPI.update.onAvailable((info) => {
+      cleanups.push(window.electronAPI.update.onAvailable((info: any) => {
         setStatus('available')
         setVersion(info?.version ?? '')
       }))
@@ -35,12 +35,12 @@ export function UpdateChecker(): JSX.Element {
         setTimeout(() => setStatus('idle'), 4000)
       }))
 
-      cleanups.push(window.electronAPI.update.onError((error) => {
+      cleanups.push(window.electronAPI.update.onError((error: any) => {
         setStatus('error')
         setErrorMsg(error)
       }))
 
-      cleanups.push(window.electronAPI.update.onDownloadProgress((p) => {
+      cleanups.push(window.electronAPI.update.onDownloadProgress((p: any) => {
         setStatus('downloading')
         setProgress(p.percent ?? 0)
       }))

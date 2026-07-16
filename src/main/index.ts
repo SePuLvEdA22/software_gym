@@ -18,7 +18,7 @@ log.transports.console.level = 'debug'
 if (process.env.SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
-    integrations: [Sentry.electronEventsIntegration()],
+    // integrations: [Sentry.electronEventsIntegration()],
   })
   log.info('Sentry initialized for main process')
 }
@@ -236,8 +236,7 @@ function createKioskWindowAuto(): BrowserWindow {
 function createClientFormWindow(clientId?: string): BrowserWindow {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
 
-  const window = new BrowserWindow({
-    width: 900,
+  const window = new BrowserWindow({      minWidth: 900,
     height: Math.min(height - 100, 800),
     minWidth: 800,
     minHeight: 600,
@@ -428,12 +427,12 @@ function setupWindowControls(): void {
 
       if (wasCreated) {
         // New window: wait for the page to load before navigating
-        adminWindow.webContents.once('did-finish-load', () => {
+        adminWindow!.webContents.once('did-finish-load', () => {
           adminWindow!.webContents.executeJavaScript(navigateJs)
         })
       } else {
         // Existing window: navigate immediately
-        adminWindow.webContents.executeJavaScript(navigateJs)
+        adminWindow!.webContents.executeJavaScript(navigateJs)
       }
 
       return { success: true }

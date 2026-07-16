@@ -127,7 +127,7 @@ export function getAllPlans(activeOnly = true): MembershipPlan[] {
   query += ' ORDER BY duration_days ASC'
   
   const stmt = db.prepare(query)
-  const results = stmt.all(...params) as DbPlan[]
+  const results = stmt.all(...params) as unknown as DbPlan[]
   
   return results.map(mapDbPlan)
 }
@@ -232,7 +232,7 @@ export function getAllPromotions(activeOnly = true): Promotion[] {
     params.push(1)
   }
   query += ' ORDER BY created_at DESC'
-  const results = db.prepare(query).all(...params) as DbPromotion[]
+  const results = db.prepare(query).all(...params) as unknown as DbPromotion[]
   return results.map(mapDbPromotion)
 }
 
@@ -623,7 +623,7 @@ export function getClientMemberships(clientId: string): Membership[] {
     ORDER BY created_at DESC
   `)
   
-  const results = stmt.all(clientId) as DbMembership[]
+  const results = stmt.all(clientId) as unknown as DbMembership[]
   
   return results.map(mapDbMembership)
 }
@@ -688,13 +688,13 @@ function mapDbFreezeHistory(h: DbFreezeHistory): FreezeHistory {
 
 export function getFreezeHistory(membershipId: string): FreezeHistory[] {
   const db = getDatabase()
-  const results = db.prepare('SELECT * FROM freeze_history WHERE membership_id = ? ORDER BY frozen_at DESC').all(membershipId) as DbFreezeHistory[]
+  const results = db.prepare('SELECT * FROM freeze_history WHERE membership_id = ? ORDER BY frozen_at DESC').all(membershipId) as unknown as DbFreezeHistory[]
   return results.map(mapDbFreezeHistory)
 }
 
 export function getClientFreezeHistory(clientId: string): FreezeHistory[] {
   const db = getDatabase()
-  const results = db.prepare('SELECT * FROM freeze_history WHERE client_id = ? ORDER BY frozen_at DESC').all(clientId) as DbFreezeHistory[]
+  const results = db.prepare('SELECT * FROM freeze_history WHERE client_id = ? ORDER BY frozen_at DESC').all(clientId) as unknown as DbFreezeHistory[]
   return results.map(mapDbFreezeHistory)
 }
 
@@ -806,7 +806,7 @@ export function getMembershipPayments(membershipId: string): Payment[] {
     LEFT JOIN clients c ON c.id = p.client_id
     WHERE p.membership_id = ?
     ORDER BY p.date DESC
-  `).all(membershipId) as DbPayment[]
+  `).all(membershipId) as unknown as DbPayment[]
   return results.map(mapDbPayment)
 }
 
@@ -873,7 +873,7 @@ export function getClientPayments(clientId: string, page = 1, pageSize = 50): Pa
     LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(clientId, pageSize, offset) as DbPayment[]
+  const results = stmt.all(clientId, pageSize, offset) as unknown as DbPayment[]
   
   return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
@@ -903,7 +903,7 @@ export function getPaymentsByDateRange(startDate: string, endDate: string, page 
     LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(...params, pageSize, offset) as DbPayment[]
+  const results = stmt.all(...params, pageSize, offset) as unknown as DbPayment[]
   
   return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
@@ -914,7 +914,7 @@ export function logAccess(
   message: string,
   clientId?: string,
   clientName?: string,
-  accessType: string = 'check_in'
+  accessType: AccessType = 'check_in'
 ): AccessLog {
   const db = getDatabase()
   
@@ -970,7 +970,7 @@ export function getAccessLogs(page = 1, pageSize = 50, result?: string): PageRes
     LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(...params, pageSize, offset) as DbAccessLog[]
+  const results = stmt.all(...params, pageSize, offset) as unknown as DbAccessLog[]
   
   return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }
@@ -998,7 +998,7 @@ export function getAccessLogsByDate(startDate: string, endDate: string, page = 1
     LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(...params, pageSize, offset) as DbAccessLog[]
+  const results = stmt.all(...params, pageSize, offset) as unknown as DbAccessLog[]
   
   return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }
@@ -1019,7 +1019,7 @@ export function getClientAccessLogs(clientId: string, page = 1, pageSize = 50): 
     LIMIT ? OFFSET ?
   `)
   
-  const results = stmt.all(clientId, pageSize, offset) as DbAccessLog[]
+  const results = stmt.all(clientId, pageSize, offset) as unknown as DbAccessLog[]
   
   return { data: results.map(mapDbAccessLog), total, page: safePage, totalPages }
 }

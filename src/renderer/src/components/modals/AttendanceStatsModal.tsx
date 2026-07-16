@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icons } from '@/components/Icons'
-import { Client, ClientAttendanceStats as ClientAttendanceStatsType } from '../../../shared/types'
+import { Client, ClientAttendanceStats as ClientAttendanceStatsType } from '@shared/types'
 import { format, parseISO } from 'date-fns'
 
 interface AttendanceStatsModalProps {

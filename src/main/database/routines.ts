@@ -32,7 +32,7 @@ export function getClientRoutines(clientId: string): ClientRoutine[] {
   const db = getDatabase()
   const rows = db.prepare(
     'SELECT * FROM client_routines WHERE client_id = ? ORDER BY day_of_week'
-  ).all(clientId) as DbClientRoutine[]
+  ).all(clientId) as unknown as DbClientRoutine[]
   return rows.map(mapDbRoutine)
 }
 
@@ -50,7 +50,7 @@ export function saveClientRoutine(
     db.prepare(
       'UPDATE client_routines SET exercises = ? WHERE id = ?'
     ).run(JSON.stringify(exercises), existing.id)
-    const row = db.prepare('SELECT * FROM client_routines WHERE id = ?').get(existing.id) as DbClientRoutine
+    const row = db.prepare('SELECT * FROM client_routines WHERE id = ?').get(existing.id) as unknown as DbClientRoutine
     return mapDbRoutine(row)
   } else {
     const id = uuidv4()

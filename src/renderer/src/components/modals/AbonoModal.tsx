@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
-import { Client, Membership, PaymentMethod } from '../../../shared/types'
+import { Client, Membership, PaymentMethod } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
