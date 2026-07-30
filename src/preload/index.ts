@@ -237,7 +237,14 @@ const electronAPI = {
     restartReminderInterval: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:restartReminderInterval'),
     updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('system:updateAdmin', data)
+      ipcRenderer.invoke('system:updateAdmin', data),
+    migrateLegacy: (): Promise<IpcResult<{ success: boolean; tablesImported: Record<string, number>; totalRecords: number; errors: string[]; photosExported: number; backupPath?: string }>> =>
+      ipcRenderer.invoke('system:migrateLegacy'),
+    onMigrationProgress: (callback: (progress: { phase: string; table?: string; current?: number; message: string }) => void): () => void => {
+      const handler = (_: any, progress: any) => callback(progress)
+      ipcRenderer.on('migration:progress', handler)
+      return () => ipcRenderer.removeListener('migration:progress', handler)
+    }
   },
 
   inventory: {

@@ -652,6 +652,44 @@ input[type="number"] {
   flex-shrink: 0;
 }
 
+/* Settings Layout */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 500px) {
+  .settings-layout {
+    gap: 16px;
+  }
+}
+
+/* Settings content responsive padding */
+.settings-content {
+  padding: 28px;
+}
+
+@media (max-width: 768px) {
+  .settings-content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 500px) {
+  .settings-content {
+    padding: 16px;
+  }
+}
+
 /* Plan Card */
 .plan-card {
   background: linear-gradient(135deg, var(--color-surface-container) 0%, var(--color-surface-container-low) 100%);

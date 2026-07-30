@@ -1,6 +1,6 @@
 {
   "name": "bodyfitgym",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Sistema profesional de administracion y control de acceso para BodyFitGym",
   "main": "./out/main/index.js",
   "author": "BodyFitGym",
@@ -48,7 +48,9 @@
     "format": "prettier --check src/",
     "format:fix": "prettier --write src/",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:legacy": "npx tsx scripts/migrate-legacy-data.ts",
+    "migrate:import": "npx tsx scripts/import-migrated-data.ts"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0",

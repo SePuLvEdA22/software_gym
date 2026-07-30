@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { HashRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
@@ -46,10 +46,38 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
   const title = getPageTitle(location.pathname)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 768)
+  const prevWidthRef = useRef(window.innerWidth)
   const setTriggerNewClientModal = useAppStore((s) => s.setTriggerNewClientModal)
 
   const toggleSidebar = useCallback(() => setSidebarCollapsed(prev => !prev), [])
+
+  // Auto-collapse/expand sidebar based on screen width
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth
+      const prevWidth = prevWidthRef.current
+      prevWidthRef.current = width
+
+      if (width < 768 && prevWidth >= 768) {
+        // Crossing below threshold → collapse
+        setSidebarCollapsed(true)
+      } else if (width >= 768 && prevWidth < 768) {
+        // Crossing above threshold → expand
+        setSidebarCollapsed(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Auto-collapse sidebar on navigation when on mobile
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setSidebarCollapsed(true)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     const handleNavigatePayments = (_: any, data: { clientId: string }) => {

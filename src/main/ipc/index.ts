@@ -502,15 +502,22 @@ export function setupIpcHandlers(): void {
         }
       }
 
+      // Todos los clientes (inactive, suspended, expired) pueden renovar desde el kiosco
       if (client.status === 'inactive' || client.status === 'suspended') {
-        logAccess(accessCode, 'denied_inactive', `Cliente ${client.status}`, client.id, client.fullName)
-        return {
-          success: true,
-          data: {
-            valid: false,
-            client,
-            message: client.status === 'suspended' ? 'Cliente suspendido' : 'Cliente inactivo',
-            code: 'denied_inactive'
+        const activeOrFrozen = getActiveOrFrozenMembership(client.id)
+        if (!activeOrFrozen) {
+          updateClientStatus(client.id, 'expired')
+          const debts = getClientDebt(client.id)
+          logAccess(accessCode, 'denied_expired', 'Membresía vencida', client.id, client.fullName)
+          return {
+            success: true,
+            data: {
+              valid: false,
+              client,
+              debt: debts.length > 0 ? debts : undefined,
+              message: 'Membresía vencida',
+              code: 'denied_expired'
+            }
           }
         }
       }
@@ -1001,6 +1008,43 @@ export function setupIpcHandlers(): void {
       return { success: ok }
     } catch (error: any) {
       log.error('Restore error:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('system:migrateLegacy', async (event) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const { canceled, filePaths } = await require('electron').dialog.showOpenDialog({
+        title: 'Seleccionar base de datos antigua (db_actual.sql)',
+        filters: [{ name: 'Base de Datos MySQL (SQL)', extensions: ['sql'] }],
+        properties: ['openFile']
+      })
+      if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelado' }
+
+      const { runLegacyMigration } = await import('../migration/legacyMigrator')
+
+      // Enviar progreso al renderer
+      const sendProgress = (progress: any) => {
+        if (event.sender && !event.sender.isDestroyed()) {
+          event.sender.send('migration:progress', progress)
+        }
+      }
+
+      sendProgress({ phase: 'parsing', message: 'Iniciando migración...' })
+
+      const result = await runLegacyMigration(filePaths[0], sendProgress)
+
+      if (result.success) {
+        log.info(`Migración legacy completada: ${result.totalRecords} registros, ${result.photosExported} fotos`)
+      } else {
+        log.error('Migración legacy fallida:', result.errors)
+      }
+
+      return { success: result.success, data: result }
+    } catch (error: any) {
+      log.error('Migration error:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })

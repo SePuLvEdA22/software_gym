@@ -67,6 +67,9 @@ export function SettingsPage(): JSX.Element {
   const [showPromoModal, setShowPromoModal] = useState(false)
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null)
   const [promoForm, setPromoForm] = useState({ name: '', planId: '', discountType: 'percentage' as 'percentage' | 'fixed', discountValue: 0, startDate: '', endDate: '' })
+  const [showMigrationModal, setShowMigrationModal] = useState(false)
+  const [migrationStatus, setMigrationStatus] = useState('')
+  const [migrationBackupPath, setMigrationBackupPath] = useState<string | null>(null)
 
   const handlePlanFormChange = (field: string, value: string | number) => {
     setPlanForm(prev => ({ ...prev, [field]: value }))
@@ -511,7 +514,7 @@ export function SettingsPage(): JSX.Element {
         </p>
       </div>
 
-      <div className="flex-row" style={{ alignItems: 'start', gap: 32, display: 'grid', gridTemplateColumns: '240px 1fr' }}>
+      <div className="settings-layout">
         <nav className="settings-nav">
           {SETTINGS_NAV.map(item => (
             <button
@@ -525,7 +528,7 @@ export function SettingsPage(): JSX.Element {
           ))}
         </nav>
 
-        <div className="bento-card" style={{ padding: 28 }}>
+        <div className="bento-card settings-content">
           {settingsSection === 'plans' && (
             <>
               <div className="flex-row-between" style={{ marginBottom: 24 }}>
@@ -1262,6 +1265,60 @@ export function SettingsPage(): JSX.Element {
                       Restaurar Base de Datos
                     </button>
                   </div>
+                  <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
+                    <button className="btn btn-primary" onClick={async () => {
+                      if (!window.electronAPI?.system?.migrateLegacy) return
+                      const ok = await confirm({
+                        title: '⚠️ Importar datos del sistema anterior',
+                        message: '¿Importar datos desde la base de datos anterior (db_actual.sql)?\n\n⚠️ SE ELIMINARÁN todos los datos actuales: clientes, membresías, pagos, planes, productos y registros de acceso.\n\n✅ Se creará un backup automático antes de comenzar. Si la migración falla, los datos se restaurarán automáticamente.',
+                        variant: 'warning',
+                        confirmLabel: 'Importar'
+                      })
+                      if (!ok) return
+
+                      setShowMigrationModal(true)
+                      setMigrationBackupPath(null)
+                      setMigrationStatus('Selecciona el archivo db_actual.sql...')
+
+                      // Escuchar progreso
+                      const cleanup = window.electronAPI.system.onMigrationProgress((progress: { phase: string; table?: string; current?: number; message: string }) => {
+                        if (progress.phase === 'parsing') {
+                          setMigrationStatus(`📄 ${progress.message}`)
+                        } else if (progress.phase === 'importing') {
+                          setMigrationStatus(`📦 Importando ${progress.table}...`)
+                        } else if (progress.phase === 'done') {
+                          setMigrationStatus('✅ Migración completada exitosamente.')
+                        }
+                      })
+
+                      try {
+                        const result = await window.electronAPI.system.migrateLegacy()
+                        cleanup()
+
+                        if (result.success && result.data) {
+                          setMigrationBackupPath(result.data.backupPath || null)
+                          const summary = [
+                            `✅ Completado: ${result.data.totalRecords} registros importados,`,
+                            `${result.data.photosExported} fotos exportadas.`
+                          ].join(' ')
+                          setMigrationStatus(summary)
+                          showToast('success', `Migración completada: ${result.data.totalRecords} registros`, 'Migración Exitosa')
+                        } else {
+                          setMigrationBackupPath((result.data as any)?.backupPath || null)
+                          const errorMsg = result.error || 'Error desconocido'
+                          setMigrationStatus(`❌ Error: ${errorMsg}`)
+                          showToast('error', errorMsg, 'Error')
+                        }
+                      } catch (e: any) {
+                        cleanup()
+                        setMigrationStatus(`❌ Error: ${e.message}`)
+                        showToast('error', e.message || 'Error en la migración', 'Error')
+                      }
+                    }}>
+                      <Icons.Refresh />
+                      Importar datos del sistema anterior
+                    </button>
+                  </div>
                   <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 8 }}>
                     La base de datos contiene clientes, membresías, pagos, registros de acceso y configuración.
                   </p>
@@ -1344,6 +1401,88 @@ export function SettingsPage(): JSX.Element {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showMigrationModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="glass-panel" style={{ width: 520, padding: 32, textAlign: 'center' }}>
+            {migrationStatus.includes('✅') || migrationStatus.includes('❌') ? (
+              <div style={{ fontSize: 48, marginBottom: 16 }}>
+                {migrationStatus.includes('✅') ? '🎉' : '😞'}
+              </div>
+            ) : (
+              <div className="spinner" style={{ width: 48, height: 48, margin: '0 auto 16px' }} />
+            )}
+            <h3 className="headline-md" style={{ marginBottom: 8 }}>
+              {migrationStatus.includes('✅') ? 'Migración Completada' :
+               migrationStatus.includes('❌') ? 'Error en Migración' :
+               'Importando Datos Legacy'}
+            </h3>
+            <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)' }}>
+              {migrationStatus || 'Procesando...'}
+            </p>
+
+            {migrationBackupPath && (migrationStatus.includes('✅') || migrationStatus.includes('❌')) && (
+              <div className="glass-panel" style={{
+                marginTop: 16, padding: 12, fontSize: 12,
+                textAlign: 'left',
+                background: 'rgba(255, 107, 0, 0.08)'
+              }}>
+                <p style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-primary)' }}>
+                  💾 Backup disponible
+                </p>
+                <p style={{ wordBreak: 'break-all', color: 'var(--color-on-surface-variant)' }}>
+                  {migrationBackupPath}
+                </p>
+                <button className="btn btn-sm btn-secondary" style={{ marginTop: 8 }}
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Restaurar desde backup',
+                      message: '¿Restaurar la base de datos desde el backup automático? Se perderán los cambios de la migración.',
+                      variant: 'warning',
+                      confirmLabel: 'Restaurar'
+                    })
+                    if (!ok) return
+                    if (window.electronAPI?.system?.restoreDb) {
+                      // No podemos pasar un path directamente al restoreDb existente
+                      // Mostramos instrucciones al usuario
+                      setMigrationStatus(`ℹ️ Para restaurar:
+1. Ve a Sistema → Restaurar Base de Datos
+2. Selecciona el archivo:
+${migrationBackupPath}`)
+                    }
+                  }}>
+                  <Icons.Upload />
+                  ¿Cómo restaurar desde backup?
+                </button>
+              </div>
+            )}
+
+            {(migrationStatus.includes('✅') || migrationStatus.includes('❌')) && (
+              <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center' }}>
+                {migrationStatus.includes('✅') ? (
+                  <button className="btn btn-primary"
+                    onClick={() => {
+                      setShowMigrationModal(false)
+                      window.location.reload()
+                    }}>
+                    <Icons.Refresh />
+                    Reiniciar para aplicar cambios
+                  </button>
+                ) : (
+                  <button className="btn btn-secondary"
+                    onClick={() => setShowMigrationModal(false)}>
+                    Cerrar
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
