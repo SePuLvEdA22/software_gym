@@ -488,6 +488,16 @@ function transformSociomembresia(insert: ParsedInsert): void {
     const oldId = parseInt(row[idx['idsociomembresia']] || '0', 10)
     if (!oldId) continue
 
+    // Filtrar membresías no activas en el sistema antiguo:
+    // idEstado 1 = Activo, 2 = Inactivo, 3 = Eliminado.
+    // Las eliminadas/inactivas no eran membresías reales (no aparecían
+    // en el sistema antiguo) y NO deben importarse ni sus pagos.
+    const idEstado = parseInt(row[idx['idestado']] || '1', 10)
+    if (idEstado !== 1) {
+      log.info(`[Migracion] Saltando sociomembresia ${oldId}: idEstado=${idEstado} (no activa en el sistema antiguo)`)
+      continue
+    }
+
     const newUuid = newId()
     idMapping.sociomembresia.set(oldId, newUuid)
     const oldSocioId = parseInt(row[idx['idsocio']] || '0', 10)

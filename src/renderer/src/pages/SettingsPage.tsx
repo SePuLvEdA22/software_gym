@@ -239,7 +239,11 @@ export function SettingsPage(): JSX.Element {
       if (window.electronAPI?.whatsapp?.getConfig) {
         const result = await window.electronAPI.whatsapp.getConfig()
         if (result.success && result.data) {
-          setWhatsappConfig(prev => ({ ...prev, ...result.data }))
+          // Sanitizar: providers no implementados (twilio/custom guardados en
+          // versiones anteriores) se reasignan a mock para no romper el dropdown.
+          const unsupported = ['twilio', 'custom']
+          const provider = unsupported.includes(result.data.provider) ? 'mock' : result.data.provider
+          setWhatsappConfig(prev => ({ ...prev, ...result.data, provider }))
         }
       }
     } catch (e) { console.error('Error loading WhatsApp config:', e) }
@@ -1059,10 +1063,9 @@ export function SettingsPage(): JSX.Element {
                           }))}
                         >
                           <option value="mock">Modo Simulación</option>
+                          <option value="evolution_api">Evolution API (recomendado)</option>
                           <option value="whatsapp_cloud">WhatsApp Cloud API (Meta)</option>
-                          <option value="evolution_api">Evolution API</option>
-                          <option value="twilio">Twilio</option>
-                          <option value="custom">API Personalizada</option>
+                          {/* Twilio y API personalizada no están implementados: eliminados para evitar envíos falsos */}
                         </select>
                       </div>
                     </div>

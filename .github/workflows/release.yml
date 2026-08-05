@@ -46,10 +46,14 @@ jobs:
       #
       # --publish always  → sube artifacts + latest.yml a GitHub Releases
       # GH_TOKEN           → token de autenticación (GITHUB_TOKEN funciona)
+      # SENTRY_DSN se hornea en el bundle durante el build (ver electron.vite.config.ts).
+      # Configúralo como secret del repositorio: GitHub → Settings → Secrets → Actions → "SENTRY_DSN".
+      # Si no existe, la app se compila sin Sentry (monitoreo desactivado).
       - name: Build and Publish
         run: npm run build:win -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       # Subir los instaladores como artefactos adicionales del workflow
       - name: Upload Installer Artifacts

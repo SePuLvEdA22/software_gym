@@ -128,7 +128,11 @@ export async function sendMessage(
       result.success ? formatISO(new Date()) : null,
       messageId
     )
-    
+
+    if (!result.success) {
+      log.error(`[WhatsApp] Fallo al enviar vía ${config.provider}: ${result.error || 'error desconocido'}`)
+    }
+
     return { success: result.success, messageId }
   } catch (error: any) {
     log.error('Error sending WhatsApp message:', error)
@@ -142,7 +146,12 @@ export async function sendMessage(
   }
 }
 
-async function sendViaProvider(phone: string, message: string, messageType?: MessageType): Promise<{ success: boolean }> {
+interface SendResult {
+  success: boolean
+  error?: string
+}
+
+async function sendViaProvider(phone: string, message: string, messageType?: MessageType): Promise<SendResult> {
   switch (config.provider) {
     case 'whatsapp_cloud':
       return sendViaWhatsAppCloud(phone, message, messageType)
@@ -153,7 +162,7 @@ async function sendViaProvider(phone: string, message: string, messageType?: Mes
     case 'custom':
       return sendViaCustom(phone, message)
     default:
-      return { success: true }
+      return { success: false, error: 'Proveedor no configurado' }
   }
 }
 
@@ -221,9 +230,11 @@ async function sendViaWhatsAppCloud(phone: string, message: string, messageType?
   }
 }
 
-async function sendViaTwilio(_phone: string, _message: string): Promise<{ success: boolean }> {
-  log.warn('Twilio integration placeholder')
-  return { success: true }
+async function sendViaTwilio(_phone: string, _message: string): Promise<SendResult> {
+  // Twilio NO está implementado. Devolver éxito aquí marcaba los mensajes como
+  // "Enviado" sin enviar nada realmente, un falso positivo crítico.
+  log.error('[WhatsApp] Twilio no está implementado. Usa evolution_api o whatsapp_cloud.')
+  return { success: false, error: 'El proveedor Twilio no está disponible. Usa Evolution API o WhatsApp Cloud API.' }
 }
 
 async function sendViaEvolutionApi(phone: string, message: string): Promise<{ success: boolean }> {
@@ -248,9 +259,10 @@ async function sendViaEvolutionApi(phone: string, message: string): Promise<{ su
   }
 }
 
-async function sendViaCustom(_phone: string, _message: string): Promise<{ success: boolean }> {
-  log.warn('Custom WhatsApp integration placeholder')
-  return { success: true }
+async function sendViaCustom(_phone: string, _message: string): Promise<SendResult> {
+  // API personalizada NO está implementada. Ver sendViaTwilio.
+  log.error('[WhatsApp] Custom API no está implementada. Usa evolution_api o whatsapp_cloud.')
+  return { success: false, error: 'La API personalizada no está disponible. Usa Evolution API o WhatsApp Cloud API.' }
 }
 
 function wasAlreadySentToday(clientId: string, messageType: MessageType): boolean {
@@ -383,7 +395,7 @@ export async function sendWelcomeMessage(clientId: string): Promise<{ success: b
   return result
 }
 
-function formatPhoneNumber(phone: string): string | null {
+export function formatPhoneNumber(phone: string): string | null {
   if (!phone) return null
   
   const cleaned = phone.replace(/\D/g, '')
@@ -466,7 +478,7 @@ export async function sendTestMessage(phone: string): Promise<{ success: boolean
 
       return { success: true, message: 'Mensaje de prueba enviado correctamente' }
     }
-    return { success: false, message: 'Error al enviar mensaje de prueba' }
+    return { success: false, message: `Error al enviar mensaje de prueba: ${result.error || 'error desconocido'}` }
   } catch (error: any) {
     log.error('Error sending test message:', error)
     return { success: false, message: error.message || 'Error desconocido' }

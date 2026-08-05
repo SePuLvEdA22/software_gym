@@ -322,3 +322,77 @@ Cada release requería descarga/instalación manual. `electron-updater` permite 
 | `src/preload/index.ts` | API `update` con eventos + comandos |
 | `src/renderer/src/components/UpdateChecker.tsx` | Creado |
 | `src/renderer/src/pages/SettingsPage.tsx` | Importar + renderizar `UpdateChecker` |
+
+---
+
+## 14. Fase 1 — Preparación final para producción (agosto 2026)
+
+### ¿Por qué?
+Cierre de las brechas críticas detectadas en el análisis de producción: el DSN de Sentry no llegaba al instalador empaquetado (Sentry inactivo en prod), y los providers de WhatsApp placeholder (`twilio`, `custom`) marcaban mensajes como "Enviado" sin enviar nada realmente.
+
+### 14.1 Sentry: DSN horneado en el build 🔥
+
+**Problema:** `process.env.SENTRY_DSN` solo existe en la máquina del desarrollador; en un `.exe` empaquetado la variable no existe, por lo que Sentry nunca se inicializaba en producción.
+
+**Qué se hizo:**
+- `electron.vite.config.ts` ahora carga **todas** las variables de entorno (`.env` + `process.env`) con `loadEnv(mode, process.cwd(), '')` y **hornea (bake)** el DSN en el bundle en tiempo de build mediante `define`:
+  - Main: `process.env.SENTRY_DSN` → valor estático
+  - Renderer: `import.meta.env.VITE_SENTRY_DSN` → valor estático
+- `src/renderer/src/main.tsx` simplificado: lee `import.meta.env.VITE_SENTRY_DSN` (reemplazo estático de Vite) con fallback a `window.__SENTRY_DSN__`
+- `.github/workflows/release.yml`: paso `SENTRY_DSN` del secret de GitHub Actions al build
+- `.env.example`: documenta que el DSN se hornea en build
+- **Verificado:** con `SENTRY_DSN=...` el DSN aparece en `out/main/index.js` y `out/renderer/assets/*.js`; sin DSN, Sentry queda desactivado (código eliminado por tree-shaking) y el build no falla.
+
+**Configuración requerida (una vez):**
+```bash
+# GitHub → Settings → Secrets → Actions → New repository secret
+# Name: SENTRY_DSN
+# Value: https://xxx@o123.ingest.sentry.io/456
+```
+
+### 14.2 WhatsApp: eliminar providers placeholder que fingían éxito 🚫
+
+**Problema:** `sendViaTwilio()` y `sendViaCustom()` devolvían `{ success: true }` sin enviar nada, marcando mensajes como "Enviado" falsamente en el historial.
+
+**Qué se hizo:**
+- `src/main/whatsapp/index.ts`:
+  - `sendViaTwilio` / `sendViaCustom` ahora devuelven `{ success: false, error: '...' }` con log de error
+  - El caso `default` de `sendViaProvider` también devuelve error
+  - `formatPhoneNumber()` ahora es exportado para testing
+- `src/renderer/src/pages/SettingsPage.tsx`: se eliminaron las opciones `twilio` y `custom` del dropdown de proveedores (solo quedan `mock`, `evolution_api` y `whatsapp_cloud`)
+- Tests: `src/__tests__/whatsapp.test.ts` (14 tests) — generadores de mensajes, formato de teléfono (prefijo 57), y verificación de que twilio/custom NO marcan como enviado
+
+### 14.3 Migración legacy validada con datos reales 📊
+
+- Se ejecutó `npm run migrate:legacy` sobre `software_actual/db_actual.sql` (394 MB):
+  - **22,632 registros migrados** (2,333 socios, 3,705 sociomembresias, 3,464 pagos, 13 planes, 5,057 detalleentrada, 4,828 detallesalida, etc.)
+  - El filtro `idEstado !== 1` salta correctamente membresías eliminadas/inactivas junto con sus pagos
+  - ⚠️ **Hallazgo:** la tabla `visita` (12,332 filas) no está mapeada en el migrador — revisar si debe importarse
+  - ⚠️ Contraseñas de usuarios legacy en texto plano: se asigna hash de `admin123` por defecto (documentado)
+- Test de regresión: `src/__tests__/database/legacyMigration.test.ts` (4 tests)
+
+### 14.4 QA ejecutado (según estándares de calidad)
+
+| Verificación | Resultado |
+|--------------|-----------|
+| Tests unitarios | ✅ 183 tests (12 archivos), incluidos 14 nuevos de WhatsApp |
+| Typecheck (`tsc --noEmit`) | ✅ 0 errores |
+| Lint (ESLint) | ✅ 0 errores, 315 warnings pre-existentes (sin nuevos) |
+| Formato (Prettier) | ✅ aplicado a archivos modificados |
+| Build (electron-vite) | ✅ con y sin DSN |
+| Migración con datos reales | ✅ 22,632 registros |
+| `npm audit --omit=dev` | ⚠️ 11 vulnerabilidades (8 moderate, 3 high) en dependencias de producción — electron 31, js-yaml, uuid; requiere actualización programada |
+| Mutation testing | ⚠️ No configurado (sin Stryker); pendiente para siguiente iteración |
+| Cobertura | ⚠️ No configurada en CI; pendiente (ver estándares, umbral sugerido ≥80%) |
+
+### Archivos creados/modificados (Fase 1)
+| Archivo | Acción |
+|---------|--------|
+| `electron.vite.config.ts` | DSN horneado vía `loadEnv` + `define` |
+| `src/renderer/src/main.tsx` | Lectura limpia de `VITE_SENTRY_DSN` |
+| `.env.example` | Documentación del DSN |
+| `.github/workflows/release.yml` | Secret `SENTRY_DSN` → build |
+| `src/main/whatsapp/index.ts` | Placeholders devuelven error; `formatPhoneNumber` exportado |
+| `src/renderer/src/pages/SettingsPage.tsx` | Dropdown sin twilio/custom |
+| `src/__tests__/whatsapp.test.ts` | Creado (14 tests) |
+| `scripts/migrate-legacy-data.ts` + `src/main/migration/legacyMigrator.ts` | Filtro `idEstado` (WIP previo, ahora commiteado) |
