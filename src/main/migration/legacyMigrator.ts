@@ -358,7 +358,8 @@ function transformSocio(insert: ParsedInsert): void {
         const fullPath = join(photosDir, fileName)
         try {
           writeFileSync(fullPath, buf)
-          photoPath = fileName
+          // Ruta absoluta, igual que las fotos creadas en la app (savePhotoFile).
+          photoPath = fullPath
           photosExported++
         } catch (e) {
           log.warn(`[Migracion] Error exportando foto de socio ${oldId}:`, e)

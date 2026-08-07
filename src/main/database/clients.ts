@@ -2,10 +2,9 @@ import { getDatabase } from './index'
 import { clearQueryCache } from './queryCache'
 import { Client, Gender, ClientStatus } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
-import { app } from 'electron'
 import { join } from 'path'
-import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
-import { getThumbsDir } from '../photos'
+import { writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { getThumbsDir, getPhotosDir, resolvePhotoPath } from '../photos'
 
 export interface DbClient {
   id: string
@@ -27,14 +26,6 @@ export interface DbClient {
   emergency_notes: string
 }
 
-function getPhotosDir(): string {
-  const dir = join(app.getPath('userData'), 'photos')
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true })
-  }
-  return dir
-}
-
 function savePhotoFile(clientId: string, base64Data: string | null): string | null {
   if (!base64Data) return null
   const dir = getPhotosDir()
@@ -48,8 +39,11 @@ function savePhotoFile(clientId: string, base64Data: string | null): string | nu
 function readPhotoFile(filePath: string | null): string | null {
   if (!filePath) return null
   try {
-    if (!existsSync(filePath)) return null
-    const buffer = readFileSync(filePath)
+    // Las fotos migradas del sistema antiguo tienen photo_path con solo el
+    // nombre del archivo; resolver contra userData/photos si no existe tal cual.
+    const resolved = resolvePhotoPath(filePath)
+    if (!resolved) return null
+    const buffer = readFileSync(resolved)
     return buffer.toString('base64')
   } catch {
     return null

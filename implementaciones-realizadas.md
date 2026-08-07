@@ -627,3 +627,31 @@ Error updating client: Error: Datos inválidos: accessCode: Too small: expected 
 |---------|--------|
 | `src/shared/schemas.ts` | `accessCode` min 1 / max 20 |
 | `src/__tests__/schemas/validation.test.ts` | Tests de códigos cortos/límites |
+
+---
+
+## 21. Fix: fotos de clientes importadas no se mostraban (agosto 2026)
+
+### ¿Por qué?
+Al importar la BD antigua ningún cliente mostraba su foto, aunque **sí se exportaban**: el dump tiene **1,669 socios con foto** de 2,333 (formato `0x...` JPEG) y la migración CLI generó **4,033 archivos** con **1,344 `photo_path`** en el SQL. El problema era de **rutas**:
+
+1. Los migradores guardaban en `photo_path` **solo el nombre del archivo** (`uuid.jpg`), pero `readPhotoFile()` hacía `existsSync('uuid.jpg')` contra el CWD del proceso, no contra `userData/photos` → foto siempre `null`.
+2. El flujo CLI exporta las fotos a `software_actual/migrated_photos/` pero el importador **nunca las copiaba** al directorio de fotos de la app.
+
+### Qué se hizo:
+- **`src/main/photos.ts`**: nuevo `getPhotosDir()` y `resolvePhotoPath()` — si la ruta no existe tal cual, se resuelve contra `userData/photos` (robusto para rutas relativas migradas y absolutas nativas). `generateThumbnail` también lo usa (las miniaturas ahora se generan para clientes migrados).
+- **`src/main/database/clients.ts`**: `readPhotoFile` usa `resolvePhotoPath`.
+- **`src/main/migration/legacyMigrator.ts`** (migración interna): guarda la **ruta absoluta** (`fullPath`), igual que las fotos creadas en la app.
+- **`scripts/import-migrated-data.ts`**: en modo `--app-db` copia `migrated_photos/*.jpg` a `<dir de la BD>/photos` (el userData de la app).
+- **Tests** (+2 en `photos.test.ts`): `resolvePhotoPath` resuelve un nombre relativo a `userData/photos`; un cliente migrado con `photo_path` relativo muestra su foto.
+
+**Importante para datos ya importados:** el fix aplica al reiniciar la app (reconstruido `out/`). Si la migración fue interna, las fotos ya están en `userData/photos` y aparecerán solas. Si fue por CLI con BD copiada manualmente, hay que copiar `software_actual/migrated_photos/*.jpg` a `%APPDATA%/bodyfitgym/photos` (o reimportar con `--app-db`, que ahora lo hace automáticamente).
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/main/photos.ts` | `getPhotosDir` + `resolvePhotoPath` |
+| `src/main/database/clients.ts` | `readPhotoFile` con resolución |
+| `src/main/migration/legacyMigrator.ts` | Ruta absoluta de foto |
+| `scripts/import-migrated-data.ts` | Copia de fotos en `--app-db` |
+| `src/__tests__/database/photos.test.ts` | +2 tests |

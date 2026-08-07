@@ -3,7 +3,7 @@ import { existsSync } from 'fs'
 import { Jimp } from 'jimp'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import { createClient, getAllClients, getClientById } from '../../main/database/clients'
-import { generateThumbnail, scheduleThumbnail } from '../../main/photos'
+import { generateThumbnail, scheduleThumbnail, resolvePhotoPath } from '../../main/photos'
 import type { Client } from '../../shared/types'
 
 const sampleClient: Omit<Client, 'id' | 'registrationDate'> = {
@@ -79,5 +79,35 @@ describe('Miniaturas de fotos de clientes', () => {
   it('debería devolver null si el archivo fuente no existe', async () => {
     const result = await generateThumbnail('/ruta/inexistente.jpg', 'no-existe')
     expect(result).toBeNull()
+  })
+
+  it('resolvePhotoPath resuelve un nombre de archivo relativo (formato migrado) a userData/photos', async () => {
+    const photo = await makePhotoBase64()
+    const client = createClient({ ...sampleClient, documentId: `REL-${Date.now()}`, accessCode: `R${Date.now()}`, photo })
+    const db = getDatabase()
+    const row = db.prepare('SELECT photo_path FROM clients WHERE id = ?').get(client.id) as {
+      photo_path: string
+    }
+
+    // Los migradores del sistema antiguo guardaron SOLO el nombre del archivo
+    const name = row.photo_path.split(/[\\/]/).pop()!
+    const resolved = resolvePhotoPath(name)
+
+    expect(resolved).not.toBeNull()
+    expect(existsSync(resolved!)).toBe(true)
+  })
+
+  it('un cliente migrado con photo_path relativo muestra su foto (fix fotos importadas)', async () => {
+    const photo = await makePhotoBase64()
+    const client = createClient({ ...sampleClient, documentId: `MI-${Date.now()}`, accessCode: `M${Date.now()}`, photo })
+    const db = getDatabase()
+    const row = db.prepare('SELECT photo_path FROM clients WHERE id = ?').get(client.id) as {
+      photo_path: string
+    }
+    const name = row.photo_path.split(/[\\/]/).pop()!
+    db.prepare('UPDATE clients SET photo_path = ? WHERE id = ?').run(name, client.id)
+
+    const detail = getClientById(client.id)
+    expect(detail?.photo).toBe(photo)
   })
 })

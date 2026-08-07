@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { Jimp } from 'jimp'
@@ -8,12 +8,33 @@ import { getDatabase } from './database'
 
 const THUMB_SIZE = 160
 
+export function getPhotosDir(): string {
+  const dir = join(app.getPath('userData'), 'photos')
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  return dir
+}
+
 export function getThumbsDir(): string {
   const dir = join(app.getPath('userData'), 'photos', 'thumbs')
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
   return dir
+}
+
+/**
+ * Resuelve un photo_path a una ruta existente. La app guarda rutas absolutas
+ * (userData/photos/<id>.jpg), pero los migradores del sistema antiguo guardaron
+ * SOLO el nombre del archivo. Si la ruta tal cual no existe, se intenta
+ * resolver contra el directorio de fotos (userData/photos).
+ */
+export function resolvePhotoPath(filePath: string | null): string | null {
+  if (!filePath) return null
+  if (existsSync(filePath)) return filePath
+  const resolved = join(getPhotosDir(), basename(filePath))
+  return existsSync(resolved) ? resolved : null
 }
 
 /**
@@ -25,8 +46,9 @@ export async function generateThumbnail(
   clientId: string,
 ): Promise<string | null> {
   try {
-    if (!sourcePath || !existsSync(sourcePath)) return null
-    const buffer = await readFile(sourcePath)
+    const source = resolvePhotoPath(sourcePath)
+    if (!source) return null
+    const buffer = await readFile(source)
     const image = await Jimp.read(buffer)
     image.cover({ w: THUMB_SIZE, h: THUMB_SIZE })
     const thumbBuffer = await image.getBuffer('image/jpeg', { quality: 70 })

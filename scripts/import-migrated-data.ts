@@ -19,7 +19,7 @@
  *   - Si usas --app-db, la app BodyFitGym NO debe estar corriendo
  */
 
-import { readFileSync, existsSync, writeFileSync, copyFileSync } from 'fs'
+import { readFileSync, existsSync, writeFileSync, copyFileSync, readdirSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import initSqlJs from 'sql.js'
@@ -363,7 +363,32 @@ async function main(): Promise<void> {
   const dbSize = (buffer.length / 1024 / 1024).toFixed(2)
   console.log(`   ✅ Base de datos guardada: ${dbSize} MB`)
   console.log()
-  
+
+  // ==========================================
+  // Copiar fotos migradas al directorio de fotos de la app
+  // ==========================================
+  if (appDbPath) {
+    const photosFrom = join(PROJECT_ROOT, 'software_actual', 'migrated_photos')
+    // La app guarda las fotos en userData/photos (junto a la BD: <dir de la BD>/photos)
+    const photosTo = join(dirname(appDbPath), 'photos')
+    let copied = 0
+    if (existsSync(photosFrom)) {
+      if (!existsSync(photosTo)) {
+        mkdirSync(photosTo, { recursive: true })
+      }
+      for (const file of readdirSync(photosFrom)) {
+        if (/\.(jpg|png)$/i.test(file)) {
+          try {
+            copyFileSync(join(photosFrom, file), join(photosTo, file))
+            copied++
+          } catch { /* archivo en uso o duplicado */ }
+        }
+      }
+    }
+    console.log(`   🖼️  ${copied} fotos copiadas a ${photosTo}`)
+    console.log()
+  }
+
   // Limpiar
   db.close()
   
