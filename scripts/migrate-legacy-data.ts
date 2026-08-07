@@ -615,7 +615,7 @@ function transformSociomembresiaPago(insert: ParsedInsert, ctx: MigrationContext
 // TABLA: registro → access_logs
 // ============================================================
 
-function transformRegistro(insert: ParsedInsert, ctx: MigrationContext): void {
+function transformAccessLogs(insert: ParsedInsert, ctx: MigrationContext, message: string): void {
   const cols = insert.columns.map(c => c.toLowerCase())
   const idx: Record<string, number> = {}
   cols.forEach((c, i) => { idx[c] = i })
@@ -628,7 +628,6 @@ function transformRegistro(insert: ParsedInsert, ctx: MigrationContext): void {
 
     const newUuid = newId()
     const fecha = parseDate(row[idx['fechacreacion']])
-    const clientName = '' // No disponible en registro
 
     ctx.writeln(`INSERT INTO access_logs (id, client_id, client_name, access_code, access_type, result, message, timestamp) VALUES (`)
     ctx.writeln(`  ${formatValue(newUuid)},`)
@@ -637,10 +636,22 @@ function transformRegistro(insert: ParsedInsert, ctx: MigrationContext): void {
     ctx.writeln(`  ${formatValue('')},`) // access_code - no disponible
     ctx.writeln(`  'check_in',`)
     ctx.writeln(`  'granted',`)
-    ctx.writeln(`  ${formatValue('Migrado del sistema anterior')},`)
+    ctx.writeln(`  ${formatValue(message)},`)
     ctx.writeln(`  ${formatValue(fecha)}`)
     ctx.writeln(`);`)
   }
+}
+
+function transformRegistro(insert: ParsedInsert, ctx: MigrationContext): void {
+  transformAccessLogs(insert, ctx, 'Migrado del sistema anterior')
+}
+
+// ============================================================
+// TABLA: visita → access_logs
+// ============================================================
+
+function transformVisita(insert: ParsedInsert, ctx: MigrationContext): void {
+  transformAccessLogs(insert, ctx, 'Visita (pase diario) migrada del sistema anterior')
 }
 
 // ============================================================
@@ -979,6 +990,7 @@ const tableHandlers: TableHandler[] = [
   { name: 'sociomembresia', handler: transformSociomembresia },
   { name: 'sociomembresia_pago', handler: transformSociomembresiaPago },
   { name: 'registro', handler: transformRegistro },
+  { name: 'visita', handler: transformVisita },
   { name: 'producto', handler: transformProducto },
   { name: 'socio_muestra', handler: transformSocioMuestra },
   { name: 'configuracion', handler: transformConfiguracion },

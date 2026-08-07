@@ -584,7 +584,7 @@ function transformSociomembresiaPago(insert: ParsedInsert): void {
 // TABLA: registro → access_logs
 // ============================================================
 
-function transformRegistro(insert: ParsedInsert): void {
+function transformAccessLogs(insert: ParsedInsert, message: string): void {
   const cols = insert.columns.map(c => c.toLowerCase())
   const idx: Record<string, number> = {}
   cols.forEach((c, i) => { idx[c] = i })
@@ -592,7 +592,7 @@ function transformRegistro(insert: ParsedInsert): void {
   const db = getDb()
   const stmt = db.prepare(`
     INSERT INTO access_logs (id, client_id, client_name, access_code, access_type, result, message, timestamp)
-    VALUES (?, ?, '', '', 'check_in', 'granted', 'Migrado', ?)
+    VALUES (?, ?, '', '', 'check_in', 'granted', ?, ?)
   `)
 
   for (const row of insert.rows) {
@@ -604,12 +604,24 @@ function transformRegistro(insert: ParsedInsert): void {
     const fecha = parseDate(row[idx['fechacreacion']])
 
     try {
-      stmt.run(newUuid, newClientId, fecha || null)
+      stmt.run(newUuid, newClientId, message, fecha || null)
     } catch (e: any) {
       // Silenciar errores de access_logs (no críticos)
     }
   }
-  }
+}
+
+function transformRegistro(insert: ParsedInsert): void {
+  transformAccessLogs(insert, 'Migrado')
+}
+
+// ============================================================
+// TABLA: visita → access_logs
+// ============================================================
+
+function transformVisita(insert: ParsedInsert): void {
+  transformAccessLogs(insert, 'Visita migrada (pase diario)')
+}
 
 // ============================================================
 // TABLA: producto → products
@@ -710,6 +722,7 @@ const tableHandlers: Record<string, TableHandler> = {
   sociomembresia: transformSociomembresia,
   sociomembresia_pago: transformSociomembresiaPago,
   registro: transformRegistro,
+  visita: transformVisita,
   producto: transformProducto,
   configuracion: transformConfiguracion,
 }

@@ -367,7 +367,7 @@ Cierre de las brechas críticas detectadas en el análisis de producción: el DS
 - Se ejecutó `npm run migrate:legacy` sobre `software_actual/db_actual.sql` (394 MB):
   - **22,632 registros migrados** (2,333 socios, 3,705 sociomembresias, 3,464 pagos, 13 planes, 5,057 detalleentrada, 4,828 detallesalida, etc.)
   - El filtro `idEstado !== 1` salta correctamente membresías eliminadas/inactivas junto con sus pagos
-  - ⚠️ **Hallazgo:** la tabla `visita` (12,332 filas) no está mapeada en el migrador — revisar si debe importarse
+  - ⚠️ **Hallazgo:** la tabla `visita` (12,332 filas) no estaba mapeada en el migrador — ✅ **resuelto en Fase 5** (ver §18)
   - ⚠️ Contraseñas de usuarios legacy en texto plano: se asigna hash de `admin123` por defecto (documentado)
 - Test de regresión: `src/__tests__/database/legacyMigration.test.ts` (4 tests)
 
@@ -554,3 +554,23 @@ Nombres de clientes/productos mostraban caracteres corruptos tipo `PEQUEÃ'A` en
 | `scripts/import-migrated-data.ts` | Fix sobre el SQL antes de importar |
 | `scripts/fix-mojibake-db.ts` | Creado (reparador de BD) |
 | `src/__tests__/encoding.test.ts` | Creado (8 tests) |
+
+---
+
+## 18. Migración de la tabla `visita` (agosto 2026)
+
+### ¿Por qué?
+La tabla `visita` del sistema antiguo (12,332 registros) no estaba mapeada en el migrador: se ignoraba silenciosamente y se perdía el historial de visitas de pase diario de los socios.
+
+### Qué se hizo:
+- **Mapeo verificado con datos reales:** `visita(idVisita, idSocio, fechaCreacion, precioVisita)` son visitas de pase diario de socios. Las **12,332 filas tienen `precioVisita = 0.00`** (0 con precio > 0), por lo que se importan como registros de acceso (`access_logs`) — igual que `registro` — **sin generar pagos**.
+- **`src/main/migration/legacyMigrator.ts`**: helper compartido `transformAccessLogs()` (extraído de `transformRegistro`, comportamiento idéntico) y nuevo `transformVisita()` → `access_logs` con mensaje `Visita migrada (pase diario)`.
+- **`scripts/migrate-legacy-data.ts`**: ídem para el generador de SQL (`Visita (pase diario) migrada del sistema anterior`).
+- **Tests** (`legacyMigration.test.ts`): fixture con 3 visitas (2 de socio mapeado + 1 de socio inexistente) — se importan con cliente/fecha/mensaje correctos y se salta la de socio no mapeado.
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/main/migration/legacyMigrator.ts` | `transformAccessLogs` compartido + `transformVisita` |
+| `scripts/migrate-legacy-data.ts` | ídem |
+| `src/__tests__/database/legacyMigration.test.ts` | Fixture + 2 tests nuevos |

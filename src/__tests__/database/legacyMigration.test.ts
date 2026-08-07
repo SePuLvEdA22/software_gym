@@ -33,6 +33,14 @@ const FIXTURE_SQL = [
   "(1,'','F001',1,'2030-07-01 10:00:00',1,1,50000.00),",
   "(2,'','F002',2,'2030-06-01 10:00:00',1,1,100.00);",
   '',
+  'INSERT INTO `registro` (`idregistro`,`idSocio`,`fechaCreacion`) VALUES',
+  "(1,1,'2025-01-05 07:00:00');",
+  '',
+  'INSERT INTO `visita` (`idVisita`,`idSocio`,`fechaCreacion`,`precioVisita`) VALUES',
+  "(1,1,'2025-01-10 08:30:00',0.00),",
+  "(2,1,'2025-02-10 09:00:00',0.00),",
+  "(3,999,'2025-03-10 10:00:00',0.00);",
+  '',
 ].join('\n')
 
 describe('Migración legacy: filtro por idEstado (membresías eliminadas)', () => {
@@ -91,5 +99,40 @@ describe('Migración legacy: filtro por idEstado (membresías eliminadas)', () =
       status: string
     }
     expect(client.status).toBe('active')
+  })
+
+  it('importa las visitas (pase diario) como access_logs con cliente, fecha y mensaje propio', () => {
+    const db = getDatabase()
+    const client = db.prepare("SELECT id FROM clients WHERE document_id = 'OLD-1'").get() as { id: string }
+
+    const visits = db
+      .prepare("SELECT * FROM access_logs WHERE message LIKE '%Visita%'")
+      .all() as Array<{ client_id: string; timestamp: string; message: string; result: string }>
+
+    expect(visits).toHaveLength(2)
+    expect(new Set(visits.map(v => v.client_id))).toEqual(new Set([client.id]))
+    expect(new Set(visits.map(v => v.timestamp))).toEqual(
+      new Set(['2025-01-10 08:30:00', '2025-02-10 09:00:00'])
+    )
+    expect(visits.every(v => v.result === 'granted')).toBe(true)
+    expect(visits.every(v => v.message.includes('Visita'))).toBe(true)
+  })
+
+  it('salta las visitas de socios no mapeados (idSocio=999 no existe)', () => {
+    const db = getDatabase()
+    const total = db
+      .prepare("SELECT COUNT(*) as count FROM access_logs WHERE message LIKE '%Visita%'")
+      .get() as { count: number }
+    expect(total.count).toBe(2)
+  })
+
+  it('el refactor preserva el comportamiento de registro (mensaje "Migrado" y fecha)', () => {
+    const db = getDatabase()
+    const registros = db
+      .prepare("SELECT * FROM access_logs WHERE message = 'Migrado'")
+      .all() as Array<{ client_id: string; timestamp: string }>
+    expect(registros).toHaveLength(1)
+    expect(registros[0].timestamp).toBe('2025-01-05 07:00:00')
+    expect(registros[0].client_id).toBeTruthy()
   })
 })
