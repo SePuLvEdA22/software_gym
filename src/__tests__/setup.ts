@@ -1,9 +1,13 @@
 import { vi } from 'vitest'
 import path from 'path'
 import os from 'os'
+import { randomUUID } from 'crypto'
 
 vi.mock('electron', () => {
-  const userDataPath = path.join(os.tmpdir(), 'bodyfitgym-test', Date.now().toString())
+  // randomUUID garantiza un directorio único por worker/test file:
+  // Date.now() podía colisionar entre workers en paralelo, haciendo que dos
+  // archivos de test compartieran la misma base de datos (tests no independientes).
+  const userDataPath = path.join(os.tmpdir(), 'bodyfitgym-test', randomUUID())
   return {
     app: {
       getPath: vi.fn((name: string) => {

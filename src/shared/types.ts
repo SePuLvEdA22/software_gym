@@ -382,6 +382,14 @@ export interface PageResponse<T> {
   totalPages: number
 }
 
+export interface BackupConfig {
+  enabled: boolean
+  retention: number
+  lastBackupAt: string | null
+  backupDir: string
+  count: number
+}
+
 declare global {
   interface Window {
     electronAPI: any

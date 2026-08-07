@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { Sidebar, Header } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useAppStore } from '@/store/appStore'
-import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
@@ -19,6 +18,20 @@ import { BodyTrackingPage } from '@/pages/BodyTrackingPage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { KioskRenewPage } from '@/pages/KioskRenewPage'
 import type { UserRole } from '@shared/types'
+
+// DashboardPage es el único consumidor de recharts (~500 KB). Se carga de forma
+// diferida para que el chunk inicial de la app no incluya esa librería.
+const DashboardPage = lazy(() =>
+  import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage }))
+)
+
+function PageLoader(): JSX.Element {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+      <div className="spinner" />
+    </div>
+  )
+}
 
 function getPageTitle(pathname: string): string {
   switch (pathname) {
@@ -133,6 +146,7 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
       <main className="main-content">
         <Header title={title} onLogout={handleLogout} onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
         <div className="page-content">
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={
               currentUser?.role === 'trainer'
@@ -149,6 +163,7 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
             <Route path="/messages" element={<RoleGuard roles={['admin']} currentUser={currentUser}><MessagesPage /></RoleGuard>} />
             <Route path="/settings" element={<RoleGuard roles={['admin']} currentUser={currentUser}><SettingsPage /></RoleGuard>} />
           </Routes>
+          </Suspense>
         </div>
       </main>
     </div>

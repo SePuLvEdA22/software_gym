@@ -1,4 +1,5 @@
 import { getDatabase } from './index'
+import { cached, clearQueryCache } from './queryCache'
 import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
@@ -480,6 +481,8 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   if (newMembership.status === 'active') {
     updateClientStatus(clientId, 'active')
   }
+
+  clearQueryCache()
   
   return newMembership
 }
@@ -517,6 +520,8 @@ export function freezeMembership(membershipId: string, reason?: string, plannedD
   freezeOp()
   
   const updatedMembership = getStmt.get(membershipId) as DbMembership | undefined
+  
+  clearQueryCache()
   
   return updatedMembership ? mapDbMembership(updatedMembership) : null
 }
@@ -593,6 +598,8 @@ export function unfreezeMembership(membershipId: string): Membership | null {
     return mapped
   }
   
+  clearQueryCache()
+  
   return null
 }
 
@@ -658,6 +665,7 @@ export function updateExpiredMemberships(): number {
   })
 
   const changes = expiredOp()
+  clearQueryCache()
   log.info(`Updated ${changes} expired memberships`)
   return changes
 }
@@ -716,37 +724,46 @@ export function getClientAttendanceStats(clientId: string): ClientAttendanceStat
   }
 }
 
+/**
+ * Consulta pesada (subconsultas correlacionadas sobre access_logs) que el dashboard
+ * ejecuta 2 veces por carga y cada 30 s. Se cachea con TTL corto; se invalida al
+ * registrar un acceso concedido (logAccess) o al mutar clientes/membresías.
+ */
 export function getInactiveClients(daysThreshold: number = 30): InactiveClient[] {
-  const db = getDatabase()
-  const cutoff = formatISO(new Date(Date.now() - daysThreshold * 24 * 60 * 60 * 1000))
+  // TTL 60 s: el dashboard refresca cada 30 s, así el cache sirve refrescos
+  // consecutivos. Las escrituras (accesos, membresías, clientes) invalidan.
+  return cached(`inactiveClients:${daysThreshold}`, 60_000, () => {
+    const db = getDatabase()
+    const cutoff = formatISO(new Date(Date.now() - daysThreshold * 24 * 60 * 60 * 1000))
 
-  const rows = db.prepare(`
-    SELECT 
-      c.id as clientId,
-      c.full_name as clientName,
-      c.phone,
-      m.plan_name as planName,
-      (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') as lastVisit
-    FROM clients c
-    JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
-    WHERE c.status = 'active'
-      AND (
-        (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') IS NULL
-        OR (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') < ?
-      )
-    ORDER BY lastVisit ASC
-  `).all(cutoff) as { clientId: string; clientName: string; phone: string; planName: string; lastVisit: string | null }[]
+    const rows = db.prepare(`
+      SELECT 
+        c.id as clientId,
+        c.full_name as clientName,
+        c.phone,
+        m.plan_name as planName,
+        (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') as lastVisit
+      FROM clients c
+      JOIN memberships m ON m.client_id = c.id AND m.status = 'active'
+      WHERE c.status = 'active'
+        AND (
+          (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') IS NULL
+          OR (SELECT MAX(a.timestamp) FROM access_logs a WHERE a.client_id = c.id AND a.result = 'granted') < ?
+        )
+      ORDER BY lastVisit ASC
+    `).all(cutoff) as { clientId: string; clientName: string; phone: string; planName: string; lastVisit: string | null }[]
 
-  return rows.map(r => ({
-    clientId: r.clientId,
-    clientName: r.clientName,
-    phone: r.phone,
-    planName: r.planName,
-    lastVisit: r.lastVisit || null,
-    daysSinceLastVisit: r.lastVisit
-      ? Math.floor((Date.now() - new Date(r.lastVisit).getTime()) / (1000 * 60 * 60 * 24))
-      : daysThreshold
-  }))
+    return rows.map(r => ({
+      clientId: r.clientId,
+      clientName: r.clientName,
+      phone: r.phone,
+      planName: r.planName,
+      lastVisit: r.lastVisit || null,
+      daysSinceLastVisit: r.lastVisit
+        ? Math.floor((Date.now() - new Date(r.lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+        : daysThreshold
+    }))
+  })
 }
 
 export function createMembershipWithPayment(
@@ -944,6 +961,11 @@ export function logAccess(
     log.message,
     log.timestamp
   )
+
+  // Un acceso concedido cambia la lista de clientes inactivos del dashboard.
+  if (result === 'granted') {
+    clearQueryCache()
+  }
   
   return log
 }

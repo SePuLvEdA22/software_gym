@@ -8,6 +8,8 @@ import {
   getAllUsers,
   getUserById,
   getUserByUsername,
+  verifyUserPassword,
+  clearMustChangePassword,
 } from '../../main/database/users'
 
 describe('Users Database', () => {
@@ -75,13 +77,13 @@ describe('Users Database', () => {
   it('should get all users', () => {
     const result = getAllUsers()
     expect(result.data.length).toBeGreaterThanOrEqual(2)
-    expect(result.data.some(u => u.username === 'admin')).toBe(true)
-    expect(result.data.some(u => u.username === 'testuser')).toBe(true)
+    expect(result.data.some((u) => u.username === 'admin')).toBe(true)
+    expect(result.data.some((u) => u.username === 'testuser')).toBe(true)
   })
 
   it('should get user by id', () => {
     const result = getAllUsers()
-    const admin = result.data.find(u => u.username === 'admin')
+    const admin = result.data.find((u) => u.username === 'admin')
     expect(admin).toBeDefined()
     const found = getUserById(admin!.id)
     expect(found).not.toBeNull()
@@ -129,6 +131,34 @@ describe('Users Database', () => {
   it('should return null for non-existent username', () => {
     const found = getUserByUsername('__NONEXISTENT__')
     expect(found).toBeNull()
+  })
+
+  it('should flag mustChangePassword when admin still uses the default password', () => {
+    // La migración 011 marca must_change_password=1 cuando el admin conserva
+    // la contraseña por defecto (admin123), que es el caso en una instalación nueva.
+    const result = authenticateUser('admin', 'admin123')
+    expect(result.success).toBe(true)
+    expect(result.mustChangePassword).toBe(true)
+  })
+
+  it('should clear mustChangePassword after the admin password is changed', () => {
+    const admin = getUserByUsername('admin')!
+    updateUser(admin.id, { password: 'secure-admin-pass' })
+    clearMustChangePassword()
+
+    const result = authenticateUser('admin', 'secure-admin-pass')
+    expect(result.success).toBe(true)
+    expect(result.mustChangePassword).toBe(false)
+
+    // Restaurar credenciales por defecto para no afectar otros tests
+    updateUser(admin.id, { password: 'admin123' })
+    expect(authenticateUser('admin', 'admin123').success).toBe(true)
+  })
+
+  it('should verify the admin password with verifyUserPassword', () => {
+    expect(verifyUserPassword('user_admin', 'admin123')).toBe(true)
+    expect(verifyUserPassword('user_admin', 'wrong')).toBe(false)
+    expect(verifyUserPassword('__nonexistent__', 'admin123')).toBe(false)
   })
 
   it('should block after max failed login attempts', () => {

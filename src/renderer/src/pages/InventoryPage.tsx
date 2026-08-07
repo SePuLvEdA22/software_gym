@@ -231,7 +231,7 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="label-md">Precio Unitario</label>
+                <label className="label-md" style={{ background: "red"}}>Precio Unitario</label>
                 <input type="number" className="form-input" value={price}
                   onChange={e => setPrice(Number(e.target.value.replace(/^0+(?=\d)/, '')) || 0)} min={0} />
               </div>

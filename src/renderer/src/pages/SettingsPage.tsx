@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { UpdateChecker } from '@/components/UpdateChecker'
-import { MembershipPlan, MembershipType, Promotion } from '../../../shared/types'
+import { MembershipPlan, MembershipType, Promotion, BackupConfig } from '../../../shared/types'
 
 type SettingsSection = 'plans' | 'staff' | 'facility' | 'branding' | 'hardware' | 'whatsapp' | 'system'
 
@@ -62,6 +62,13 @@ export function SettingsPage(): JSX.Element {
   const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null)
   const [planForm, setPlanForm] = useState({ name: '', type: 'monthly' as MembershipType, price: 0, durationDays: 30, description: '' })
   const [autoStart, setAutoStart] = useState(false)
+  const [backupConfig, setBackupConfigState] = useState<BackupConfig>({
+    enabled: true,
+    retention: 7,
+    lastBackupAt: null,
+    backupDir: '',
+    count: 0
+  })
 
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [showPromoModal, setShowPromoModal] = useState(false)
@@ -258,6 +265,33 @@ export function SettingsPage(): JSX.Element {
     } catch (e) { console.error('Error loading auto-start:', e) }
   }
 
+  const loadBackupConfig = async () => {
+    try {
+      if (window.electronAPI?.backup?.getConfig) {
+        const result = await window.electronAPI.backup.getConfig()
+        if (result.success && result.data) {
+          setBackupConfigState(result.data)
+        }
+      }
+    } catch (e) { console.error('Error loading backup config:', e) }
+  }
+
+  const handleSaveBackupConfig = async (config: { enabled: boolean; retention: number }) => {
+    try {
+      if (window.electronAPI?.backup?.setConfig) {
+        const result = await window.electronAPI.backup.setConfig(config)
+        if (result.success) {
+          setBackupConfigState(prev => ({ ...prev, ...config }))
+          showToast('success', 'Configuración de respaldo guardada', 'Guardado')
+        } else {
+          showToast('error', result.error || 'Error al guardar respaldo', 'Error')
+        }
+      }
+    } catch (e: any) {
+      showToast('error', e.message || 'Error al guardar respaldo', 'Error')
+    }
+  }
+
   const checkKioskStatus = async () => {
     try {
       const apiExists = typeof window !== 'undefined' && 'electronAPI' in window && window.electronAPI !== undefined
@@ -321,6 +355,7 @@ export function SettingsPage(): JSX.Element {
     loadPromotions()
     loadWhatsAppConfig()
     loadAutoStart()
+    loadBackupConfig()
   }, [])
 
   const loadDoorConfig = async () => {
@@ -1238,8 +1273,65 @@ export function SettingsPage(): JSX.Element {
 
                 <div className="glass-panel" style={{ padding: 20 }}>
                   <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Respaldo de Base de Datos</h3>
+
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--color-border)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0' }}>
+                      <input
+                        type="checkbox"
+                        checked={backupConfig.enabled}
+                        onChange={(e) => handleSaveBackupConfig({ enabled: e.target.checked, retention: backupConfig.retention })}
+                      />
+                      <span style={{ fontWeight: 500 }}>Respaldo automático</span>
+                    </label>
+                    <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
+                      Se crea una copia de la base de datos al iniciar la aplicación y luego cada 24 horas.
+                    </p>
+
+                    <div className="form-row" style={{ marginTop: 16, alignItems: 'flex-end' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">Conservar copias</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={backupConfig.retention}
+                          min={1}
+                          max={30}
+                          style={{ width: 100 }}
+                          onChange={(e) => setBackupConfigState(prev => ({ ...prev, retention: Math.max(1, Math.min(30, Number(e.target.value) || 7)) }))}
+                        />
+                        <small style={{ display: 'block', color: 'var(--color-secondary)', marginTop: 4 }}>
+                          Las copias más antiguas se eliminan automáticamente (1–30)
+                        </small>
+                      </div>
+                      <button className="btn btn-secondary" onClick={() => handleSaveBackupConfig({ enabled: backupConfig.enabled, retention: backupConfig.retention })}>
+                        <Icons.Check />
+                        Guardar
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-secondary)' }}>
+                      {backupConfig.lastBackupAt
+                        ? <>Último respaldo: <strong>{new Date(backupConfig.lastBackupAt).toLocaleString('es-CO')}</strong> · {backupConfig.count} copia(s) en carpeta local</>
+                        : <>Aún no se ha creado ningún respaldo automático</>}
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', gap: 12 }}>
                     <button className="btn btn-primary" onClick={async () => {
+                      if (window.electronAPI?.backup?.runNow) {
+                        const result = await window.electronAPI.backup.runNow()
+                        if (result.success) {
+                          showToast('success', `Respaldo creado: ${result.data}`, 'Respaldo Exitoso')
+                          loadBackupConfig()
+                        } else {
+                          showToast('error', result.error || 'Error al crear respaldo', 'Error')
+                        }
+                      }
+                    }}>
+                      <Icons.Download />
+                      Crear Respaldo Ahora
+                    </button>
+                    <button className="btn btn-secondary" onClick={async () => {
                       if (window.electronAPI?.system?.backupDb) {
                         const result = await window.electronAPI.system.backupDb()
                         if (result.success) {
@@ -1250,7 +1342,7 @@ export function SettingsPage(): JSX.Element {
                       }
                     }}>
                       <Icons.Download />
-                      Respaldar Base de Datos
+                      Guardar Copia (elegir ubicación)
                     </button>
                     <button className="btn btn-secondary" onClick={async () => {
                       if (window.electronAPI?.system?.restoreDb) {

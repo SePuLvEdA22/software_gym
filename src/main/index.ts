@@ -9,6 +9,8 @@ import { initializeDoorController } from './door/controller'
 import { setDoorConfig } from './door/config'
 import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig } from './whatsapp'
 import { initUpdater } from './updater'
+import { getBackupConfig, performAutoBackup } from './backup'
+import { ensureThumbnails } from './photos'
 import * as Sentry from '@sentry/electron/main'
 
 log.initialize({ preload: true })
@@ -688,6 +690,31 @@ app.whenReady().then(async () => {
   }
 
   startReminderInterval()
+
+  // ── Respaldo automático de la base de datos ──
+  // Copia al iniciar la aplicación (si está habilitado) y luego una copia
+  // diaria. La retención y el estado se configuran desde Configuración > Sistema.
+  const runAutoBackup = (reason: string): void => {
+    try {
+      if (!getBackupConfig().enabled) return
+      const result = performAutoBackup()
+      if (result.success) {
+        log.info(`Auto-backup (${reason}): ${result.filePath}`)
+      } else {
+        log.error(`Auto-backup (${reason}) failed:`, result.error)
+      }
+    } catch (e) {
+      log.error(`Auto-backup (${reason}) error:`, e)
+    }
+  }
+
+  // El respaldo de arranque y el backfill de miniaturas se difieren (setImmediate)
+  // para no retrasar el primer paint de la ventana.
+  setImmediate(() => runAutoBackup('startup'))
+  setImmediate(() => {
+    ensureThumbnails().catch(() => {})
+  })
+  setInterval(() => runAutoBackup('daily'), 24 * 60 * 60 * 1000)
 
   // Allow dynamic interval restart when config changes
   ipcMain.handle('system:restartReminderInterval', async () => {

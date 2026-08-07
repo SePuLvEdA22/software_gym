@@ -1,4 +1,5 @@
 import { getDatabase } from './index'
+import { cached } from './queryCache'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
 import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
 import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear, startOfWeek } from 'date-fns'
@@ -157,23 +158,28 @@ export function getExpiringSoon(days: number): { clientId: string; clientName: s
   }))
 }
 
+// Cacheada con TTL (la key incluye el mes para no servir cumpleaños del mes
+// anterior si la app queda abierta al cruzar la medianoche). Se invalida desde
+// createClient/updateClient/deleteClient (clients.ts).
 export function getBirthdaysThisMonth(): { clientId: string; clientName: string; birthDate: string; day: number }[] {
-  const db = getDatabase()
   const now = new Date()
   const month = now.getMonth() + 1
+  return cached(`birthdaysThisMonth:${month}`, 10 * 60_000, () => {
+    const db = getDatabase()
 
-  const rows = db.prepare(`
-    SELECT id as clientId, full_name as clientName, birth_date as birthDate
-    FROM clients
-    WHERE birth_date IS NOT NULL AND birth_date != ''
-      AND CAST(strftime('%m', birth_date) AS INTEGER) = ?
-    ORDER BY CAST(strftime('%d', birth_date) AS INTEGER) ASC
-  `).all(month) as { clientId: string; clientName: string; birthDate: string }[]
+    const rows = db.prepare(`
+      SELECT id as clientId, full_name as clientName, birth_date as birthDate
+      FROM clients
+      WHERE birth_date IS NOT NULL AND birth_date != ''
+        AND CAST(strftime('%m', birth_date) AS INTEGER) = ?
+      ORDER BY CAST(strftime('%d', birth_date) AS INTEGER) ASC
+    `).all(month) as { clientId: string; clientName: string; birthDate: string }[]
 
-  return rows.map(r => ({
-    ...r,
-    day: parseInt(r.birthDate.split('-')[2] || '0', 10)
-  }))
+    return rows.map(r => ({
+      ...r,
+      day: parseInt(r.birthDate.split('-')[2] || '0', 10)
+    }))
+  })
 }
 
 export function getRevenueByMonth(months: number = 6): { month: string; revenue: number }[] {

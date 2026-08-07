@@ -19,6 +19,7 @@ import { createInterface } from 'readline'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { v4 as uuidv4 } from 'uuid'
+import { fixMojibake } from '../src/shared/encoding'
 
 // ============================================================
 // CONFIGURACIÓN
@@ -304,7 +305,11 @@ function hexToBase64(hexStr: string): string | null {
 function parseSqlValue(raw: string): unknown {
   if (!raw || raw === 'NULL' || raw === 'null') return null
   if (raw.startsWith('0x')) return raw // hex string, se maneja aparte
-  if (raw.startsWith("'") && raw.endsWith("'")) return raw.slice(1, -1)
+  if (raw.startsWith("'") && raw.endsWith("'")) {
+    // El sistema antiguo guardó caracteres UTF-8 (Ñ, á, é...) como doble
+    // codificación cp1252 ("Ã'", "Ã¡"...). Corregir al importar.
+    return fixMojibake(raw.slice(1, -1))
+  }
   // NOTA: NO convertir a número para preservar ceros a la izquierda
   // (ej: código de acceso '0212' debe seguir siendo '0212', no 212)
   // Todos los llamados usan String(), parseFloat() o parseInt() explícitamente.

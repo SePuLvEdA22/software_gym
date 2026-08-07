@@ -396,3 +396,161 @@ Cierre de las brechas críticas detectadas en el análisis de producción: el DS
 | `src/renderer/src/pages/SettingsPage.tsx` | Dropdown sin twilio/custom |
 | `src/__tests__/whatsapp.test.ts` | Creado (14 tests) |
 | `scripts/migrate-legacy-data.ts` + `src/main/migration/legacyMigrator.ts` | Filtro `idEstado` (WIP previo, ahora commiteado) |
+
+---
+
+## 15. Fase 2 — Brechas críticas resueltas (agosto 2026)
+
+### 15.1 Dependencias: Electron 31 → 43 y limpieza de vulnerabilidades 🔒
+
+**Problema:** `npm audit --omit=dev` reportaba **11 vulnerabilidades** (8 moderadas, 3 altas); Electron 31.7.7 estaba EOL con 8 advisories de seguridad directos.
+
+**Qué se hizo:**
+- `electron` ^31.3.1 → **^43.3.0** (elimina los 8 advisories del runtime)
+- `electron-builder` 26.8.1 → 26.15.3
+- `uuid` ^10 → **^11.1.1** (advisory de buffer bounds; la app solo usa v4, sin cambios de API)
+- `react-router-dom` ^6 → **^7.18.2** (corrige open redirect + deserializeErrors SSR; el uso del router es básico: HashRouter/Routes/Route/Navigate)
+- Se regeneró `package-lock.json` con instalación limpia
+
+**Resultado:** `npm audit --omit=dev` pasó de **11 → 2** vulnerabilidades. Las 2 restantes (high) corresponden al advisory **RSC-mode CSRF** de react-router (7.12–8.2), que **no aplica** a esta app (SPA de Electron sin React Server Components ni SSR). El fix de ese advisory entra en conflicto con los otros dos (whack-a-mole entre versiones), por lo que se documenta como riesgo residual aceptado.
+
+⚠️ **Pendiente obligatorio antes de publicar:** smoke test manual en Windows real — ventanas (admin, kiosco, cliente, renovación), sql.js WASM, relé de puerta y flujo del auto-updater. El CI valida compilación/tests, pero no el runtime del shell de Electron 43.
+
+### 15.2 Cambio forzado de contraseña del admin 🔑
+
+**Problema:** las credenciales por defecto `admin/admin123` hardcodeadas en la migración 006 quedaban activas indefinidamente en producción.
+
+**Qué se hizo:**
+- Migración `011_force_password_change`: si el admin aún usa `admin123`, marca `must_change_password=1` (instalaciones con contraseña ya cambiada quedan en 0)
+- `authenticateUser` devuelve `mustChangePassword` **solo para la cuenta `user_admin`** (evita bloquear a recepcionistas/trainers en la pantalla de cambio)
+- `LoginPage` muestra pantalla obligatoria de cambio de contraseña antes de entrar al panel
+- `system:updateAdmin` ahora **verifica la contraseña actual** (antes no la validaba) y limpia la bandera al cambiar; `user:update` también la limpia al cambiar la contraseña de `user_admin`
+- Tests: 3 nuevos en `users.test.ts` (flag por defecto, limpieza tras cambio, verificación de contraseña)
+
+### 15.3 Respaldo automático de la base de datos 💾
+
+**Problema:** la BD es un único archivo local y solo existía respaldo manual desde Configuración; si el PC fallaba, se perdía todo.
+
+**Qué se hizo:**
+- Nuevo módulo `src/main/backup.ts`: copia **al iniciar la app + cada 24 h**, con rotación (retención configurable 1–30, por defecto 7) en `userData/backups`
+- IPC: `backup:getConfig`, `backup:setConfig`, `backup:runNow` (los 2 últimos con rol admin)
+- UI en Configuración → Sistema: toggle de respaldo automático, retención, fecha del último respaldo y botón "Crear Respaldo Ahora"
+- La copia manual con selector de ubicación se mantiene ("Guardar Copia") — recomendada para destino externo (USB/nube), ya que el respaldo automático vive en el mismo disco que la BD
+- Tests: 5 nuevos en `backup.test.ts` (creación, config, clamping de retención, poda, BD no inicializada)
+
+### 15.4 Fix de aislamiento de tests 🧪
+
+**Problema latente:** el mock de `userData` en `src/__tests__/setup.ts` usaba `Date.now()`, que podía colisionar entre workers en paralelo (dos archivos de test compartiendo la misma base de datos → tests no independientes, fallos intermitentes).
+
+**Qué se hizo:** se reemplazó por `randomUUID()`, garantizando un directorio único por archivo de test.
+
+### QA Fase 2
+
+| Verificación | Resultado |
+|---|---|
+| Tests unitarios | ✅ 191 (13 archivos; 8 nuevos) |
+| Typecheck (`tsc --noEmit`) | ✅ 0 errores |
+| Lint (ESLint) | ✅ 0 errores |
+| Build (electron-vite) | ✅ con Electron 43 |
+| `npm audit --omit=dev` | ⚠️ 2 high (react-router RSC-mode, N/A para esta app) |
+
+---
+
+## 16. Optimización de rendimiento (agosto 2026)
+
+### ¿Por qué?
+Análisis basado en mediciones reales (`scripts/bench-save.cjs`): la escritura de sql.js **no** es el cuello de botella (2–7 ms aun con 60k registros). Los costos reales eran: fotos completas en base64 leídas del disco en cada listado, subconsultas correlacionadas sin índices, refetch agresivo del dashboard y recharts (~500 KB) en el chunk inicial.
+
+### 16.1 Miniaturas de fotos (thumbnails) 🖼️
+
+**Problema:** `mapDbClient` leía la foto completa (200–500 KB) y la codificaba a base64 **por cada cliente devuelto**: ~15 MB por página de 50 clientes vía IPC.
+
+**Qué se hizo:**
+- Nueva migración `012_add_indexes_thumbnails`: columna `thumbnail_path` en `clients` + índices (ver 16.2)
+- Nuevo módulo `src/main/photos.ts` con `jimp` (^1.6): genera thumbnail JPEG de **160px, calidad 70** (unos KB)
+  - `generateThumbnail()`: cover 160×160 desde la foto completa
+  - `scheduleThumbnail()`: dispara en segundo plano tras guardar/actualizar una foto (sin bloquear el guardado)
+  - `ensureThumbnails()`: backfill de las fotos existentes al arrancar, cediendo el event loop entre clientes
+- `mapDbClient` ahora acepta `{ thumbnailOnly }`: los **listados** (getAllClients, searchClients) devuelven la miniatura; el **detalle** (getClientById, kiosco, edición) devuelve la foto completa. Si no hay miniatura aún, cae a la foto completa (degradación elegante hasta el backfill)
+- IPC: `scheduleThumbnail` se dispara al crear/actualizar cliente
+- **Impacto:** ~15 MB → ~100 KB por página
+
+### 16.2 Índices de base de datos 📊
+
+**Problema:** `getInactiveClients()` ejecutaba 3 subconsultas correlacionadas sobre `access_logs` **sin índice** (full-scan por cliente × 22k accesos), y `getDebtors()`/conteo de deudores sobre `payments` sin índice. El dashboard las ejecuta 2 veces por carga y cada 30 s.
+
+**Qué se hizo** (migración `012_add_indexes_thumbnails`):
+- `CREATE INDEX IF NOT EXISTS idx_access_logs_client ON access_logs(client_id)`
+- `CREATE INDEX IF NOT EXISTS idx_access_logs_result_ts ON access_logs(result, timestamp)`
+- `CREATE INDEX IF NOT EXISTS idx_payments_membership ON payments(membership_id)`
+
+### 16.3 Cache de queries del dashboard con TTL ⏱️
+
+**Qué se hizo:**
+- Nuevo helper `src/main/database/queryCache.ts`: `cached(key, ttlMs, fn)` con expiración por tiempo y `clearQueryCache()`
+- `getInactiveClients()` → cache TTL **60 s** (key incluye el umbral de días)
+- `getBirthdaysThisMonth()` → cache TTL **10 min** (key incluye el mes, para no servir el mes anterior tras la medianoche)
+- **Invalidación en escrituras** (el cache nunca queda obsoleto): createClient, updateClient, deleteClient, updateClientStatus, createMembership, freeze/unfreeze, updateExpiredMemberships y logAccess con resultado `granted`
+
+### 16.4 Code splitting del dashboard 🧩
+
+**Problema:** `recharts` (~500 KB) se importaba en el chunk inicial (bundle de 1.92 MB) que se parseaba al arrancar.
+
+**Qué se hizo:** `React.lazy` + `Suspense` para `DashboardPage` en `App.tsx` (con `PageLoader` de fallback). Verificado en el build: el chunk inicial baja a **1.09 MB** y recharts queda en `DashboardPage-*.js` (888 KB) que se carga solo al entrar al dashboard.
+
+### 16.5 Backup de arranque diferido ⏳
+
+El respaldo automático de arranque (Fase 2) ahora se difiere con `setImmediate` para no bloquear el primer paint ni competir con la apertura de la BD.
+
+### 16.6 QA Fase 3 (rendimiento)
+
+| Verificación | Resultado |
+|---|---|
+| Tests unitarios | ✅ **198** (15 archivos; 7 nuevos: 3 photos + 4 queryCache) |
+| Typecheck (`tsc --noEmit`) | ✅ 0 errores |
+| Lint (ESLint) | ✅ 0 errores (322 warnings pre-existentes) |
+| Build (electron-vite) | ✅ chunk inicial 1.09 MB + DashboardPage 888 KB lazy |
+| Revisión de código | ✅ freeze/unfreeze invalidan cache; TTL ajustado a 60 s; key de mes en cumpleaños; `readFile` async en thumbnails |
+
+### Archivos creados/modificados (Fase 3)
+| Archivo | Acción |
+|---------|--------|
+| `src/main/database/index.ts` | Migración 012 (índices + thumbnail_path) |
+| `src/main/photos.ts` | Creado (jimp, thumbnails, backfill) |
+| `src/main/database/clients.ts` | mapDbClient thumbnailOnly + invalidación de cache |
+| `src/main/database/memberships.ts` | getInactiveClients cacheado + invalidaciones |
+| `src/main/database/dashboard.ts` | getBirthdaysThisMonth cacheado |
+| `src/main/database/queryCache.ts` | Creado (cache TTL) |
+| `src/renderer/src/App.tsx` | React.lazy + Suspense para DashboardPage |
+| `src/main/index.ts` | Backfill de thumbnails + backup diferido |
+| `src/main/ipc/index.ts` | scheduleThumbnail al crear/actualizar cliente |
+| `package.json` | Dependencia `jimp` ^1.6 |
+| `scripts/bench-save.cjs` | Creado (benchmark de escritura sql.js) |
+| `src/__tests__/database/photos.test.ts` | Creado (3 tests) |
+| `src/__tests__/database/queryCache.test.ts` | Creado (4 tests) |
+
+---
+
+## 17. Corrección de mojibake en datos migrados (agosto 2026)
+
+### ¿Por qué?
+Nombres de clientes/productos mostraban caracteres corruptos tipo `PEQUEÃ'A` en vez de `PEQUEÑA`. Causa raíz verificada con bytes: el sistema antiguo guardó caracteres UTF-8 (Ñ = bytes `C3 91`) interpretándolos como Windows-1252 (`C3`→Ã, `91`→comilla tipográfica), y esa doble codificación quedó grabada en el dump original (`software_actual/db_actual.sql`, 107+ ocurrencias de `Ã`). El migrador copiaba el texto tal cual.
+
+### Qué se hizo:
+- **`src/shared/encoding.ts`**: helper `fixMojibake()` que revierte la doble codificación (mapea cada carácter a su byte cp1252 y decodifica como UTF-8). Es **idempotente y seguro**: no toca strings ya correctos (con tildes reales), ni emojis, ni caracteres CJK, ni texto ASCII.
+- **Migrador CLI** (`scripts/migrate-legacy-data.ts`): aplica el fix en `parseSqlValue` → futuras migraciones generan `migrated-data.sql` limpio
+- **Migrador interno** (`src/main/migration/legacyMigrator.ts`): ídem para la migración vía IPC
+- **Importador** (`scripts/import-migrated-data.ts`): corrige el SQL completo antes de importar (cubre archivos generados con versiones anteriores)
+- **`scripts/fix-mojibake-db.ts`**: repara la BD real existente (backup automático previo, tabla por tabla, solo columnas de texto). Uso: `npx tsx scripts/fix-mojibake-db.ts [--dry-run] [--db ruta]` — requiere la app cerrada
+- **Verificado** en copia de la BD real (dry-run): **100 valores corregidos** (99 en `clients`, 1 en `products`)
+- Tests: `src/__tests__/encoding.test.ts` (8 tests: Ñ, vocales, signos, idempotencia, no-toques)
+
+### Archivos creados/modificados (Fase 4)
+| Archivo | Acción |
+|---------|--------|
+| `src/shared/encoding.ts` | Creado (`fixMojibake`) |
+| `scripts/migrate-legacy-data.ts` | Fix en parseSqlValue |
+| `src/main/migration/legacyMigrator.ts` | Fix en parseSqlValue |
+| `scripts/import-migrated-data.ts` | Fix sobre el SQL antes de importar |
+| `scripts/fix-mojibake-db.ts` | Creado (reparador de BD) |
+| `src/__tests__/encoding.test.ts` | Creado (8 tests) |

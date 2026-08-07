@@ -23,6 +23,7 @@ import { readFileSync, existsSync, writeFileSync, copyFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import initSqlJs from 'sql.js'
+import { fixMojibake } from '../src/shared/encoding'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = join(__dirname, '..')
@@ -248,9 +249,18 @@ async function main(): Promise<void> {
 
   // Leer el SQL migrado
   console.log('⏳ Leyendo datos migrados...')
-  const migratedSql = readFileSync(sourcePath, 'utf-8')
+  let migratedSql = readFileSync(sourcePath, 'utf-8')
   const lineCount = migratedSql.split('\n').length
   console.log(`   ${lineCount.toLocaleString()} líneas leídas`)
+
+  // El SQL generado por migrate-legacy-data.ts (versiones anteriores) contiene
+  // mojibake heredado del sistema antiguo ("Ã'" en vez de "Ñ"). Corregir el
+  // texto antes de importar: solo afecta caracteres no-ASCII dentro de literales.
+  const fixedSql = fixMojibake(migratedSql)
+  if (fixedSql !== migratedSql) {
+    console.log('   ✏️  Corregidos caracteres con codificación doble (mojibake) del sistema antiguo')
+    migratedSql = fixedSql
+  }
   console.log()
 
   if (isDryRun) {

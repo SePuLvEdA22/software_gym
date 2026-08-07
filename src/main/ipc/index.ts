@@ -95,6 +95,8 @@ import {
   sendTemplateToExpiring
 } from '../database/messageTemplates'
 import { backupDatabase, restoreDatabase } from '../database/index'
+import { getBackupConfig, setBackupConfig, performAutoBackup } from '../backup'
+import { scheduleThumbnail } from '../photos'
 import { AccessValidation, ClientStatus, UserRole } from '../../shared/types'
 import { openDoor, getDoorStatus } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
@@ -113,7 +115,9 @@ import {
   deleteUser,
   logChange,
   getChangeLogs,
-  getNextClientNumber
+  getNextClientNumber,
+  verifyUserPassword,
+  clearMustChangePassword
 } from '../database/users'
 function requireRole(...roles: UserRole[]): { success: false; error: string } | null {
   const user = getSessionUser()
@@ -189,6 +193,11 @@ export function setupIpcHandlers(): void {
     try {
       const oldUser = getUserById(id)
       const result = updateUser(id, data)
+      if (result.success && id === 'user_admin' && data?.password) {
+        // Cambiar la contraseña del admin desde la gestión de usuarios también
+        // desbloquea el requisito de cambio forzado de contraseña.
+        clearMustChangePassword()
+      }
       if (result.success && oldUser) {
         logChange('users', id, 'update', oldUser as unknown as Record<string, unknown>, { ...oldUser, ...data } as unknown as Record<string, unknown>)
       }
@@ -236,6 +245,10 @@ export function setupIpcHandlers(): void {
     try {
       validateOrThrow(CreateClientSchema, data)
       const client = createClient(data)
+      // Generar miniatura en segundo plano (no bloquea el guardado)
+      if (client.photo) {
+        scheduleThumbnail(client.id).catch(() => {})
+      }
       logChange('clients', client.id, 'create', null, client as unknown as Record<string, unknown>)
       return { success: true, data: client }
     } catch (error: any) {
@@ -258,6 +271,10 @@ export function setupIpcHandlers(): void {
       validateOrThrow(UpdateClientSchema, cleaned)
       const oldClient = getClientById(id)
       const result = updateClient(id, cleaned)
+      if (result && cleaned.photo !== undefined) {
+        // Si la foto cambió (o se eliminó) se regenera la miniatura en 2º plano
+        scheduleThumbnail(id).catch(() => {})
+      }
       if (result && oldClient) {
         logChange('clients', id, 'update', oldClient as unknown as Record<string, unknown>, result as unknown as Record<string, unknown>)
       }
@@ -1012,6 +1029,41 @@ export function setupIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle('backup:getConfig', async () => {
+    try {
+      return { success: true, data: getBackupConfig() }
+    } catch (error: any) {
+      log.error('Error getting backup config:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('backup:setConfig', async (_, config: { enabled: boolean; retention: number }) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      setBackupConfig(config)
+      return { success: true }
+    } catch (error: any) {
+      log.error('Error setting backup config:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('backup:runNow', async () => {
+    const auth = requireRole('admin')
+    if (auth) return auth
+    try {
+      const result = performAutoBackup()
+      return result.success
+        ? { success: true, data: result.filePath }
+        : { success: false, error: result.error }
+    } catch (error: any) {
+      log.error('Error running backup:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
   ipcMain.handle('system:migrateLegacy', async (event) => {
     const auth = requireRole('admin')
     if (auth) return auth
@@ -1104,10 +1156,18 @@ export function setupIpcHandlers(): void {
       if (!user || user.role !== 'admin') {
         return { success: false, error: 'No autorizado' }
       }
+      // Seguridad: la contraseña actual es obligatoria y debe coincidir
+      // antes de permitir cambiar credenciales del administrador.
+      if (!data.currentPassword || !verifyUserPassword('user_admin', data.currentPassword)) {
+        return { success: false, error: 'Contraseña actual incorrecta' }
+      }
       const result = updateUser('user_admin', {
         username: data.username,
         password: data.newPassword
       })
+      if (result.success && data.newPassword) {
+        clearMustChangePassword()
+      }
       return result.success
         ? { success: true }
         : { success: false, error: result.error || 'Error al actualizar' }

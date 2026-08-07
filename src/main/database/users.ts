@@ -54,7 +54,7 @@ export function getSessionUser(): User | null {
   return currentSessionUser
 }
 
-export function authenticateUser(username: string, password: string): { success: boolean; user?: User; error?: string } {
+export function authenticateUser(username: string, password: string): { success: boolean; user?: User; mustChangePassword?: boolean; error?: string } {
   const db = getDatabase()
   const now = Date.now()
 
@@ -92,7 +92,31 @@ export function authenticateUser(username: string, password: string): { success:
   const user = mapDbUser(row)
   db.prepare('UPDATE users SET last_login = ? WHERE id = ?').run(formatISO(new Date()), user.id)
   currentSessionUser = user
-  return { success: true, user }
+
+  const mustChangeRow = db.prepare("SELECT value FROM settings WHERE key = 'must_change_password'").get() as
+    | { value: string }
+    | undefined
+  // La bandera solo aplica a la cuenta admin por defecto: si se devolviera
+  // para cualquier rol, un usuario no-admin quedaría atrapado en la pantalla
+  // de cambio de contraseña (system:updateAdmin exige rol admin).
+  const mustChangePassword = user.id === 'user_admin' && mustChangeRow?.value === '1'
+
+  return { success: true, user, mustChangePassword }
+}
+
+export function verifyUserPassword(userId: string, password: string): boolean {
+  const db = getDatabase()
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId) as
+    | { password_hash: string }
+    | undefined
+  if (!row) return false
+  return bcrypt.compareSync(password, row.password_hash)
+}
+
+export function clearMustChangePassword(): void {
+  const db = getDatabase()
+  db.prepare(`INSERT INTO settings (key, value) VALUES ('must_change_password', '0')
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run()
 }
 
 export function getAllUsers(page = 1, pageSize = 50): PageResponse<User> {

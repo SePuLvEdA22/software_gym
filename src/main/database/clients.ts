@@ -1,9 +1,11 @@
 import { getDatabase } from './index'
+import { clearQueryCache } from './queryCache'
 import { Client, Gender, ClientStatus } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { app } from 'electron'
 import { join } from 'path'
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
+import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
+import { getThumbsDir } from '../photos'
 
 export interface DbClient {
   id: string
@@ -15,6 +17,7 @@ export interface DbClient {
   email: string
   address: string
   photo_path: string | null
+  thumbnail_path: string | null
   registration_date: string
   access_code: string
   status: string
@@ -53,7 +56,15 @@ function readPhotoFile(filePath: string | null): string | null {
   }
 }
 
-function mapDbClient(dbClient: DbClient): Client {
+function mapDbClient(dbClient: DbClient, options: { thumbnailOnly?: boolean } = {}): Client {
+  // Listados usan la miniatura (unos KB); el detalle (kiosco, edición) usa la
+  // foto completa. Si aún no hay miniatura se cae a la foto completa para no
+  // perder el avatar (hasta que el backfill la genere).
+  const thumbnailOnly = options.thumbnailOnly ?? true
+  const photo = thumbnailOnly
+    ? readPhotoFile(dbClient.thumbnail_path) ?? readPhotoFile(dbClient.photo_path)
+    : readPhotoFile(dbClient.photo_path)
+
   return {
     id: dbClient.id,
     fullName: dbClient.full_name,
@@ -63,7 +74,7 @@ function mapDbClient(dbClient: DbClient): Client {
     phone: dbClient.phone,
     email: dbClient.email,
     address: dbClient.address,
-    photo: readPhotoFile(dbClient.photo_path),
+    photo,
     registrationDate: dbClient.registration_date,
     accessCode: dbClient.access_code,
     status: dbClient.status as ClientStatus,
@@ -109,6 +120,8 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
     data.emergencyContact.notes
   )
 
+  clearQueryCache()
+
   return {
     ...data,
     id,
@@ -151,12 +164,21 @@ export function updateClient(id: string, data: Partial<Client>): Client | null {
   ]
 
   if (photoPath !== undefined) {
+    // Al cambiar (o eliminar) la foto, la miniatura anterior queda desactualizada:
+    // se invalida y se regenerará en segundo plano (scheduleThumbnail) si aplica.
+    if (!photoPath) {
+      try { unlinkSync(join(getThumbsDir(), `${id}.jpg`)) } catch { /* no existe */ }
+    }
     fields.push('photo_path = ?')
+    fields.push('thumbnail_path = ?')
     params.push(photoPath)
+    params.push(null)
   }
 
   params.push(id)
   db.prepare(`UPDATE clients SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+
+  clearQueryCache()
 
   return getClientById(id)
 }
@@ -166,7 +188,7 @@ export function getClientById(id: string): Client | null {
   const stmt = db.prepare('SELECT * FROM clients WHERE id = ?')
   const result = stmt.get(id) as DbClient | undefined
   
-  return result ? mapDbClient(result) : null
+  return result ? mapDbClient(result, { thumbnailOnly: false }) : null
 }
 
 export function getClientByAccessCode(accessCode: string): Client | null {
@@ -174,7 +196,7 @@ export function getClientByAccessCode(accessCode: string): Client | null {
   const stmt = db.prepare('SELECT * FROM clients WHERE access_code = ?')
   const result = stmt.get(accessCode) as DbClient | undefined
   
-  return result ? mapDbClient(result) : null
+  return result ? mapDbClient(result, { thumbnailOnly: false }) : null
 }
 
 export function getClientByDocumentId(documentId: string): Client | null {
@@ -182,7 +204,7 @@ export function getClientByDocumentId(documentId: string): Client | null {
   const stmt = db.prepare('SELECT * FROM clients WHERE document_id = ?')
   const result = stmt.get(documentId) as DbClient | undefined
   
-  return result ? mapDbClient(result) : null
+  return result ? mapDbClient(result, { thumbnailOnly: false }) : null
 }
 
 export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): { data: Client[]; total: number; page: number; totalPages: number } {
@@ -208,7 +230,7 @@ export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): {
   const results = stmt.all(...params, pageSize, offset) as unknown as DbClient[]
   
   return {
-    data: results.map(mapDbClient),
+    data: results.map((dbClient) => mapDbClient(dbClient)),
     total,
     page: safePage,
     totalPages
@@ -231,7 +253,7 @@ export function searchClients(query: string): Client[] {
   
   const results = stmt.all(searchPattern, searchPattern, searchPattern, searchPattern) as unknown as DbClient[]
   
-  return results.map(mapDbClient)
+  return results.map((dbClient) => mapDbClient(dbClient))
 }
 
 export function deleteClient(id: string): boolean {
@@ -247,13 +269,17 @@ export function deleteClient(id: string): boolean {
     return result.changes > 0
   })
   
-  return op()
+  const deleted = op()
+  clearQueryCache()
+  return deleted
 }
 
 export function updateClientStatus(id: string, status: ClientStatus): Client | null {
   const db = getDatabase()
   const stmt = db.prepare('UPDATE clients SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
   stmt.run(status, id)
+
+  clearQueryCache()
   
   return getClientById(id)
 }

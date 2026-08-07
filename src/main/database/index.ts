@@ -527,6 +527,45 @@ function runMigrations(db: SqlJsDatabase): void {
         `)
         update.run('gym_welcome_message', 'Bienvenido, nos complace que seas parte de nuestro equipo.')
       }
+    },
+    {
+      name: '011_force_password_change',
+      run: (db) => {
+        // Seguridad: si el administrador aún usa la contraseña por defecto
+        // (admin123), se marca la bandera must_change_password para forzar su
+        // cambio en el primer inicio de sesión. Instalaciones donde ya se
+        // cambió la contraseña quedan con la bandera en 0.
+        const insert = db.prepare(`
+          INSERT INTO settings (key, value) VALUES (?, ?)
+          ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `)
+        const adminRow = db.prepare("SELECT password_hash FROM users WHERE id = 'user_admin'").get() as
+          | { password_hash: string }
+          | undefined
+        const usesDefaultPassword = !!adminRow && bcrypt.compareSync('admin123', adminRow.password_hash)
+        insert.run('must_change_password', usesDefaultPassword ? '1' : '0')
+        log.info(`Migration 011: must_change_password = ${usesDefaultPassword ? '1' : '0'}`)
+      }
+    },
+    {
+      name: '012_add_indexes_and_thumbnails',
+      run: (db) => {
+        // Índices de rendimiento: las subconsultas correlacionadas del dashboard
+        // (clientes inactivos, deudores, horas pico) hacían full-scans sobre
+        // access_logs/payments sin índice por cliente/membresía.
+        db.exec(`
+          CREATE INDEX IF NOT EXISTS idx_access_logs_client ON access_logs(client_id);
+          CREATE INDEX IF NOT EXISTS idx_access_logs_result_timestamp ON access_logs(result, timestamp);
+          CREATE INDEX IF NOT EXISTS idx_payments_membership ON payments(membership_id);
+        `)
+
+        // Columna para thumbnails de fotos: los listados leen la miniatura
+        // (unos KB) en vez de la foto completa (cientos de KB) por cada cliente.
+        const columns = db.prepare('PRAGMA table_info(clients)').all() as Array<{ name: string }>
+        if (!columns.some(c => c.name === 'thumbnail_path')) {
+          db.exec('ALTER TABLE clients ADD COLUMN thumbnail_path TEXT')
+        }
+      }
     }
   ]
 

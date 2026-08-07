@@ -28,7 +28,8 @@ import {
   PageResponse,
   ClientRoutine,
   RoutineExercise,
-  GymSettings
+  GymSettings,
+  BackupConfig
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -149,7 +150,7 @@ const electronAPI = {
   },
 
   auth: {
-    login: (username: string, password: string): Promise<IpcResult<{ user: User }>> =>
+    login: (username: string, password: string): Promise<IpcResult<{ user: User; mustChangePassword?: boolean }>> =>
       ipcRenderer.invoke('auth:login', username, password),
     logout: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('auth:logout'),
@@ -217,6 +218,15 @@ const electronAPI = {
       ipcRenderer.invoke('promotion:delete', id),
     getEffectivePrice: (planId: string): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
       ipcRenderer.invoke('membership:getEffectivePrice', planId)
+  },
+
+  backup: {
+    getConfig: (): Promise<IpcResult<BackupConfig>> =>
+      ipcRenderer.invoke('backup:getConfig'),
+    setConfig: (config: { enabled: boolean; retention: number }): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('backup:setConfig', config),
+    runNow: (): Promise<IpcResult<string>> =>
+      ipcRenderer.invoke('backup:runNow')
   },
 
   system: {
