@@ -264,15 +264,15 @@ function QuickActions({ onAction }: { onAction: (action: string) => void }): JSX
         return (
           <div
             key={action.id}
-            className="bento-card"
+            className="bento-card quick-action"
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '12px 20px', cursor: 'pointer',
+              padding: '14px 20px', cursor: 'pointer',
               flex: '1 1 auto', minWidth: 140, userSelect: 'none'
             }}
             onClick={() => onAction(action.id)}
           >
-            <div style={{ color: 'var(--color-primary-container)', display: 'flex' }}>
+            <div className="quick-action-icon" style={{ color: 'var(--color-primary-container)', display: 'flex' }}>
               <IconComponent />
             </div>
             <span className="body-lg" style={{ fontSize: 14 }}>{action.label}</span>
@@ -401,6 +401,9 @@ export function DashboardPage(): JSX.Element {
           ))}
         </div>
       </div>
+
+      {/* Quick Actions — arriba para acceso inmediato */}
+      <QuickActions onAction={handleQuickAction} />
 
       {/* Metric Cards */}
       <div className="grid grid-6">
@@ -588,8 +591,6 @@ export function DashboardPage(): JSX.Element {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <QuickActions onAction={handleQuickAction} />
     </div>
   )
 }

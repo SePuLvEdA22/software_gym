@@ -90,6 +90,20 @@ describe('Clients Database', () => {
     expect(updated!.documentId).toBe(client.documentId)
   })
 
+  it('should allow multiple clients without document (documento opcional)', () => {
+    const c1 = createClient({ ...sampleClient, documentId: '', accessCode: 'NODOC01' })
+    const c2 = createClient({ ...sampleClient, documentId: '', accessCode: 'NODOC02' })
+    // NULL no colisiona con el UNIQUE de document_id
+    expect(getClientById(c1.id)!.documentId).toBe('')
+    expect(getClientById(c2.id)!.documentId).toBe('')
+  })
+
+  it('should trim document on create and map null back to empty string', () => {
+    const client = createClient({ ...sampleClient, documentId: '  998877  ', accessCode: 'TRIM01' })
+    expect(client.documentId).toBe('998877')
+    expect(getClientByDocumentId('998877')).not.toBeNull()
+  })
+
   it('should return null when updating non-existent client', () => {
     const result = updateClient('non-existent', { fullName: 'Test' })
     expect(result).toBeNull()

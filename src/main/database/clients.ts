@@ -9,7 +9,7 @@ import { getThumbsDir, getPhotosDir, resolvePhotoPath } from '../photos'
 export interface DbClient {
   id: string
   full_name: string
-  document_id: string
+  document_id: string | null
   birth_date: string
   gender: string
   phone: string
@@ -34,6 +34,12 @@ function savePhotoFile(clientId: string, base64Data: string | null): string | nu
   const buffer = Buffer.from(base64Data, 'base64')
   writeFileSync(filePath, buffer)
   return filePath
+}
+
+/** Documento opcional: vacío → NULL (la columna es UNIQUE y NULL no colisiona) */
+function normalizeDocumentId(value: string | undefined | null): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
 }
 
 function readPhotoFile(filePath: string | null): string | null {
@@ -62,7 +68,8 @@ function mapDbClient(dbClient: DbClient, options: { thumbnailOnly?: boolean } = 
   return {
     id: dbClient.id,
     fullName: dbClient.full_name,
-    documentId: dbClient.document_id,
+    // NULL en BD = sin documento (columna UNIQUE; NULL no colisiona)
+    documentId: dbClient.document_id ?? '',
     birthDate: dbClient.birth_date,
     gender: dbClient.gender as Gender,
     phone: dbClient.phone,
@@ -86,6 +93,7 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
   const id = uuidv4()
   const registrationDate = new Date().toISOString()
   const photoPath = savePhotoFile(id, data.photo)
+  const documentId = normalizeDocumentId(data.documentId)
 
   const stmt = db.prepare(`
     INSERT INTO clients (
@@ -98,7 +106,7 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
   stmt.run(
     id,
     data.fullName,
-    data.documentId,
+    documentId,
     data.birthDate,
     data.gender,
     data.phone,
@@ -118,6 +126,8 @@ export function createClient(data: Omit<Client, 'id' | 'registrationDate'>): Cli
 
   return {
     ...data,
+    // Refleja lo guardado en BD (trimeado / NULL → '')
+    documentId: documentId ?? '',
     id,
     registrationDate
   }
@@ -139,6 +149,7 @@ export function updateClient(id: string, data: Partial<Client>): Client | null {
   }
 
   let photoPath: string | null = null
+  const hasPhotoChange = data.photo !== undefined
   if (data.photo !== undefined) {
     photoPath = savePhotoFile(id, data.photo)
   }
@@ -149,17 +160,19 @@ export function updateClient(id: string, data: Partial<Client>): Client | null {
     'emergency_name = ?', 'emergency_phone = ?', 'emergency_relationship = ?',
     'emergency_notes = ?', 'updated_at = CURRENT_TIMESTAMP'
   ]
+  const documentId = normalizeDocumentId(updated.documentId)
   const params: (string | number | null)[] = [
-    updated.fullName, updated.documentId, updated.birthDate,
+    updated.fullName, documentId, updated.birthDate,
     updated.gender, updated.phone, updated.email, updated.address,
     updated.accessCode, updated.status,
     updated.emergencyContact.name, updated.emergencyContact.phone,
     updated.emergencyContact.relationship, updated.emergencyContact.notes
   ]
 
-  if (photoPath !== undefined) {
-    // Al cambiar (o eliminar) la foto, la miniatura anterior queda desactualizada:
-    // se invalida y se regenerará en segundo plano (scheduleThumbnail) si aplica.
+  if (hasPhotoChange) {
+    // Solo se toca la foto cuando el caller la envió explícitamente: si se
+    // elimina (null), la miniatura anterior queda desactualizada y se invalida
+    // (se regenerará en segundo plano si aplica). Sin photo, la foto se conserva.
     if (!photoPath) {
       try { unlinkSync(join(getThumbsDir(), `${id}.jpg`)) } catch { /* no existe */ }
     }

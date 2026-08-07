@@ -655,3 +655,116 @@ Al importar la BD antigua ningún cliente mostraba su foto, aunque **sí se expo
 | `src/main/migration/legacyMigrator.ts` | Ruta absoluta de foto |
 | `scripts/import-migrated-data.ts` | Copia de fotos en `--app-db` |
 | `src/__tests__/database/photos.test.ts` | +2 tests |
+
+---
+
+## 22. DatePicker personalizado (agosto 2026) 🗓️
+
+### ¿Por qué?
+Los 6 campos de fecha usaban el `<input type="date">` nativo del navegador, cuyo calendario desplegable (Chromium) no contrastaba con el diseño Material You de la app (tema oscuro con acento naranja) y resultaba anticuado.
+
+### Qué se hizo:
+- **Nuevo componente `src/renderer/src/components/DatePicker.tsx`** — calendario 100% a medida:
+  - Tema oscuro/claro con los tokens de la app (`--color-surface-container`, `--color-primary-container`, `--color-border`, etc.), tipografías Montserrat/Inter y sombras de glow del sistema de diseño.
+  - Meses en español, semana iniciando en **lunes** (convención latinoamericana), día de hoy marcado con punto naranja, día seleccionado con degradado naranja.
+  - **Portal** (`createPortal`) + overlay fijo: el panel se abre debajo del campo (o arriba si no hay espacio), se reposiciona con scroll/resize y se cierra al hacer clic fuera o con `Escape`.
+  - Props `min`/`max` (días fuera de rango deshabilitados), `clearable` (botón × para limpiar), accesible por teclado (Enter/Espacio para abrir), y botones rápidos **Hoy** / **Borrar**.
+  - Parsing de fechas con **hora local** (`new Date(y, m, d)`) — sin bugs de desplazamiento UTC; helper exportado `todayLocalKey()` para el día de hoy.
+- **Reemplazo de los 6 campos nativos**:
+  - `ClientFormPage`: fecha de nacimiento (máx. hoy).
+  - `BodyTrackingPage`: fecha de medición (máx. hoy) y fechas inicio/objetivo del objetivo (objetivo ≥ inicio).
+  - `SettingsPage`: fechas de inicio/fin de promoción (sin botón borrar por ser obligatorias, con validación cruzada `min`/`max` entre ambas).
+- **Estilos** en `index.css` (sección `DatePicker personalizado (Material You)`).
+
+### Archivos creados/modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/renderer/src/components/DatePicker.tsx` | Creado |
+| `src/renderer/src/index.css` | Estilos `.dp-*` |
+| `src/renderer/src/pages/ClientFormPage.tsx` | Fecha de nacimiento → DatePicker |
+| `src/renderer/src/pages/BodyTrackingPage.tsx` | 3 fechas → DatePicker |
+| `src/renderer/src/pages/SettingsPage.tsx` | Fechas promoción → DatePicker |
+
+### Mejora: selector de mes/año estilo Apple (agosto 2026) ⏭️
+
+**Problema:** para cambiar de año había que navegar mes por mes con las flechas — incómodo para fechas lejanas (ej. fecha de nacimiento en los 90s).
+
+**Qué se hizo:**
+- El título del panel (mes + año) ahora es **clicable** y alterna a una vista de selección rápida:
+  - **Stepper de año** con botones −1/+1 y **−10/+10 años** («/»)
+  - **Rejilla de 12 meses**: un clic salta directo a ese mes/año y vuelve a la vista de días
+  - Meses completos fuera del rango `min`/`max` se muestran deshabilitados
+  - El caret del título rota 180° al entrar/salir de la vista (feedback visual)
+
+---
+
+## 23. Fix: fondo rojo en 'Precio Unitario' del inventario (agosto 2026)
+
+### ¿Por qué?
+Al abrir el modal de movimiento (botón **+** de una card de producto), la etiqueta "Precio Unitario" se veía con **fondo rojo**. Causa: un `style={{ background: "red" }}` hardcodeado en la etiqueta del `MovementForm` de `InventoryPage`.
+
+### Qué se hizo:
+- `src/renderer/src/pages/InventoryPage.tsx`: se eliminó el estilo inline de la etiqueta (ahora usa la clase `label-md` estándar del theme).
+
+---
+
+## 24. Fix: calendario se cortaba al abrir + inputs numéricos no borrables (agosto 2026)
+
+### 24.1 Calendario: el panel se abría hacia arriba y cortaba los meses 🗓️
+
+**Problema:** al abrir el selector de mes/año, el panel se desplegaba hacia arriba, se salía de la pantalla y no se veían todos los meses ("rompe el layout").
+
+**Causa raíz:** el panel se posicionaba con una **estimación fija de altura** (360 px) y `scrollIntoView`, sin medir su altura real. Al abrir hacia arriba, si no cabía, el top quedaba fuera del viewport y se recortaba la rejilla de meses.
+
+**Qué se hizo** (`DatePicker.tsx`):
+- Nuevo `computePanelPos()` que **mide la altura real del panel** (`offsetHeight`) y lo posiciona: abajo si hay espacio, arriba si el panel cabe completo, y si no hay espacio en ningún lado lo recorta al borde del viewport (nunca fuera de pantalla).
+- Se recalcula al **abrir** y al **cambiar de modo** (días ↔ meses), porque la altura cambia; también con scroll/resize.
+- Salvaguarda CSS: `max-height: min(100vh - 16px, 440px)` + `overflow-y: auto` en `.dp-panel` — el panel nunca rompe el layout, ni en ventanas pequeñas.
+- La animación de aparición se dispara solo cuando el panel ya está posicionado (`dp-panel-ready`).
+
+### 24.2 Inventario: valores por defecto de cantidad/precio no se podían borrar 🔢
+
+**Problema:** en el modal de movimiento (y en el de producto) los campos numéricos no dejaban borrar el valor por defecto: en CANTIDAD el `1` no se quitaba (al teclear 2 quedaba `12`) y en PRECIO UNITARIO al borrar `1000` quedaba `0` que se pegaba al escribir (`02000`).
+
+**Causa raíz:** los handlers convertían el texto a número y **forzaban un valor** con `Number(...) || 1` / `Number(...) || 0`. Al borrar el campo, el valor se volvía a re-renderizar con el default y el cero concatenaba con lo nuevo.
+
+**Qué se hizo** (`InventoryPage.tsx`):
+- `MovementForm` (Cantidad y Precio Unitario) y `ProductForm` (Precio Venta, Costo, Stock Actual, Stock Mínimo): los campos ahora guardan **string** (`type="text" inputMode="numeric"`, solo dígitos) → se pueden **borrar por completo** y escribir libremente.
+- La conversión a número ocurre **al guardar** (`Number(...)` con `|| 0`), manteniendo el contrato de tipos con `registerMovement`/`createProduct`.
+- Fix adicional en `ProductForm`: `onSave()` (cerrar modal + recargar lista) ahora se llama solo si `r.success` — antes `if (!loading) onSave()` **nunca se ejecutaba** (loading era `true`), dejando el modal abierto y la lista sin refrescar.
+
+---
+
+## 25. Acciones rápidas del Panel General al inicio (agosto 2026) ⚡
+
+### ¿Por qué?
+Los botones de acción rápida (Nuevo Cliente, Control Acceso, Registrar Pago, Abrir Puerta) estaban renderizados **al final** del dashboard, después de todas las cards — obligando a hacer scroll para usarlos.
+
+### Qué se hizo:
+- `src/renderer/src/pages/DashboardPage.tsx`: el componente `QuickActions` se movió **justo debajo del encabezado** y antes de las métricas.
+- `src/renderer/src/index.css`: nueva clase `.quick-action` — los botones ahora tienen micro-interacción (hover con borde primario, elevación y escala del icono; active sin elevación).
+
+---
+
+## 26. Documento de identidad opcional al crear clientes (agosto 2026) 🪪
+
+### ¿Por qué?
+El documento de identidad era **obligatorio** en el formulario de cliente (validación frontend + `min(1)` en el schema Zod + la columna `document_id TEXT UNIQUE` en BD). El gimnasio quiere poder registrar clientes sin documento.
+
+### Qué se hizo:
+- **`src/shared/schemas.ts`**: `documentId` → `z.string().max(50)` (acepta vacío).
+- **`src/main/database/clients.ts`**:
+  - Nuevo helper `normalizeDocumentId()`: vacío/espacios → **`NULL`** en BD (la columna es `UNIQUE` y SQLite permite múltiples `NULL` — dos clientes sin documento no colisionan).
+  - `createClient`/`updateClient` lo usan; el `return` de `createClient` y `mapDbClient` devuelven `''` para no cambiar el contrato `Client.documentId: string` en el frontend.
+- **`src/renderer/src/pages/ClientFormPage.tsx`**: se quitó la validación obligatoria y el `*` del label; la verificación de duplicado solo corre si el documento trae valor.
+- **Fix de bug pre-existente en `updateClient`** (detectado en revisión): `if (photoPath !== undefined)` era **siempre verdadero** (`photoPath` se inicializa en `null`), por lo que **cada actualización sin `photo` borraba la foto y la miniatura**. Ahora la foto solo se toca cuando el caller envía `photo` explícitamente.
+- **Tests**: 2 tests de schema invertidos (aceptan `''`), +2 tests de BD (dos clientes sin documento; trim + mapeo de NULL → `''`).
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/shared/schemas.ts` | `documentId` opcional |
+| `src/main/database/clients.ts` | `normalizeDocumentId` (NULL) + fix bug de foto en `updateClient` |
+| `src/renderer/src/pages/ClientFormPage.tsx` | Sin validación obligatoria, duplicado condicional |
+| `src/__tests__/schemas/validation.test.ts` | 2 tests invertidos |
+| `src/__tests__/database/clients.test.ts` | +2 tests |

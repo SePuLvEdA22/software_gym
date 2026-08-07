@@ -9,7 +9,8 @@ export const UserRoleSchema = z.enum(['admin', 'reception', 'trainer', 'accounti
 
 export const CreateClientSchema = z.object({
   fullName: z.string().min(1, 'Nombre requerido').max(200),
-  documentId: z.string().min(1, 'Documento requerido').max(50),
+  // Documento opcional: vacío = cliente sin documento (se guarda NULL en BD).
+  documentId: z.string().max(50),
   birthDate: z.string().optional(),
   gender: GenderSchema.optional(),
   phone: z.string().max(20).optional(),

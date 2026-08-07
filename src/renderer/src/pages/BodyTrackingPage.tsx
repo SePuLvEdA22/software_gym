@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Client, BodyMeasurement, ClientGoal, FitnessGoal } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
+import { DatePicker, todayLocalKey } from '@/components/DatePicker'
 import { format, parseISO } from 'date-fns'
 
 const goalLabels: Record<FitnessGoal, string> = {
@@ -196,8 +197,12 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
             <div className="modal-body">
               <div className="form-group">
                 <label className="form-label">Fecha</label>
-                <input type="date" className="form-input" value={form.date}
-                  onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
+                <DatePicker
+                  value={form.date}
+                  onChange={v => setForm(p => ({ ...p, date: v }))}
+                  max={todayLocalKey()}
+                  placeholder="Fecha de la medición"
+                />
               </div>
               <div className="grid grid-3" style={{ gap: 12 }}>
                 {[
@@ -323,13 +328,21 @@ function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: st
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Fecha Inicio</label>
-                  <input type="date" className="form-input" value={form.startDate}
-                    onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
+                  <DatePicker
+                    value={form.startDate}
+                    onChange={v => setForm(p => ({ ...p, startDate: v }))}
+                    max={todayLocalKey()}
+                    placeholder="Inicio del objetivo"
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Fecha Objetivo</label>
-                  <input type="date" className="form-input" value={form.targetDate}
-                    onChange={e => setForm(p => ({ ...p, targetDate: e.target.value }))} />
+                  <DatePicker
+                    value={form.targetDate}
+                    onChange={v => setForm(p => ({ ...p, targetDate: v }))}
+                    min={form.startDate || undefined}
+                    placeholder="Fecha meta"
+                  />
                 </div>
               </div>
               <div className="form-group">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Icons } from '@/components/Icons'
 import { CameraCapture } from '@/components/CameraCapture'
+import { DatePicker, todayLocalKey } from '@/components/DatePicker'
 import { Client, Gender, ClientStatus, EmergencyContact } from '../../../shared/types'
 import { format, parseISO } from 'date-fns'
 
@@ -109,9 +110,6 @@ export function ClientFormPage(): JSX.Element {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
-    if (!formData.documentId.trim()) {
-      errors.documentId = 'El documento de identidad es requerido'
-    }
     if (formData.phone && !/^\+?[\d\s\-()]{7,20}$/.test(formData.phone)) {
       errors.phone = 'El teléfono no es válido'
     }
@@ -127,15 +125,19 @@ export function ClientFormPage(): JSX.Element {
     if (!validateForm()) return
     setSaving(true)
 
-    try {
-      const existing = await window.electronAPI.client.getByDocumentId(formData.documentId.trim())
-      if (existing.success && existing.data && existing.data.id !== clientId) {
-        setFieldErrors({ documentId: 'Ya existe un cliente con este documento de identidad' })
-        setSaving(false)
-        return
+    // El documento es opcional: solo se verifica duplicado si trae valor
+    const docId = formData.documentId.trim()
+    if (docId) {
+      try {
+        const existing = await window.electronAPI.client.getByDocumentId(docId)
+        if (existing.success && existing.data && existing.data.id !== clientId) {
+          setFieldErrors({ documentId: 'Ya existe un cliente con este documento de identidad' })
+          setSaving(false)
+          return
+        }
+      } catch {
+        // ignore, proceed with save
       }
-    } catch {
-      // ignore, proceed with save
     }
 
     const submitData: Omit<Client, 'id' | 'registrationDate'> = {
@@ -262,12 +264,12 @@ export function ClientFormPage(): JSX.Element {
                   {fieldErrors.fullName && <span className="form-error">{fieldErrors.fullName}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Documento de Identidad *</label>
+                  <label className="form-label">Documento de Identidad</label>
                   <input type="text"
                     className={`form-input ${fieldErrors.documentId ? 'form-input-error' : ''}`}
                     value={formData.documentId}
                     onChange={(e) => { setFormData(prev => ({ ...prev, documentId: e.target.value })); setFieldErrors(prev => ({ ...prev, documentId: '' })) }}
-                    placeholder="Número de documento" />
+                    placeholder="Opcional — número de documento" />
                   {fieldErrors.documentId && <span className="form-error">{fieldErrors.documentId}</span>}
                 </div>
               </div>
@@ -299,9 +301,12 @@ export function ClientFormPage(): JSX.Element {
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Fecha de Nacimiento</label>
-              <input type="date" className="form-input"
+              <DatePicker
                 value={formData.birthDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, birthDate: e.target.value }))} />
+                onChange={(v) => setFormData(prev => ({ ...prev, birthDate: v }))}
+                max={todayLocalKey()}
+                placeholder="Seleccionar fecha de nacimiento"
+              />
               {age !== null && (
                 <div style={{ fontSize: 13, color: 'var(--color-secondary)', marginTop: 4 }}>
                   Edad: <strong>{age} años</strong>

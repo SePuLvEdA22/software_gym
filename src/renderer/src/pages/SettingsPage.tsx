@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { DatePicker } from '@/components/DatePicker'
 import { UpdateChecker } from '@/components/UpdateChecker'
 import { MembershipPlan, MembershipType, Promotion, BackupConfig } from '../../../shared/types'
 
@@ -1477,13 +1478,23 @@ export function SettingsPage(): JSX.Element {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Fecha Inicio *</label>
-                  <input type="date" className="form-input" value={promoForm.startDate}
-                    onChange={e => setPromoForm(prev => ({ ...prev, startDate: e.target.value }))} />
+                  <DatePicker
+                    value={promoForm.startDate}
+                    onChange={v => setPromoForm(prev => ({ ...prev, startDate: v }))}
+                    max={promoForm.endDate || undefined}
+                    placeholder="Inicio de la promoción"
+                    clearable={false}
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Fecha Fin *</label>
-                  <input type="date" className="form-input" value={promoForm.endDate}
-                    onChange={e => setPromoForm(prev => ({ ...prev, endDate: e.target.value }))} />
+                  <DatePicker
+                    value={promoForm.endDate}
+                    onChange={v => setPromoForm(prev => ({ ...prev, endDate: v }))}
+                    min={promoForm.startDate || undefined}
+                    placeholder="Fin de la promoción"
+                    clearable={false}
+                  />
                 </div>
               </div>
               <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>

@@ -51,12 +51,9 @@ describe('CreateClientSchema', () => {
     }
   })
 
-  it('should reject empty documentId', () => {
+  it('should accept empty documentId (documento opcional)', () => {
     const result = CreateClientSchema.safeParse({ ...validClient, documentId: '' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some(i => i.path.includes('documentId'))).toBe(true)
-    }
+    expect(result.success).toBe(true)
   })
 
   it('should accept short accessCode (códigos legados de 1-3 dígitos)', () => {
@@ -127,12 +124,9 @@ describe('UpdateClientSchema (partial)', () => {
     }
   })
 
-  it('should reject empty string for documentId', () => {
+  it('should accept empty string for documentId (documento opcional)', () => {
     const result = UpdateClientSchema.safeParse({ documentId: '' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe('Documento requerido')
-    }
+    expect(result.success).toBe(true)
   })
 
   it('should accept short accessCode (fix: editar clientes migrados con código corto)', () => {
