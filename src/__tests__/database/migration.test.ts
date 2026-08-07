@@ -33,7 +33,7 @@ const SYNC_CLIENT_STATUS_SQL = `
         SELECT 1 FROM memberships
         WHERE client_id = clients.id
           AND status = 'active'
-          AND end_date >= datetime('now')
+          AND end_date >= datetime('now', 'start of day')
       ) THEN 'active'
       WHEN EXISTS (
         SELECT 1 FROM memberships

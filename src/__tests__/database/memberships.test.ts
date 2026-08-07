@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { formatISO, parseISO } from 'date-fns'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import { createClient } from '../../main/database/clients'
 import {
@@ -194,6 +195,89 @@ describe('Memberships Database', () => {
     })
   })
 
+  describe('Expiration: día final válido (fix membresía de 1 día)', () => {
+    it('una membresía de 1 día creada hoy queda activa y válida todo el día', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `DAY1-${Date.now()}`, accessCode: `D1${Date.now()}` })
+      const plan = createPlan({ name: 'Plan 1 Día', type: 'daily', price: 5000, durationDays: 1, description: '' })
+      const m = createMembership(c.id, plan.id)
+
+      expect(m).not.toBeNull()
+      expect(m!.status).toBe('active')
+
+      // Vence al FINAL del día de hoy (23:59), no a la hora exacta de compra
+      const end = parseISO(m!.endDate)
+      const today = new Date()
+      expect(end.getFullYear()).toBe(today.getFullYear())
+      expect(end.getMonth()).toBe(today.getMonth())
+      expect(end.getDate()).toBe(today.getDate())
+      expect(end.getHours()).toBe(23)
+
+      // El kiosco la encuentra como activa hoy
+      const active = getActiveOrFrozenMembership(c.id)
+      expect(active).not.toBeNull()
+      expect(active!.status).toBe('active')
+    })
+
+    it('una membresía cuyo vencimiento es HOY sigue siendo válida todo el día', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `LAST-${Date.now()}`, accessCode: `LT${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Último Día', type: 'weekly', price: 20000, durationDays: 7, description: '' })
+      const m = createMembership(c.id, plan.id)
+      if (!m) throw new Error('Membership not created')
+
+      // Simular que hoy es su último día (vencía en 7 días → forzar a hoy a las 10:30)
+      const today1030 = new Date()
+      today1030.setHours(10, 30, 0, 0)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(formatISO(today1030), m.id)
+
+      // Sigue siendo válida HOY (no se vence a las 10:30 por la hora del vencimiento)
+      expect(getActiveOrFrozenMembership(c.id)).not.toBeNull()
+
+      // updateExpiredMemberships NO la marca vencida hoy
+      updateExpiredMemberships()
+      expect(getActiveMembership(c.id)).not.toBeNull()
+    })
+
+    it('una membresía vencida AYER sí se considera vencida', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `YEST-${Date.now()}`, accessCode: `YE${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Vencido Ayer', type: 'daily', price: 5000, durationDays: 1, description: '' })
+      const m = createMembership(c.id, plan.id)
+      if (!m) throw new Error('Membership not created')
+
+      const yesterday = new Date(Date.now() - 86400000)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(formatISO(yesterday), m.id)
+
+      expect(getActiveOrFrozenMembership(c.id)).toBeNull()
+      updateExpiredMemberships()
+      const memberships = getClientMemberships(c.id)
+      expect(memberships[0].status).toBe('expired')
+    })
+  })
+
+  describe('Renovación el último día de vigencia', () => {
+    it('permite renovar cuando la membresía vence HOY (último día)', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `REN-${Date.now()}`, accessCode: `RN${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Renovable', type: 'daily', price: 10000, durationDays: 1, description: '' })
+      const m = createMembership(c.id, plan.id)
+      if (!m) throw new Error('Membership not created')
+
+      // Vence hoy a las 23:59 (sigue activa todo el día) pero ya se puede renovar
+      const result = createMembershipWithPayment(c.id, plan.id, 10000, 'cash')
+      expect(result.error).toBeUndefined()
+      expect(result.membership).not.toBeNull()
+      expect(result.payment).not.toBeNull()
+    })
+
+    it('bloquea renovar cuando la membresía aún se extiende más allá de hoy', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `BLK-${Date.now()}`, accessCode: `BK${Date.now()}` })
+      const plan = createPlan({ name: 'Plan a Futuro', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      createMembership(c.id, plan.id)
+
+      const result = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
+      expect(result.membership).toBeNull()
+      expect(result.error).toContain('ya tiene una membresía activa')
+    })
+  })
+
   describe('Expiration', () => {
     it('should update expired memberships', () => {
       const c = createClient({ ...sampleClientRaw, documentId: `EXP-${Date.now()}`, accessCode: `EX${Date.now()}` })
@@ -202,7 +286,9 @@ describe('Memberships Database', () => {
       expect(m).not.toBeNull()
       if (!m) throw new Error('Membership not created')
 
-      const pastDate = new Date(Date.now() - 86400000).toISOString()
+      // Formato local consistente con el que la app guarda end_date (formatISO).
+      // NO usar toISOString() (UTC): rompería la comparación lexicográfica.
+      const pastDate = formatISO(new Date(Date.now() - 86400000))
       getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m.id)
 
       const count = updateExpiredMemberships()

@@ -330,8 +330,18 @@ function IdleScreen({
     ? differenceInDays(parseISO(membership.endDate), new Date())
     : 0
 
-  const isExpired = !validationResult.valid || daysRemaining <= 0
-  const daysText = daysRemaining <= 0 ? '0 Días Restantes' : `${daysRemaining} Días Restantes`
+  // El backend es la fuente de verdad del acceso. Los días restantes son
+  // informativos: una membresía que vence HOY sigue siendo válida todo el día
+  // (0 días restantes = último día, NO vencida). Solo se considera vencida
+  // cuando el acceso fue denegado o la fecha de vencimiento ya pasó.
+  const isExpired = !validationResult.valid || daysRemaining < 0
+  const daysText = !membership
+    ? '0 Días Restantes'
+    : daysRemaining > 1
+      ? `${daysRemaining} Días Restantes`
+      : daysRemaining === 1
+        ? '1 Día Restante'
+        : 'Vence Hoy'
 
   const totalDebt = useMemo(() => {
     if (!debts || debts.length === 0) return 0

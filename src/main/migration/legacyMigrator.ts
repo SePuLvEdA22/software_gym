@@ -489,6 +489,10 @@ function transformSociomembresia(insert: ParsedInsert): void {
     VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `)
 
+  // Día-consciente: la membresía es válida hasta el final de su día de
+  // vencimiento; solo se marca vencida si venció ANTES de hoy.
+  const startOfToday = new Date().setHours(0, 0, 0, 0)
+
   for (const row of insert.rows) {
     const oldId = parseInt(row[idx['idsociomembresia']] || '0', 10)
     if (!oldId) continue
@@ -533,7 +537,7 @@ function transformSociomembresia(insert: ParsedInsert): void {
 
     let status = 'active'
     if (estadoMembresia === 'sin pagar') status = 'expired'
-    if (endDate && new Date(endDate) < new Date() && status === 'active') status = 'expired'
+    if (endDate && new Date(endDate).getTime() < startOfToday && status === 'active') status = 'expired'
     // Si no tenemos NINGUNA fecha (ni inicio ni fin), no podemos verificar la membresía
     if (!startDate && !endDate) status = 'expired'
 
@@ -885,7 +889,7 @@ export async function runLegacyMigration(
 
   // Recargar datos del dashboard (actualizar estado de membresías vencidas)
   try {
-    db.exec("UPDATE memberships SET status = 'expired' WHERE end_date < datetime('now') AND status = 'active'")
+    db.exec("UPDATE memberships SET status = 'expired' WHERE end_date < datetime('now', 'start of day') AND status = 'active'")
   } catch {}
 
   // Sincronizar estado de clientes según su membresía más reciente
@@ -897,7 +901,7 @@ export async function runLegacyMigration(
             SELECT 1 FROM memberships
             WHERE client_id = clients.id
               AND status = 'active'
-              AND end_date >= datetime('now')
+              AND end_date >= datetime('now', 'start of day')
           ) THEN 'active'
           WHEN EXISTS (
             SELECT 1 FROM memberships

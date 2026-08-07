@@ -100,7 +100,9 @@ export function RenewModal({ client, activeMembership, plans, onClose, onSuccess
     if (!selectedPlanData || !startDate) return null
     const start = startDate ? parse(startDate, 'dd/MM/yyyy', new Date()) : new Date()
     if (!isValid(start)) return '-'
-    const end = addDays(start, selectedPlanData.durationDays)
+    // La membresía vence al final del ÚLTIMO día de su duración
+    // (p. ej. 1 día comprado hoy vence hoy), igual que createMembership.
+    const end = addDays(start, Math.max(1, selectedPlanData.durationDays) - 1)
     return format(end, 'dd/MM/yyyy')
   }
 

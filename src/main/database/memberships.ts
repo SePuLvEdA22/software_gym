@@ -3,7 +3,7 @@ import { cached, clearQueryCache } from './queryCache'
 import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
-import { addDays, formatISO, isAfter, parseISO, differenceInDays } from 'date-fns'
+import { addDays, formatISO, isAfter, parseISO, differenceInDays, startOfDay, endOfDay } from 'date-fns'
 import log from 'electron-log'
 
 export interface DbMembership {
@@ -99,6 +99,17 @@ export interface DbAccessLog {
   result: string
   message: string
   timestamp: string
+}
+
+/**
+ * 'YYYY-MM-DD' de hoy (fecha actual). Se usa para comparaciones
+ * día-conscientes de vencimiento por prefijo de fecha: una membresía cuyo
+ * vencimiento es HOY sigue siendo válida todo el día y solo se vence al
+ * terminar el día. El prefijo es robusto para formatos ISO local
+ * ('YYYY-MM-DDTHH:mm:ss±HH:mm') y legado ('YYYY-MM-DD HH:mm:ss').
+ */
+function todayKey(): string {
+  return formatISO(new Date()).slice(0, 10)
 }
 
 function mapDbAccessLog(dbLog: DbAccessLog): AccessLog {
@@ -404,7 +415,10 @@ export function getExpiringMemberships(days: number): { clientId: string; client
 
 export function getActiveOrFrozenMembership(clientId: string): Membership | null {
   const db = getDatabase()
-  const now = formatISO(new Date())
+  // Día-consciente: se compara contra la FECHA de hoy, no contra el instante
+  // exacto. Una membresía cuyo vencimiento es hoy sigue siendo válida todo el
+  // día (no se vence a mitad de día por la hora de compra).
+  const now = todayKey()
   
   const stmt = db.prepare(`
     SELECT * FROM memberships 
@@ -436,13 +450,22 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   }
 
   const existingMembership = getActiveOrFrozenMembership(clientId)
-  if (existingMembership) {
+  // La membresía vigente NO bloquea la creación si vence HOY (su último día):
+  // se permite renovar durante el último día de vigencia. Solo bloquea si se
+  // extiende más allá de hoy.
+  if (existingMembership && existingMembership.endDate.slice(0, 10) > todayKey()) {
     log.error(`Cannot create membership: Client ${clientId} already has an active or frozen membership`)
     return null
   }
   
   const actualStartDate = startDate ? parseISO(startDate) : new Date()
-  const endDate = addDays(actualStartDate, plan.durationDays)
+  // La membresía es válida durante TODOS los días completos de su duración:
+  // vence al final (23:59:59) del último día, no a la misma hora de compra.
+  // Así, una membresía de 1 día es válida durante todo el día y cualquier
+  // membresía en su último día sigue operativa hasta que el día termine.
+  // (durationDays mínimo 1: defensa ante planes con duración 0).
+  const durationDays = Math.max(1, plan.durationDays)
+  const endDate = endOfDay(addDays(startOfDay(actualStartDate), durationDays - 1))
   const now = new Date()
   
   const newMembership: Membership = {
@@ -605,7 +628,9 @@ export function unfreezeMembership(membershipId: string): Membership | null {
 
 export function getActiveMembership(clientId: string): Membership | null {
   const db = getDatabase()
-  const now = formatISO(new Date())
+  // Día-consciente: válida hasta el final del día de vencimiento (ver
+  // getActiveOrFrozenMembership). Evita denegar el acceso a mitad de día.
+  const now = todayKey()
   
   const stmt = db.prepare(`
     SELECT * FROM memberships 
@@ -637,7 +662,9 @@ export function getClientMemberships(clientId: string): Membership[] {
 
 export function updateExpiredMemberships(): number {
   const db = getDatabase()
-  const now = formatISO(new Date())
+  // Día-consciente: una membresía que vence HOY no se marca como vencida hasta
+  // que el día termina. Se compara contra la fecha de hoy.
+  const now = todayKey()
 
   const expiredOp = db.transaction(() => {
     const getExpired = db.prepare(`
@@ -785,7 +812,9 @@ export function createMembershipWithPayment(
 
     const existing = getActiveOrFrozenMembership(clientId)
     if (existing) {
-      if (existing.status === 'active') {
+      // Renovar es válido en el último día de vigencia (vence hoy): la membresía
+      // sigue operativa hoy, pero ya se puede pagar la siguiente.
+      if (existing.status === 'active' && existing.endDate.slice(0, 10) > todayKey()) {
         return { membership: null, payment: null, error: 'El cliente ya tiene una membresía activa. No puede renovar hasta que venza.' }
       }
       if (existing.status === 'frozen') {

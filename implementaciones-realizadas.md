@@ -574,3 +574,56 @@ La tabla `visita` del sistema antiguo (12,332 registros) no estaba mapeada en el
 | `src/main/migration/legacyMigrator.ts` | `transformAccessLogs` compartido + `transformVisita` |
 | `scripts/migrate-legacy-data.ts` | ídem |
 | `src/__tests__/database/legacyMigration.test.ts` | Fixture + 2 tests nuevos |
+
+---
+
+## 19. Fix: membresía de 1 día / último día se marcaba como vencida (agosto 2026)
+
+### ¿Por qué?
+Dos bugs combinados hacían que una membresía de 1 día (o **cualquier** membresía en su último día) saliera como "vencida" en el kiosco:
+
+1. **Kiosco (frontend):** `ResultScreen` calculaba `isExpired = !valid || daysRemaining <= 0`. Con `differenceInDays`, una membresía que vence HOY da 0 días restantes → la pantalla mostraba "Acceso Denegado — Membresía Vencida" aunque el backend hubiera **concedido** el acceso (la puerta abría).
+2. **Backend:** `getActiveOrFrozenMembership`, `getActiveMembership` y `updateExpiredMemberships` comparaban `end_date` contra el instante exacto (`formatISO(new Date())`). Una membresía que vencía hoy a las 14:00 quedaba denegada a las 14:01, a mitad de día.
+
+### Qué se hizo:
+- **`createMembership`**: `end_date` ahora es el **final del último día** (`endOfDay(addDays(startOfDay(start), duration-1))`) con duración mínima 1. Una membresía de 1 día comprada hoy vence hoy a las 23:59, y cualquier membresía es válida durante TODO su último día.
+- **Comparaciones día-conscientes**: las tres funciones comparan contra la **fecha de hoy** (`formatISO(new Date()).slice(0, 10)`), no contra el instante. El prefijo de fecha es robusto para formatos ISO local (`YYYY-MM-DDTHH:mm:ss±HH:mm`) y legado (`YYYY-MM-DD HH:mm:ss`). Así, una membresía que vence hoy no se deniega ni se marca vencida hasta que el día termina.
+- **Migrador legacy**: el chequeo al importar (día-consciente con `setHours(0,0,0,0)`) y el SQL de expiración/sync usan `datetime('now','start of day')`.
+- **Kiosco (`KioskPage`)**: `isExpired = !validationResult.valid || daysRemaining < 0`; 0 días = **"Vence Hoy"** (último día válido), 1 día = "1 Día Restante".
+- **`RenewModal`**: la vista previa de fecha de vencimiento ahora coincide con la lógica de creación (`addDays(start, duration-1)`).
+- **Renovación el último día**: la guarda anti-solapamiento (`createMembership`/`createMembershipWithPayment`) ahora solo bloquea si la membresía vigente se extiende **más allá de hoy** (`endDate.slice(0,10) > todayKey()`). Renovar durante el último día de vigencia vuelve a estar permitido (antes, al comparar por instante, sí se podía renovar después de la hora de vencimiento; con la comparación día-consciente se habría bloqueado todo el día — corregido).
+- **Tests** (+5 en `memberships.test.ts`): membresía de 1 día creada hoy queda activa y vence a las 23:59; membresía cuyo vencimiento es HOY sigue válida (ni `getActiveOrFrozenMembership` ni `updateExpiredMemberships` la vencen); membresía vencida AYER sí se considera vencida; **renovar el último día está permitido**; renovar con vigencia más allá de hoy sigue bloqueado. Se corrigió un test previo que usaba `toISOString()` (UTC) — formato inconsistente con el que la app guarda (`formatISO` local) — a `formatISO`.
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/main/database/memberships.ts` | `endOfDay` en creación, comparaciones por fecha (`todayKey()`) y renovación permitida el último día |
+| `src/main/migration/legacyMigrator.ts` | Import-time y SQL de expiración/sync día-consciente |
+| `src/renderer/src/pages/KioskPage.tsx` | `isExpired`/`daysText` corregidos |
+| `src/renderer/src/components/modals/RenewModal.tsx` | Preview de vencimiento consistente |
+| `src/__tests__/database/memberships.test.ts` | +5 tests, fix de formato UTC → local |
+| `src/__tests__/database/migration.test.ts` | Sync SQL día-consciente |
+
+---
+
+## 20. Fix: no se podía actualizar clientes con código de acceso corto (agosto 2026)
+
+### ¿Por qué?
+Al editar un cliente migrado del sistema antiguo (códigos de 1-3 dígitos, ej. `212`) el guardado fallaba con:
+
+```
+Error updating client: Error: Datos inválidos: accessCode: Too small: expected string to have >=4 characters
+```
+
+`UpdateClientSchema` (y `CreateClientSchema`) exigían `accessCode` con **mínimo 4** y **máximo 10** caracteres, pero el sistema soporta códigos cortos en toda su operación: el migrador los preserva deliberadamente ("NO reemplazar códigos cortos pero válidos como '212'"), el kiosco acepta códigos de 1 dígito en adelante, y el formulario permite hasta 20 dígitos. La restricción del schema era artificial e inconsistente.
+
+### Qué se hizo:
+- **`src/shared/schemas.ts`**: `accessCode` ahora es `min(1, 'Código de acceso requerido').max(20)` — alineado con los límites reales del formulario y el kiosco (20 dígitos). Códigos legados cortos se aceptan tanto en creación como en actualización.
+- **Tests** (`validation.test.ts`): acepta `212` (crear y actualizar), acepta 20 dígitos, rechaza vacío y rechaza >20 dígitos.
+- Se reconstruyó el bundle (`out/`) para que el fix aplique a la app empaquetada.
+
+### Archivos modificados
+| Archivo | Acción |
+|---------|--------|
+| `src/shared/schemas.ts` | `accessCode` min 1 / max 20 |
+| `src/__tests__/schemas/validation.test.ts` | Tests de códigos cortos/límites |

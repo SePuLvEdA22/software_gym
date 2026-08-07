@@ -59,12 +59,27 @@ describe('CreateClientSchema', () => {
     }
   })
 
-  it('should reject short accessCode', () => {
-    const result = CreateClientSchema.safeParse({ ...validClient, accessCode: '123' })
+  it('should accept short accessCode (códigos legados de 1-3 dígitos)', () => {
+    const result = CreateClientSchema.safeParse({ ...validClient, accessCode: '212' })
+    expect(result.success).toBe(true)
+  })
+
+  it('should accept accessCode de hasta 20 dígitos (límite del formulario/kiosco)', () => {
+    const result = CreateClientSchema.safeParse({ ...validClient, accessCode: '1'.repeat(20) })
+    expect(result.success).toBe(true)
+  })
+
+  it('should reject empty accessCode', () => {
+    const result = CreateClientSchema.safeParse({ ...validClient, accessCode: '' })
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues.some(i => i.path.includes('accessCode'))).toBe(true)
     }
+  })
+
+  it('should reject accessCode de más de 20 dígitos', () => {
+    const result = CreateClientSchema.safeParse({ ...validClient, accessCode: '1'.repeat(21) })
+    expect(result.success).toBe(false)
   })
 
   it('should reject invalid email', () => {
@@ -120,8 +135,13 @@ describe('UpdateClientSchema (partial)', () => {
     }
   })
 
-  it('should reject short accessCode', () => {
-    const result = UpdateClientSchema.safeParse({ accessCode: '123' })
+  it('should accept short accessCode (fix: editar clientes migrados con código corto)', () => {
+    const result = UpdateClientSchema.safeParse({ accessCode: '212' })
+    expect(result.success).toBe(true)
+  })
+
+  it('should reject empty accessCode on update', () => {
+    const result = UpdateClientSchema.safeParse({ accessCode: '' })
     expect(result.success).toBe(false)
   })
 

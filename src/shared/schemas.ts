@@ -16,7 +16,10 @@ export const CreateClientSchema = z.object({
   email: z.string().email().or(z.literal('')).optional(),
   address: z.string().max(500).optional(),
   photo: z.string().nullable().optional(),
-  accessCode: z.string().min(4).max(10),
+  // Códigos cortos son legítimos: el sistema antiguo usaba códigos de 1-3
+  // dígitos (ej. '212') que el migrador preserva y el kiosco acepta.
+  // Límite real del sistema: 20 dígitos (formulario y kiosco).
+  accessCode: z.string().min(1, 'Código de acceso requerido').max(20),
   status: ClientStatusSchema.optional(),
   emergencyContact: z.object({
     name: z.string().max(200).optional(),
