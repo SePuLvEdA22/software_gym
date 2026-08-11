@@ -18,7 +18,6 @@ import {
   searchClients,
   updateClient,
   deleteClient,
-  updateClientStatus,
   generateUniqueAccessCode
 } from '../database/clients'
 import {
@@ -26,7 +25,6 @@ import {
   getPlanById,
   createMembership,
   getActiveMembership,
-  getActiveOrFrozenMembership,
   getClientMemberships,
   updateExpiredMemberships,
   freezeMembership,
@@ -34,7 +32,6 @@ import {
   recordPayment,
   getClientPayments,
   getPaymentsByDateRange,
-  logAccess,
   getAccessLogs,
   getAccessLogsByDate,
   getClientAccessLogs,
@@ -86,6 +83,7 @@ import {
   getClientRoutines, saveClientRoutine,
   deleteClientRoutine, getGymSettings, saveGymSettings
 } from '../database/routines'
+import { validateAccess } from '../database/accessValidation'
 import {
   getMeasurements, saveMeasurement, getGoals, saveGoal
 } from '../database/bodyTracking'
@@ -321,9 +319,9 @@ export function setupIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number }) => {
+  ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent' }) => {
     try {
-      const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status)
+      const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status, options?.sortBy)
       return { success: true, data: result }
     } catch (error: any) {
       log.error('Error getting all clients:', error)
@@ -505,93 +503,8 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('access:validate', async (_, accessCode: string): Promise<{ success: boolean; data: AccessValidation }> => {
     try {
-      const client = getClientByAccessCode(accessCode)
-      
-      if (!client) {
-        logAccess(accessCode, 'denied_not_found', 'Cliente no encontrado')
-        return {
-          success: true,
-          data: {
-            valid: false,
-            message: 'Cliente no encontrado',
-            code: 'denied_not_found'
-          }
-        }
-      }
-
-      // Todos los clientes (inactive, suspended, expired) pueden renovar desde el kiosco
-      if (client.status === 'inactive' || client.status === 'suspended') {
-        const activeOrFrozen = getActiveOrFrozenMembership(client.id)
-        if (!activeOrFrozen) {
-          updateClientStatus(client.id, 'expired')
-          const debts = getClientDebt(client.id)
-          logAccess(accessCode, 'denied_expired', 'Membresía vencida', client.id, client.fullName)
-          return {
-            success: true,
-            data: {
-              valid: false,
-              client,
-              debt: debts.length > 0 ? debts : undefined,
-              message: 'Membresía vencida',
-              code: 'denied_expired'
-            }
-          }
-        }
-      }
-
-      const activeOrFrozen = getActiveOrFrozenMembership(client.id)
-
-      if (!activeOrFrozen) {
-        updateClientStatus(client.id, 'expired')
-        const debts = getClientDebt(client.id)
-        logAccess(accessCode, 'denied_expired', 'Membresía vencida', client.id, client.fullName)
-        return {
-          success: true,
-          data: {
-            valid: false,
-            client,
-            debt: debts.length > 0 ? debts : undefined,
-            message: 'Membresía vencida',
-            code: 'denied_expired'
-          }
-        }
-      }
-
-      if (activeOrFrozen.status === 'frozen') {
-        const debts = getClientDebt(client.id)
-        logAccess(accessCode, 'denied_frozen', 'Membresía congelada', client.id, client.fullName)
-        return {
-          success: true,
-          data: {
-            valid: false,
-            client,
-            membership: activeOrFrozen,
-            debt: debts.length > 0 ? debts : undefined,
-            message: 'Membresía congelada - contacta recepción',
-            code: 'denied_frozen'
-          }
-        }
-      }
-
-      const membership = activeOrFrozen
-
-      const debts = getClientDebt(client.id)
-      const routines = getClientRoutines(client.id)
-
-      logAccess(accessCode, 'granted', 'Acceso permitido', client.id, client.fullName)
-      
-      return {
-        success: true,
-        data: {
-          valid: true,
-          client,
-          membership,
-          debt: debts.length > 0 ? debts : undefined,
-          routines,
-          message: `Bienvenido ${client.fullName}`,
-          code: 'granted'
-        }
-      }
+      const data = validateAccess(accessCode)
+      return { success: true, data }
     } catch (error: any) {
       log.error('Error validating access:', error)
       return { success: false, data: { valid: false, message: error.message, code: 'denied_not_found' } }
@@ -1205,7 +1118,9 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('inventory:registerMovement', async (_, productId, type, quantity, price, description) => {
     try {
       const result = registerMovement(productId, type, quantity, price, description)
-      return { success: !!result, data: result, error: result ? undefined : 'Producto no encontrado' }
+      // registerMovement devuelve null por producto inexistente, cantidad <= 0
+      // o salida que supera el stock disponible (integridad de stock).
+      return { success: !!result, data: result, error: result ? undefined : 'Movimiento no registrado: producto no encontrado, cantidad inválida o stock insuficiente' }
     } catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 

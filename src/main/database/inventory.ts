@@ -156,6 +156,12 @@ export function registerMovement(
   const product = getProductById(productId)
   if (!product) return null
 
+  // Integridad de stock: la cantidad debe ser positiva y una salida no puede
+  // superar el stock disponible. Antes, una salida con cantidad negativa
+  // INCREMENTABA el stock y las salidas podían dejarlo en negativo.
+  if (quantity <= 0) return null
+  if (type === 'out' && quantity > product.stock) return null
+
   const user = getSessionUser()
   const id = uuidv4()
   const now = formatISO(new Date())

@@ -50,7 +50,7 @@ const electronAPI = {
       ipcRenderer.invoke('client:getByAccessCode', code),
     getByDocumentId: (docId: string): Promise<IpcResult<Client | null>> =>
       ipcRenderer.invoke('client:getByDocumentId', docId),
-    getAll: (options?: { status?: ClientStatus; page?: number; pageSize?: number }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
+    getAll: (options?: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent' }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
       ipcRenderer.invoke('client:getAll', options),
     search: (query: string): Promise<IpcResult<Client[]>> =>
       ipcRenderer.invoke('client:search', query),
@@ -339,6 +339,15 @@ const electronAPI = {
       ipcRenderer.invoke('window:open-kiosk-renew', clientId),
     notifyClientFormSaved: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:notify-client-form-saved'),
+    openForm: (type: string, params?: Record<string, string>): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:open-form', type, params),
+    notifyFormSaved: (type: string, message?: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('window:notify-form-saved', type, message),
+    onFormSaved: (type: string, callback: (message?: string) => void): (() => void) => {
+      const handler = (_: unknown, message?: string) => callback(message)
+      ipcRenderer.on(`form:saved:${type}`, handler)
+      return () => ipcRenderer.removeListener(`form:saved:${type}`, handler)
+    },
     minimize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:minimize-admin'),
     maximize: (): Promise<IpcResult<null>> =>

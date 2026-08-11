@@ -16,11 +16,20 @@ interface AbonoModalProps {
   client: Client
   membership: Membership
   balance: number
+  /** Cuando es true se omite el overlay/modal/header: útil dentro de ventanas-formulario. */
+  embedded?: boolean
   onClose: () => void
   onSuccess: () => void
 }
 
-export function AbonoModal({ client, membership, balance, onClose, onSuccess }: AbonoModalProps): JSX.Element {
+export function AbonoModal({
+  client,
+  membership,
+  balance,
+  embedded = false,
+  onClose,
+  onSuccess
+}: AbonoModalProps): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [amount, setAmount] = useState<number>(balance)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -56,16 +65,9 @@ export function AbonoModal({ client, membership, balance, onClose, onSuccess }: 
     }
   }
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <h2 className="modal-title">Registrar Abono</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            <Icons.Close />
-          </button>
-        </div>
-        <div className="modal-body">
+  const content = (
+    <>
+      <div className="modal-body">
           <div className="card" style={{ padding: 16, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div className="avatar" style={{ width: 48, height: 48, fontSize: 18, flexShrink: 0 }}>
@@ -141,6 +143,23 @@ export function AbonoModal({ client, membership, balance, onClose, onSuccess }: 
             {loading ? 'Registrando...' : 'Confirmar Abono'}
           </button>
         </div>
+    </>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Registrar Abono</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        {content}
       </div>
     </div>
   )

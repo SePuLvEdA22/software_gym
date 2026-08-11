@@ -214,7 +214,20 @@ export function getClientByDocumentId(documentId: string): Client | null {
   return result ? mapDbClient(result, { thumbnailOnly: false }) : null
 }
 
-export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): { data: Client[]; total: number; page: number; totalPages: number } {
+// Ordenamientos permitidos para el listado de clientes (whitelist: nunca
+// interpolamos SQL desde el renderer). 'recent' = fecha de registro desc,
+// para que un cliente recién creado aparezca de primero en el filtro Recientes.
+const CLIENT_ORDER_BY: Record<'name' | 'recent', string> = {
+  name: 'full_name ASC',
+  recent: 'registration_date DESC, full_name ASC'
+}
+
+export function getAllClients(
+  page = 1,
+  pageSize = 50,
+  status?: ClientStatus,
+  sortBy: 'name' | 'recent' = 'name'
+): { data: Client[]; total: number; page: number; totalPages: number } {
   const db = getDatabase()
   
   let countQuery = 'SELECT COUNT(*) as total FROM clients WHERE 1=1'
@@ -232,7 +245,7 @@ export function getAllClients(page = 1, pageSize = 50, status?: ClientStatus): {
   const safePage = Math.min(page, totalPages)
   const offset = (safePage - 1) * pageSize
   
-  query += ' ORDER BY full_name ASC LIMIT ? OFFSET ?'
+  query += ` ORDER BY ${CLIENT_ORDER_BY[sortBy] || CLIENT_ORDER_BY.name} LIMIT ? OFFSET ?`
   const stmt = db.prepare(query)
   const results = stmt.all(...params, pageSize, offset) as unknown as DbClient[]
   

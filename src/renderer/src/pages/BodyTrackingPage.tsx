@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useAppStore } from '@/store/appStore'
+import { useFormSaved } from '@/hooks/useFormSaved'
 import { Client, BodyMeasurement, ClientGoal, FitnessGoal } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
-import { DatePicker, todayLocalKey } from '@/components/DatePicker'
 import { format, parseISO } from 'date-fns'
 
 const goalLabels: Record<FitnessGoal, string> = {
@@ -31,7 +30,7 @@ export function BodyTrackingPage(): JSX.Element {
 
   const loadClients = async () => {
     const r = await window.electronAPI.client.getAll({ page: 1, pageSize: 1000 })
-    if (r.success) setClients(r.data.data)
+    if (r.success && r.data) setClients(r.data.data)
   }
 
   useEffect(() => { loadClients() }, [])
@@ -94,34 +93,17 @@ export function BodyTrackingPage(): JSX.Element {
 }
 
 function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientName: string }): JSX.Element {
-  const showToast = useAppStore((state) => state.showToast)
   const [measurements, setMeasurements] = useState<BodyMeasurement[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    weight: '' as string, height: '' as string, neck: '' as string, shoulders: '' as string,
-    chest: '' as string, leftArm: '' as string, rightArm: '' as string,
-    waist: '' as string, hips: '' as string, leftThigh: '' as string, rightThigh: '' as string,
-    leftCalf: '' as string, rightCalf: '' as string, bodyFat: '' as string, notes: ''
-  })
 
   const loadMeasurements = async () => {
     const r = await window.electronAPI.bodyTracking.getMeasurements(clientId)
-    if (r.success) setMeasurements(r.data)
+    if (r.success && r.data) setMeasurements(r.data)
   }
 
   useEffect(() => { if (clientId) loadMeasurements() }, [clientId])
 
-  const handleSave = async () => {
-    const data: any = { date: form.date, notes: form.notes }
-    for (const key of ['weight', 'height', 'neck', 'shoulders', 'chest', 'leftArm', 'rightArm', 'waist', 'hips', 'leftThigh', 'rightThigh', 'leftCalf', 'rightCalf', 'bodyFat']) {
-      const val = (form as any)[key]
-      if (val !== '') data[key] = Number(val)
-    }
-    const r = await window.electronAPI.bodyTracking.saveMeasurement(clientId, data)
-    if (r.success) { showToast('success', 'Medidas guardadas'); setShowForm(false); loadMeasurements() }
-    else showToast('error', r.error)
-  }
+  // Recargar medidas cuando el formulario guarda en su propia ventana
+  useFormSaved('measurement', () => loadMeasurements())
 
   const latest = measurements[0]
 
@@ -129,7 +111,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
     <div className="card">
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>Medidas Corporales - {clientName}</h3>
-        <button className="btn btn-sm btn-primary" onClick={() => setShowForm(true)}>
+        <button className="btn btn-sm btn-primary" onClick={() => window.electronAPI.window.openForm('measurement', { clientId })}>
           <Icons.Plus /> Nueva Medición
         </button>
       </div>
@@ -187,53 +169,6 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
         </div>
       )}
 
-      {showForm && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal modal-lg">
-            <div className="modal-header">
-              <h2 className="modal-title">Nuevas Medidas</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}><Icons.Close /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Fecha</label>
-                <DatePicker
-                  value={form.date}
-                  onChange={v => setForm(p => ({ ...p, date: v }))}
-                  max={todayLocalKey()}
-                  placeholder="Fecha de la medición"
-                />
-              </div>
-              <div className="grid grid-3" style={{ gap: 12 }}>
-                {[
-                  ['weight', 'Peso (kg)'], ['height', 'Altura (cm)'], ['neck', 'Cuello (cm)'],
-                  ['shoulders', 'Hombros (cm)'], ['chest', 'Pecho (cm)'], ['leftArm', 'Brazo Izq (cm)'],
-                  ['rightArm', 'Brazo Der (cm)'], ['waist', 'Cintura (cm)'], ['hips', 'Cadera (cm)'],
-                  ['leftThigh', 'Pierna Izq (cm)'], ['rightThigh', 'Pierna Der (cm)'],
-                  ['leftCalf', 'Pantorrilla Izq (cm)'], ['rightCalf', 'Pantorrilla Der (cm)'],
-                  ['bodyFat', '% Grasa Corporal']
-                ].map(([key, label]) => (
-                  <div className="form-group" key={key}>
-                    <label className="form-label">{label}</label>
-                    <input type="number" className="form-input" step="0.1"
-                      value={(form as any)[key]}
-                      onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} />
-                  </div>
-                ))}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notas</label>
-                <textarea className="form-input" value={form.notes}
-                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSave}>Guardar Medidas</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -250,29 +185,23 @@ function MeasurementItem({ label, value, unit }: { label: string; value: number 
 }
 
 function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: string }): JSX.Element {
-  const showToast = useAppStore((state) => state.showToast)
   const [goals, setGoals] = useState<ClientGoal[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ goal: 'lose_weight' as FitnessGoal, startDate: new Date().toISOString().split('T')[0], targetDate: '', notes: '' })
 
   const loadGoals = async () => {
     const r = await window.electronAPI.bodyTracking.getGoals(clientId)
-    if (r.success) setGoals(r.data)
+    if (r.success && r.data) setGoals(r.data)
   }
 
   useEffect(() => { if (clientId) loadGoals() }, [clientId])
 
-  const handleSave = async () => {
-    const r = await window.electronAPI.bodyTracking.saveGoal(clientId, form)
-    if (r.success) { showToast('success', 'Objetivo guardado'); setShowForm(false); loadGoals() }
-    else showToast('error', r.error)
-  }
+  // Recargar objetivos cuando el formulario guarda en su propia ventana
+  useFormSaved('goal', () => loadGoals())
 
   return (
     <div className="card">
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>Objetivos - {clientName}</h3>
-        <button className="btn btn-sm btn-primary" onClick={() => setShowForm(true)}>
+        <button className="btn btn-sm btn-primary" onClick={() => window.electronAPI.window.openForm('goal', { clientId })}>
           <Icons.Plus /> Nuevo Objetivo
         </button>
       </div>
@@ -307,57 +236,6 @@ function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: st
         )}
       </div>
 
-      {showForm && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal">
-            <div className="modal-header">
-              <h2 className="modal-title">Nuevo Objetivo</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}><Icons.Close /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Objetivo</label>
-                <select className="form-select" value={form.goal}
-                  onChange={e => setForm(p => ({ ...p, goal: e.target.value as FitnessGoal }))}>
-                  <option value="lose_weight">Bajar de Peso</option>
-                  <option value="gain_muscle">Ganar Masa Muscular</option>
-                  <option value="define">Definir</option>
-                  <option value="maintain">Mantener</option>
-                </select>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Fecha Inicio</label>
-                  <DatePicker
-                    value={form.startDate}
-                    onChange={v => setForm(p => ({ ...p, startDate: v }))}
-                    max={todayLocalKey()}
-                    placeholder="Inicio del objetivo"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Fecha Objetivo</label>
-                  <DatePicker
-                    value={form.targetDate}
-                    onChange={v => setForm(p => ({ ...p, targetDate: v }))}
-                    min={form.startDate || undefined}
-                    placeholder="Fecha meta"
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notas</label>
-                <textarea className="form-input" value={form.notes}
-                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSave}>Guardar Objetivo</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

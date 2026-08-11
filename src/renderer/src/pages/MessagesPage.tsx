@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useFormSaved } from '@/hooks/useFormSaved'
 import { useAppStore } from '@/store/appStore'
 import { MessageTemplate, Client } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
@@ -7,19 +8,16 @@ export function MessagesPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [clients, setClients] = useState<Client[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
   const [sendModal, setSendModal] = useState<{ template: MessageTemplate; client?: Client; all?: boolean } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [templateSearch, setTemplateSearch] = useState('')
-  const [form, setForm] = useState({ name: '', type: 'whatsapp' as 'email' | 'whatsapp', subject: '', content: '', variables: '' })
   const [clientPage, setClientPage] = useState(1)
   const [clientTotalPages, setClientTotalPages] = useState(1)
   const [clientPageSize] = useState(50)
 
   const loadTemplates = async () => {
     const r = await window.electronAPI.messageTemplates.getAll()
-    if (r.success) setTemplates(r.data)
+    if (r.success && r.data) setTemplates(r.data)
   }
 
   const loadClients = async (p?: number) => {
@@ -32,38 +30,31 @@ export function MessagesPage(): JSX.Element {
 
   useEffect(() => { loadTemplates(); loadClients() }, [])
 
-  const handleSaveTemplate = async () => {
-    if (!form.name || !form.content) { showToast('error', 'Nombre y contenido son requeridos'); return }
-    const vars = form.variables ? form.variables.split(',').map(v => v.trim()).filter(Boolean) : []
-    if (editingTemplate) {
-      const r = await window.electronAPI.messageTemplates.update(editingTemplate.id, { ...form, variables: vars })
-      if (r.success) { showToast('success', 'Plantilla actualizada'); setShowForm(false); loadTemplates() }
-      else showToast('error', r.error)
-    } else {
-      const r = await window.electronAPI.messageTemplates.create({ ...form, variables: vars })
-      if (r.success) { showToast('success', 'Plantilla creada'); setShowForm(false); loadTemplates() }
-      else showToast('error', r.error)
-    }
-  }
+  // Recargar plantillas cuando el formulario guarda en su propia ventana
+  useFormSaved('template', (message) => {
+    if (message) showToast('success', message)
+    loadTemplates()
+  })
+
 
   const handleSend = async () => {
     if (!sendModal) return
     const { template, client, all } = sendModal
     if (all) {
       const r = await window.electronAPI.messageTemplates.sendToAll(template.id)
-      if (r.success) showToast('success', `Mensaje enviado a ${r.data} clientes`)
-      else showToast('error', r.error)
+      if (r.success && r.data) showToast('success', `Mensaje enviado a ${r.data} clientes`)
+      else showToast('error', r.error || 'Error al enviar')
     } else if (client) {
       const r = await window.electronAPI.messageTemplates.sendToClient(template.id, client.id)
       if (r.success) showToast('success', 'Mensaje enviado')
-      else showToast('error', r.error)
+      else showToast('error', r.error || 'Error al enviar')
     }
     setSendModal(null)
   }
 
   const handleSendToExpiring = async (templateId: string) => {
     const r = await window.electronAPI.messageTemplates.sendToExpiring(templateId, 7)
-    if (r.success) {
+    if (r.success && r.data) {
       showToast('success', `Plantilla enviada a ${r.data.sent} clientes por vencer (${r.data.failed} fallidos)`)
     } else {
       showToast('error', r.error || 'Error al enviar')
@@ -80,7 +71,7 @@ export function MessagesPage(): JSX.Element {
     <div className="page">
       <div className="page-header" style={{ marginBottom: 16 }}>
         <h2>Mensajes y Promociones</h2>
-        <button className="btn btn-primary" style={{ marginTop: 12, paddingBottom: 12 }} onClick={() => { setEditingTemplate(null); setForm({ name: '', type: 'whatsapp', subject: '', content: '', variables: '' }); setShowForm(true) }}>
+        <button className="btn btn-primary" style={{ marginTop: 12, paddingBottom: 12 }} onClick={() => window.electronAPI.window.openForm('template')}>
           <Icons.Plus /> Nueva Plantilla
         </button>
       </div>
@@ -115,7 +106,7 @@ export function MessagesPage(): JSX.Element {
                   <td>
                     <div className="table-actions">
                       <button className="btn btn-sm btn-secondary" onClick={() => setSendModal({ template: t })} title="Enviar"><Icons.Send /></button>
-                      <button className="btn btn-sm btn-secondary" onClick={() => { setEditingTemplate(t); setForm({ name: t.name, type: t.type, subject: t.subject, content: t.content, variables: (t.variables || []).join(', ') }); setShowForm(true) }} title="Editar"><Icons.Edit /></button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('template', { id: t.id })} title="Editar"><Icons.Edit /></button>
                     </div>
                   </td>
                 </tr>
@@ -195,61 +186,6 @@ export function MessagesPage(): JSX.Element {
         </div>
       )}
 
-      {showForm && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal">
-            <div className="modal-header">
-              <h2 className="modal-title">{editingTemplate ? 'Editar Plantilla' : 'Nueva Plantilla'}</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}><Icons.Close /></button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Nombre *</label>
-                <input type="text" className="form-input" value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ej: Promoción Julio" />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Tipo</label>
-                  <select className="form-select" value={form.type}
-                    onChange={e => setForm(p => ({ ...p, type: e.target.value as 'email' | 'whatsapp' }))}>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="email">Correo Electrónico</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Asunto {form.type === 'email' ? '*' : '(opcional)'}</label>
-                  <input type="text" className="form-input" value={form.subject}
-                    onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
-                    placeholder={form.type === 'email' ? 'Asunto del correo' : 'No aplica para WhatsApp'} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Contenido *</label>
-                <textarea className="form-input" value={form.content}
-                  onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
-                  rows={6} style={{ resize: 'vertical', fontFamily: 'monospace' }}
-                  placeholder="Ej: Hola {{nombre}}, tenemos una promoción especial..." />
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
-                  Variables disponibles: {'{nombre}'}, {'{documento}'}, {'{telefono}'}, {'{plan}'}, {'{vencimiento}'}
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Variables (separadas por coma)</label>
-                <input type="text" className="form-input" value={form.variables}
-                  onChange={e => setForm(p => ({ ...p, variables: e.target.value }))}
-                  placeholder="nombre, plan, vencimiento" />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSaveTemplate}>
-                {editingTemplate ? 'Actualizar' : 'Crear Plantilla'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -17,11 +17,20 @@ interface RenewModalProps {
   client: Client
   activeMembership: Membership | null
   plans: MembershipPlan[]
+  /** Cuando es true se omite el overlay/modal/header: útil dentro de ventanas-formulario. */
+  embedded?: boolean
   onClose: () => void
   onSuccess: () => void
 }
 
-export function RenewModal({ client, activeMembership, plans, onClose, onSuccess }: RenewModalProps): JSX.Element {
+export function RenewModal({
+  client,
+  activeMembership,
+  plans,
+  embedded = false,
+  onClose,
+  onSuccess
+}: RenewModalProps): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [selectedPlan, setSelectedPlan] = useState<string>('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -106,17 +115,9 @@ export function RenewModal({ client, activeMembership, plans, onClose, onSuccess
     return format(end, 'dd/MM/yyyy')
   }
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-lg">
-        <div className="modal-header">
-          <h2 className="modal-title">Nueva Membresía</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            <Icons.Close />
-          </button>
-        </div>
-
-        <div className="modal-body">
+  const content = (
+    <>
+      <div className="modal-body">
           <div className="card" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div className="avatar" style={{ width: 56, height: 56, fontSize: 20, flexShrink: 0 }}>
@@ -302,6 +303,23 @@ export function RenewModal({ client, activeMembership, plans, onClose, onSuccess
             {loading ? 'Procesando...' : 'Confirmar'}
           </button>
         </div>
+    </>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-lg">
+        <div className="modal-header">
+          <h2 className="modal-title">Nueva Membresía</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        {content}
       </div>
     </div>
   )

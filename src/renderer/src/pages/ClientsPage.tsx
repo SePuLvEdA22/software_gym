@@ -1,14 +1,11 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { useFormSaved } from '@/hooks/useFormSaved'
 import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
-import { RenewModal } from '@/components/modals/RenewModal'
-import { FreezeModal } from '@/components/modals/FreezeModal'
 import { FreezeHistoryModal } from '@/components/modals/FreezeHistoryModal'
-import { AbonoModal } from '@/components/modals/AbonoModal'
 import { PaymentHistoryModal } from '@/components/modals/PaymentHistoryModal'
-import { AttendanceStatsModal } from '@/components/modals/AttendanceStatsModal'
 import { RoutinesModal } from '@/components/modals/RoutinesModal'
 import { Client, ClientStatus, Membership, ClientDebt } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
@@ -99,6 +96,15 @@ export function ClientsPage(): JSX.Element {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all')
+  // 'recent' ordena por fecha de registro DESC: los clientes recién creados salen de primero.
+  // Se persiste en localStorage (igual que el tema) para que sobreviva al cierre/reinicio.
+  const [sortBy, setSortBy] = useState<'name' | 'recent'>(() => {
+    try {
+      return localStorage.getItem('bodyfitgym-clients-sort') === 'recent' ? 'recent' : 'name'
+    } catch {
+      return 'name'
+    }
+  })
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
@@ -108,28 +114,21 @@ export function ClientsPage(): JSX.Element {
   const [clientMemberships, setClientMemberships] = useState<Membership[]>([])
   const [clientDebts, setClientDebts] = useState<ClientDebt[]>([])
 
-  const [showRenewModal, setShowRenewModal] = useState(false)
-  const [showFreezeModal, setShowFreezeModal] = useState(false)
   const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
-  const [selectedMembershipForFreeze, setSelectedMembershipForFreeze] = useState<Membership | null>(null)
   const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(null)
-  const [showAbonoModal, setShowAbonoModal] = useState(false)
   const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false)
-  const [selectedMembershipForAbono, setSelectedMembershipForAbono] = useState<{ membership: Membership; balance: number } | null>(null)
   const [selectedMembershipForPayments, setSelectedMembershipForPayments] = useState<string | null>(null)
-  const [showStatsModal, setShowStatsModal] = useState(false)
-  const [statsClient, setStatsClient] = useState<Client | null>(null)
   const [showRoutinesModal, setShowRoutinesModal] = useState(false)
   const [routineClient, setRoutineClient] = useState<Client | null>(null)
 
   const loadClients = useCallback(async () => {
     const statusParam = filterStatus === 'all' ? undefined : filterStatus
-    const result = await window.electronAPI.client.getAll({ status: statusParam, page, pageSize })
+    const result = await window.electronAPI.client.getAll({ status: statusParam, page, pageSize, sortBy })
     if (result.success && result.data) {
       setClients(result.data.data)
       setTotalPages(result.data.totalPages)
     }
-  }, [filterStatus, page, pageSize, setClients])
+  }, [filterStatus, page, pageSize, sortBy, setClients])
 
   const loadDebtors = useCallback(async () => {
     try {
@@ -166,30 +165,12 @@ export function ClientsPage(): JSX.Element {
     const clientId = searchParams.get('clientId')
     const action = searchParams.get('action')
 
-    if (clientId && action === 'renew' && plans.length > 0) {
+    if (clientId && action === 'renew') {
       // Clear URL params immediately to prevent re-trigger
       setSearchParams({}, { replace: true })
-
-      // Fetch the client by ID and open RenewModal
-      const doRenew = async () => {
-        const result = await window.electronAPI.client.getById(clientId)
-        if (result.success && result.data) {
-          setSelectedClient(result.data)
-          // Fetch memberships so the modal knows about active ones
-          const memResult = await window.electronAPI.membership.getByClient(clientId)
-          if (memResult.success && memResult.data) {
-            setClientMemberships(memResult.data)
-          }
-          const debtResult = await window.electronAPI.client.getDebt(clientId)
-          if (debtResult.success && debtResult.data) {
-            setClientDebts(debtResult.data)
-          }
-          setShowRenewModal(true)
-        }
-      }
-      doRenew()
+      window.electronAPI.window.openForm('renew', { clientId })
     }
-  }, [searchParams, plans, setSearchParams])
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const unsubscribe = window.electronAPI.clientForm.onSaved(() => {
@@ -199,6 +180,24 @@ export function ClientsPage(): JSX.Element {
     })
     return unsubscribe
   }, [loadClients, loadDebtors, loadPlans])
+
+  // Ref para refrescar el detalle del cliente seleccionado tras guardar
+  const selectedClientRef = useRef(selectedClient)
+  useEffect(() => {
+    selectedClientRef.current = selectedClient
+  }, [selectedClient])
+
+  // Recargar cuando las acciones (renovar/congelar/abono) guardan en su propia ventana
+  const handleFormSaved = (message?: string) => {
+    if (message) showToast('success', message)
+    loadClients()
+    loadDebtors()
+    const sel = selectedClientRef.current
+    if (sel) handleClientSelect(sel)
+  }
+  useFormSaved('renew', handleFormSaved)
+  useFormSaved('freeze', handleFormSaved)
+  useFormSaved('abono', handleFormSaved)
 
   const handleClientSelect = async (client: Client) => {
     setSelectedClient(client)
@@ -252,12 +251,14 @@ export function ClientsPage(): JSX.Element {
 
   const handleRenew = (client: Client) => {
     setSelectedClient(client)
-    setShowRenewModal(true)
+    window.electronAPI.window.openForm('renew', { clientId: client.id })
   }
 
   const handleFreezeClick = (membership: Membership) => {
-    setSelectedMembershipForFreeze(membership)
-    setShowFreezeModal(true)
+    window.electronAPI.window.openForm('freeze', {
+      membershipId: membership.id,
+      clientId: selectedClient?.id || ''
+    })
   }
 
   const handleUnfreeze = async (membershipId: string) => {
@@ -290,6 +291,23 @@ export function ClientsPage(): JSX.Element {
     setPage(1)
   }
 
+  const handleSortToggle = () => {
+    setSortBy(prev => {
+      const next = prev === 'recent' ? 'name' : 'recent'
+      try {
+        localStorage.setItem('bodyfitgym-clients-sort', next)
+      } catch {
+        /* storage no disponible: solo afecta a la sesión actual */
+      }
+      return next
+    })
+    setPage(1)
+  }
+
+  const handleNewMembership = () => {
+    if (selectedClient) handleRenew(selectedClient)
+  }
+
   const activeMembership = selectedClient
     ? clientMemberships.find(m => m.status === 'active' || m.status === 'frozen') || null
     : null
@@ -305,12 +323,25 @@ export function ClientsPage(): JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <h1 className="headline-md">Directorio de Miembros</h1>
-        <button className="btn btn-primary" onClick={handleNewClient}>
-          <Icons.Plus />
-          Nuevo Cliente
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={handleNewMembership}
+            disabled={!selectedClient}
+            title={selectedClient
+              ? `Nueva membresía para ${selectedClient.fullName}`
+              : 'Seleccione un cliente para crear una membresía'}
+          >
+            <Icons.Membership />
+            Nueva Membresía
+          </button>
+          <button className="btn btn-primary" onClick={handleNewClient}>
+            <Icons.Plus />
+            Nuevo Cliente
+          </button>
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -347,6 +378,17 @@ export function ClientsPage(): JSX.Element {
             </button>
           ))}
         </div>
+
+        {/* Separador visual + orden por recientes (independiente de los filtros de estado) */}
+        <div style={{ width: 1, height: 24, backgroundColor: 'var(--color-outline-variant)' }} />
+        <button
+          className={`filter-pill${sortBy === 'recent' ? ' active' : ''}`}
+          onClick={handleSortToggle}
+          title="Ordenar por fecha de registro: los clientes recién creados salen de primero"
+        >
+          <Icons.Clock />
+          Recientes
+        </button>
 
         <button className="btn btn-secondary" onClick={handleSearch} style={{ flexShrink: 0 }}>
           <Icons.Search />
@@ -440,21 +482,10 @@ export function ClientsPage(): JSX.Element {
                       <div className="table-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="icon-btn"
-                          onClick={() => {
-                            setStatsClient(client)
-                            setShowStatsModal(true)
-                          }}
+                          onClick={() => window.electronAPI.window.openForm('stats', { clientId: client.id })}
                           title="Estadísticas"
                         >
                           <Icons.Clock />
-                        </button>
-                        <button
-                          className="icon-btn"
-                          onClick={() => handleRenew(client)}
-                          title="Nueva membresía"
-                          style={{ color: 'var(--color-primary-container)' }}
-                        >
-                          <Icons.Plus />
                         </button>
                         <button
                           className="icon-btn"
@@ -599,10 +630,10 @@ export function ClientsPage(): JSX.Element {
                               {debt && debt.balance > 0 && (
                                 <button
                                   className="btn btn-primary btn-sm"
-                                  onClick={() => {
-                                    setSelectedMembershipForAbono({ membership, balance: debt.balance })
-                                    setShowAbonoModal(true)
-                                  }}
+                                  onClick={() => window.electronAPI.window.openForm('abono', {
+                                    clientId: selectedClient.id,
+                                    membershipId: membership.id
+                                  })}
                                   title="Registrar abono"
                                   style={{ minWidth: 36, minHeight: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
@@ -689,40 +720,6 @@ export function ClientsPage(): JSX.Element {
       )}
 
       {/* Modals */}
-      {showRenewModal && selectedClient && (
-        <RenewModal
-          client={selectedClient}
-          activeMembership={activeMembership}
-          plans={plans}
-          onClose={() => {
-            setShowRenewModal(false)
-          }}
-          onSuccess={() => {
-            loadClients()
-            loadDebtors()
-            if (selectedClient) {
-              handleClientSelect(selectedClient)
-            }
-          }}
-        />
-      )}
-
-      {showFreezeModal && selectedMembershipForFreeze && (
-        <FreezeModal
-          membership={selectedMembershipForFreeze}
-          onClose={() => {
-            setShowFreezeModal(false)
-            setSelectedMembershipForFreeze(null)
-          }}
-          onSuccess={() => {
-            loadClients()
-            if (selectedClient) {
-              handleClientSelect(selectedClient)
-            }
-          }}
-        />
-      )}
-
       {showFreezeHistoryModal && selectedMembershipForHistory && (
         <FreezeHistoryModal
           membershipId={selectedMembershipForHistory}
@@ -733,40 +730,12 @@ export function ClientsPage(): JSX.Element {
         />
       )}
 
-      {showAbonoModal && selectedMembershipForAbono && (
-        <AbonoModal
-          client={selectedClient!}
-          membership={selectedMembershipForAbono.membership}
-          balance={selectedMembershipForAbono.balance}
-          onClose={() => {
-            setShowAbonoModal(false)
-            setSelectedMembershipForAbono(null)
-          }}
-          onSuccess={() => {
-            loadClients()
-            if (selectedClient) {
-              handleClientSelect(selectedClient)
-            }
-          }}
-        />
-      )}
-
       {showPaymentHistoryModal && selectedMembershipForPayments && (
         <PaymentHistoryModal
           membershipId={selectedMembershipForPayments}
           onClose={() => {
             setShowPaymentHistoryModal(false)
             setSelectedMembershipForPayments(null)
-          }}
-        />
-      )}
-
-      {showStatsModal && statsClient && (
-        <AttendanceStatsModal
-          client={statsClient}
-          onClose={() => {
-            setShowStatsModal(false)
-            setStatsClient(null)
           }}
         />
       )}

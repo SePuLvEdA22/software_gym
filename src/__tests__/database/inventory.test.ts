@@ -162,6 +162,38 @@ describe('Inventory', () => {
     })
   })
 
+  describe('Integridad de stock (movimientos inválidos)', () => {
+    it('NO permite movimientos con cantidad 0', () => {
+      const product = createProduct({ ...sampleProduct, name: 'Cero Qty', barcode: 'ZERO001', stock: 10 })
+      const m = registerMovement(product.id, 'in', 0, 1000, 'Cero')
+      expect(m).toBeNull()
+      expect(getProductById(product.id)!.stock).toBe(10)
+    })
+
+    it('NO permite cantidades negativas (antes una salida negativa INCREMENTABA el stock)', () => {
+      const product = createProduct({ ...sampleProduct, name: 'Neg Qty', barcode: 'NEG001', stock: 10 })
+      const m = registerMovement(product.id, 'out', -5, 1000, 'Negativa')
+      expect(m).toBeNull()
+      expect(getProductById(product.id)!.stock).toBe(10)
+      // Tampoco se registra un movimiento fantasma
+      expect(getMovements(product.id).total).toBe(0)
+    })
+
+    it('NO permite salidas mayores al stock disponible (el stock nunca queda negativo)', () => {
+      const product = createProduct({ ...sampleProduct, name: 'Oversell', barcode: 'OVR001', stock: 3 })
+      const m = registerMovement(product.id, 'out', 10, 1000, 'Sobreventa')
+      expect(m).toBeNull()
+      expect(getProductById(product.id)!.stock).toBe(3)
+    })
+
+    it('permite salida exacta al stock disponible (stock llega a 0)', () => {
+      const product = createProduct({ ...sampleProduct, name: 'Exact Out', barcode: 'EXCT001', stock: 5 })
+      const m = registerMovement(product.id, 'out', 5, 1000, 'Últimas unidades')
+      expect(m).not.toBeNull()
+      expect(getProductById(product.id)!.stock).toBe(0)
+    })
+  })
+
   describe('Low Stock', () => {
     it('should return products below minimum stock', () => {
       createProduct({ ...sampleProduct, name: 'Low Stock Product', barcode: 'LOW001', stock: 5, minStock: 10 })

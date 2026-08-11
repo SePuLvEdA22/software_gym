@@ -5,10 +5,16 @@ import { format, parseISO } from 'date-fns'
 
 interface AttendanceStatsModalProps {
   client: Client
+  /** Cuando es true se omite el overlay/modal/header: útil dentro de ventanas-formulario. */
+  embedded?: boolean
   onClose: () => void
 }
 
-export function AttendanceStatsModal({ client, onClose }: AttendanceStatsModalProps): JSX.Element {
+export function AttendanceStatsModal({
+  client,
+  embedded = false,
+  onClose
+}: AttendanceStatsModalProps): JSX.Element {
   const [stats, setStats] = useState<ClientAttendanceStatsType | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -24,16 +30,9 @@ export function AttendanceStatsModal({ client, onClose }: AttendanceStatsModalPr
     setLoading(false)
   }
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 450 }}>
-        <div className="modal-header">
-          <h2 className="modal-title">Estadísticas de Asistencia</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            <Icons.Close />
-          </button>
-        </div>
-        <div className="modal-body">
+  const content = (
+    <>
+      <div className="modal-body">
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
             <div className="avatar" style={{ width: 48, height: 48 }}>
               {client.photo ? (
@@ -90,6 +89,23 @@ export function AttendanceStatsModal({ client, onClose }: AttendanceStatsModalPr
         <div className="modal-footer">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
         </div>
+    </>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 450 }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Estadísticas de Asistencia</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        {content}
       </div>
     </div>
   )

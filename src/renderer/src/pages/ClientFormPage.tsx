@@ -125,21 +125,9 @@ export function ClientFormPage(): JSX.Element {
     if (!validateForm()) return
     setSaving(true)
 
-    // El documento es opcional: solo se verifica duplicado si trae valor
-    const docId = formData.documentId.trim()
-    if (docId) {
-      try {
-        const existing = await window.electronAPI.client.getByDocumentId(docId)
-        if (existing.success && existing.data && existing.data.id !== clientId) {
-          setFieldErrors({ documentId: 'Ya existe un cliente con este documento de identidad' })
-          setSaving(false)
-          return
-        }
-      } catch {
-        // ignore, proceed with save
-      }
-    }
-
+    // Nota: el documento de identidad ya no se edita desde el formulario (el input
+    // fue reemplazado por el teléfono); formData.documentId se conserva para no
+    // borrar el documento de clientes existentes al editarlos.
     const submitData: Omit<Client, 'id' | 'registrationDate'> = {
       ...formData,
       birthDate: formData.birthDate ? parseISO(formData.birthDate).toISOString() : new Date().toISOString()
@@ -264,13 +252,13 @@ export function ClientFormPage(): JSX.Element {
                   {fieldErrors.fullName && <span className="form-error">{fieldErrors.fullName}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Documento de Identidad</label>
-                  <input type="text"
-                    className={`form-input ${fieldErrors.documentId ? 'form-input-error' : ''}`}
-                    value={formData.documentId}
-                    onChange={(e) => { setFormData(prev => ({ ...prev, documentId: e.target.value })); setFieldErrors(prev => ({ ...prev, documentId: '' })) }}
-                    placeholder="Opcional — número de documento" />
-                  {fieldErrors.documentId && <span className="form-error">{fieldErrors.documentId}</span>}
+                  <label className="form-label">Teléfono</label>
+                  <input type="tel"
+                    className={`form-input ${fieldErrors.phone ? 'form-input-error' : ''}`}
+                    value={formData.phone}
+                    onChange={(e) => { setFormData(prev => ({ ...prev, phone: e.target.value })); setFieldErrors(prev => ({ ...prev, phone: '' })) }}
+                    placeholder="Número de teléfono" />
+                  {fieldErrors.phone && <span className="form-error">{fieldErrors.phone}</span>}
                 </div>
               </div>
 
@@ -323,15 +311,6 @@ export function ClientFormPage(): JSX.Element {
                 <option value="female">Femenino</option>
                 <option value="other">Otro</option>
               </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Teléfono</label>
-              <input type="tel"
-                className={`form-input ${fieldErrors.phone ? 'form-input-error' : ''}`}
-                value={formData.phone}
-                onChange={(e) => { setFormData(prev => ({ ...prev, phone: e.target.value })); setFieldErrors(prev => ({ ...prev, phone: '' })) }}
-                placeholder="Número de teléfono" />
-              {fieldErrors.phone && <span className="form-error">{fieldErrors.phone}</span>}
             </div>
           </div>
 

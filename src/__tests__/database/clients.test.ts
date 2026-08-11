@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { initDatabase, closeDatabase } from '../../main/database/index'
+import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import {
   createClient,
   getClientById,
@@ -127,6 +127,28 @@ describe('Clients Database', () => {
     const page2 = getAllClients(2, 10)
     expect(page2.data.length).toBeGreaterThan(0)
     expect(page2.page).toBe(2)
+  })
+
+  it('should sort clients by registration date with sortBy recent (nuevo primero)', () => {
+    const older = createClient({ ...sampleClient, documentId: 'sort-a', accessCode: 'srt-a', fullName: 'A Sort' })
+    const newer = createClient({ ...sampleClient, documentId: 'sort-b', accessCode: 'srt-b', fullName: 'B Sort' })
+    // Fechas explícitas y distintas: el orden no depende de los milisegundos del reloj
+    getDatabase().prepare('UPDATE clients SET registration_date = ? WHERE id = ?').run('2024-01-01T10:00:00.000Z', older.id)
+    getDatabase().prepare('UPDATE clients SET registration_date = ? WHERE id = ?').run('2024-06-15T10:00:00.000Z', newer.id)
+
+    const recent = getAllClients(1, 50, undefined, 'recent')
+    const idxNewer = recent.data.findIndex(c => c.id === newer.id)
+    const idxOlder = recent.data.findIndex(c => c.id === older.id)
+    expect(idxNewer).toBeGreaterThan(-1)
+    expect(idxOlder).toBeGreaterThan(-1)
+    // El creado después (newer) aparece ANTES que el creado primero (older)
+    expect(idxNewer).toBeLessThan(idxOlder)
+
+    // Con el sort por defecto (name) el orden alfabético se mantiene
+    const byName = getAllClients(1, 50)
+    const idxNameNewer = byName.data.findIndex(c => c.id === newer.id)
+    const idxNameOlder = byName.data.findIndex(c => c.id === older.id)
+    expect(idxNameOlder).toBeLessThan(idxNameNewer)
   })
 
   it('should search clients by name', () => {

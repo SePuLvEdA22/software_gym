@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useFormSaved } from '@/hooks/useFormSaved'
 import { useAppStore } from '@/store/appStore'
 import { Product, InventoryMovement } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
@@ -44,232 +45,12 @@ function getStockPercent(stock: number): number {
   return Math.min(Math.round((stock / 50) * 100), 100)
 }
 
-interface ProductFormProps {
-  product?: Product | null
-  onClose: () => void
-  onSave: () => void
-}
-
-function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Element {
-  const showToast = useAppStore((state) => state.showToast)
-  // Campos numéricos como string para que el usuario pueda borrarlos y escribir
-  // libremente; se convierten a número al guardar.
-  const [form, setForm] = useState({
-    name: product?.name || '',
-    category: product?.category || 'supplement',
-    description: product?.description || '',
-    price: product?.price != null ? String(product.price) : '',
-    cost: product?.cost != null ? String(product.cost) : '',
-    stock: product?.stock != null ? String(product.stock) : '',
-    minStock: product?.minStock != null ? String(product.minStock) : '',
-    barcode: product?.barcode || ''
-  })
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name) { showToast('error', 'El nombre es requerido'); return }
-    setLoading(true)
-    const data = {
-      name: form.name,
-      category: form.category,
-      description: form.description,
-      price: Number(form.price) || 0,
-      cost: Number(form.cost) || 0,
-      stock: Number(form.stock) || 0,
-      minStock: Number(form.minStock) || 0,
-      barcode: form.barcode
-    }
-    try {
-      if (product) {
-        const r = await window.electronAPI.inventory.updateProduct(product.id, data)
-        if (r.success) { showToast('success', 'Producto actualizado'); onSave() }
-        else showToast('error', r.error)
-      } else {
-        const r = await window.electronAPI.inventory.createProduct(data)
-        if (r.success) { showToast('success', 'Producto creado'); onSave() }
-        else showToast('error', r.error)
-      }
-    } catch (err: any) {
-      showToast('error', err.message)
-    } finally { setLoading(false) }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-lg glass-panel">
-        <form onSubmit={handleSubmit}>
-          <div className="modal-header">
-            <h2 className="headline-md">{product ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-            <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
-          </div>
-          <div className="modal-body">
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label-md">Nombre *</label>
-                <input type="text" className="form-input" value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
-              </div>
-              <div className="form-group">
-                <label className="label-md">Categoría</label>
-                <select className="form-select" value={form.category}
-                  onChange={e => setForm(p => ({ ...p, category: e.target.value as Product['category'] }))}>
-                  <option value="supplement">Suplementos</option>
-                  <option value="drink">Bebidas</option>
-                  <option value="accessory">Accesorios</option>
-                  <option value="other">Otros</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="label-md">Descripción</label>
-              <textarea className="form-input" value={form.description}
-                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                rows={2} style={{ resize: 'vertical' }} />
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label-md">Precio Venta</label>
-                <input type="text" inputMode="numeric" className="form-input" value={form.price}
-                  onChange={e => setForm(p => ({ ...p, price: e.target.value.replace(/\D/g, '') }))}
-                  placeholder="0" />
-              </div>
-              <div className="form-group">
-                <label className="label-md">Costo</label>
-                <input type="text" inputMode="numeric" className="form-input" value={form.cost}
-                  onChange={e => setForm(p => ({ ...p, cost: e.target.value.replace(/\D/g, '') }))}
-                  placeholder="0" />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label-md">Stock Actual</label>
-                <input type="text" inputMode="numeric" className="form-input" value={form.stock}
-                  onChange={e => setForm(p => ({ ...p, stock: e.target.value.replace(/\D/g, '') }))}
-                  placeholder="0" />
-              </div>
-              <div className="form-group">
-                <label className="label-md">Stock Mínimo</label>
-                <input type="text" inputMode="numeric" className="form-input" value={form.minStock}
-                  onChange={e => setForm(p => ({ ...p, minStock: e.target.value.replace(/\D/g, '') }))}
-                  placeholder="0" />
-              </div>
-              <div className="form-group">
-                <label className="label-md">Código de Barras</label>
-                <input type="text" className="form-input" value={form.barcode}
-                  onChange={e => setForm(p => ({ ...p, barcode: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Guardando...' : product ? 'Actualizar' : 'Crear Producto'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-interface MovementFormProps {
-  product: Product
-  onClose: () => void
-  onSave: () => void
-}
-
-function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Element {
-  const showToast = useAppStore((state) => state.showToast)
-  const [type, setType] = useState<'in' | 'out'>('in')
-  // Como string para que el usuario pueda borrar el valor por defecto
-  const [quantity, setQuantity] = useState('1')
-  const [price, setPrice] = useState(String(product.cost || product.price || ''))
-  const [description, setDescription] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const qty = Number(quantity)
-    if (!quantity || !qty || qty <= 0) { showToast('error', 'La cantidad debe ser mayor a 0'); return }
-    if (type === 'out' && qty > product.stock) {
-      showToast('error', `Stock insuficiente. Disponible: ${product.stock}`)
-      return
-    }
-    setLoading(true)
-    try {
-      const r = await window.electronAPI.inventory.registerMovement(product.id, type, qty, Number(price) || 0, description)
-      if (r.success) {
-        showToast('success', `Movimiento registrado: ${type === 'in' ? 'Entrada' : 'Salida'} de ${quantity} unidades`)
-        onSave()
-      } else {
-        showToast('error', r.error || 'Error al registrar movimiento')
-      }
-    } catch (err: any) {
-      showToast('error', err.message)
-    } finally { setLoading(false) }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal glass-panel">
-        <form onSubmit={handleSubmit}>
-          <div className="modal-header">
-            <h2 className="headline-md">Movimiento: {product.name}</h2>
-            <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
-          </div>
-          <div className="modal-body">
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label-md">Tipo</label>
-                <select className="form-select" value={type}
-                  onChange={e => setType(e.target.value as 'in' | 'out')}>
-                  <option value="in">Entrada</option>
-                  <option value="out">Salida</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="label-md">Cantidad</label>
-                <input type="text" inputMode="numeric" className="form-input" value={quantity}
-                  onChange={e => setQuantity(e.target.value.replace(/\D/g, ''))}
-                  placeholder="0" />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label-md">Precio Unitario</label>
-                <input type="text" inputMode="numeric" className="form-input" value={price}
-                  onChange={e => setPrice(e.target.value.replace(/\D/g, ''))}
-                  placeholder="0" />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="label-md">Descripción</label>
-              <input type="text" className="form-input" value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Motivo del movimiento" />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Registrando...' : 'Registrar Movimiento'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
 
 export function InventoryPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const confirm = useAppStore((state) => state.confirm)
   const [products, setProducts] = useState<Product[]>([])
   const [movements, setMovements] = useState<InventoryMovement[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [showMovement, setShowMovement] = useState<Product | null>(null)
   const [tab, setTab] = useState<'products' | 'movements'>('products')
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
@@ -312,10 +93,23 @@ export function InventoryPage(): JSX.Element {
   useEffect(() => { loadProducts(); loadMovements(); loadLowStock() }, [])
 
   useEffect(() => {
-    const handler = () => { setEditingProduct(null); setShowForm(true) }
+    const handler = () => { window.electronAPI.window.openForm('product') }
     window.addEventListener('shortcut:newProduct', handler)
     return () => window.removeEventListener('shortcut:newProduct', handler)
   }, [])
+
+  // Recargar listas cuando los formularios de producto/movimiento guardan en su propia ventana
+  useFormSaved('product', (message) => {
+    if (message) showToast('success', message)
+    loadProducts()
+    loadLowStock()
+  })
+  useFormSaved('movement', (message) => {
+    if (message) showToast('success', message)
+    loadProducts()
+    loadMovements()
+    loadLowStock()
+  })
 
   useEffect(() => { setPage(1) }, [search, selectedCategory])
 
@@ -329,7 +123,7 @@ export function InventoryPage(): JSX.Element {
     if (!ok) return
     const r = await window.electronAPI.inventory.deleteProduct(product.id)
     if (r.success) { showToast('success', 'Producto eliminado'); loadProducts() }
-    else showToast('error', r.error)
+    else showToast('error', r.error || 'Error al eliminar el producto')
   }
 
   const uniqueCategories = useMemo(() => {
@@ -362,7 +156,7 @@ export function InventoryPage(): JSX.Element {
             <input type="text" placeholder="Buscar productos..."
               value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <button className="btn btn-primary" onClick={() => { setEditingProduct(null); setShowForm(true) }}>
+          <button className="btn btn-primary" onClick={() => window.electronAPI.window.openForm('product')}>
             <Icons.Plus /> Agregar Producto
           </button>
         </div>
@@ -447,8 +241,8 @@ export function InventoryPage(): JSX.Element {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { setShowMovement(p) }} title="Movimiento"><Icons.Plus /></button>
-                        <button className="btn btn-sm btn-secondary" onClick={() => { setEditingProduct(p); setShowForm(true) }} title="Editar"><Icons.Edit /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('movement', { productId: p.id })} title="Movimiento"><Icons.Plus /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('product', { id: p.id })} title="Editar"><Icons.Edit /></button>
                         <button className="btn btn-sm btn-secondary" style={{ color: 'var(--color-error)', marginLeft: 'auto' }} onClick={() => handleDelete(p)} title="Eliminar"><Icons.Trash /></button>
                       </div>
                     </div>
@@ -499,8 +293,6 @@ export function InventoryPage(): JSX.Element {
         </div>
       )}
 
-      {showForm && <ProductForm product={editingProduct} onClose={() => { setShowForm(false); setEditingProduct(null) }} onSave={() => { setShowForm(false); setEditingProduct(null); loadProducts() }} />}
-      {showMovement && <MovementForm product={showMovement} onClose={() => setShowMovement(null)} onSave={() => { setShowMovement(null); loadProducts(); loadMovements() }} />}
     </div>
   )
 }

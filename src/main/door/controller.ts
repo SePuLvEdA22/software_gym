@@ -175,8 +175,10 @@ function closeDoor(trigger: DoorEventTrigger): void {
   log.info('Door closed')
 }
 
-export function manualOpen(): boolean {
-  return openDoor('manual') as unknown as boolean
+export function manualOpen(): Promise<boolean> {
+  // Devuelve el Promise real de openDoor; antes se casteaba a boolean y
+  // cualquier llamada síncrona recibía un Promise (siempre truthy).
+  return openDoor('manual')
 }
 
 export function manualClose(): void {

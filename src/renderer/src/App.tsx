@@ -17,6 +17,7 @@ import { InventoryPage } from '@/pages/InventoryPage'
 import { BodyTrackingPage } from '@/pages/BodyTrackingPage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { KioskRenewPage } from '@/pages/KioskRenewPage'
+import { FormPage } from '@/pages/forms/FormPage'
 import type { UserRole } from '@shared/types'
 
 // DashboardPage es el único consumidor de recharts (~500 KB). Se carga de forma
@@ -93,13 +94,12 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
   }, [location.pathname])
 
   useEffect(() => {
-    const handleNavigatePayments = (_: any, data: { clientId: string }) => {
+    const handleNavigatePayments = (data: { clientId: string }) => {
       navigate(`/payments?clientId=${encodeURIComponent(data.clientId)}`)
     }
-    window.electronAPI?.window?.onNavigatePayments?.(handleNavigatePayments)
+    const cleanup = window.electronAPI?.window?.onNavigatePayments?.(handleNavigatePayments)
     return () => {
-      const cleanup = window.electronAPI?.window?.onNavigatePayments
-      if (cleanup) cleanup()
+      cleanup?.()
     }
   }, [navigate])
 
@@ -210,6 +210,7 @@ export function App(): JSX.Element {
           <Route path="/kiosk" element={<KioskPage />} />
         <Route path="/kiosk-renew" element={<KioskRenewPage />} />
         <Route path="/client-form" element={<ClientFormPage />} />
+        <Route path="/form/:type" element={<FormPage />} />
         <Route path="/*" element={
           <>
             <LoginPage onLoginSuccess={async () => {
@@ -233,6 +234,7 @@ export function App(): JSX.Element {
         <Route path="/kiosk" element={<KioskPage />} />
         <Route path="/kiosk-renew" element={<KioskRenewPage />} />
         <Route path="/client-form" element={<ClientFormPage />} />
+        <Route path="/form/:type" element={<FormPage />} />
         <Route path="/*" element={
           <>
             <AdminLayout currentUser={currentUser} />

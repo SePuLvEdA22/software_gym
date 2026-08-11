@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { initDatabase, closeDatabase } from '../main/database/index'
+import { formatISO, addDays } from 'date-fns'
+import { initDatabase, closeDatabase, getDatabase } from '../main/database/index'
 import { createClient } from '../main/database/clients'
+import { createPlan, createMembership } from '../main/database/memberships'
 import {
   generatePaymentConfirmationMessage,
   generateExpiryReminderMessage,
@@ -10,6 +12,7 @@ import {
   updateWhatsappConfig,
   sendMessage,
   getMessageHistory,
+  checkAndSendExpiryReminders,
 } from '../main/whatsapp/index'
 import type { Client } from '../shared/types'
 
@@ -102,6 +105,89 @@ describe('WhatsApp Module', () => {
     it('debería conservar números que ya tienen código de país', () => {
       expect(formatPhoneNumber('573001234567')).toBe('573001234567')
       expect(formatPhoneNumber('+57 300 123 4567')).toBe('573001234567')
+    })
+  })
+
+  describe('Recordatorios de vencimiento (checkAndSendExpiryReminders)', () => {
+    function makeClientWithMembership(code: string) {
+      const client = createClient({
+        ...sampleClient,
+        documentId: `remind-${code}-${Date.now()}`,
+        accessCode: code,
+      })
+      const plan = createPlan({ name: 'Plan Recordatorio', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      createMembership(client.id, plan.id)
+      return client
+    }
+
+    it('no envía nada cuando la configuración está deshabilitada', async () => {
+      makeClientWithMembership('REM000')
+      const result = await checkAndSendExpiryReminders()
+      expect(result.sent).toBe(0)
+    })
+
+    it('envía recordatorio de 3 días y NO repite el mismo día (dedup)', async () => {
+      updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: true, oneDay: true, sameDay: true } })
+      const client = makeClientWithMembership('REM003')
+      // Membresía que vence exactamente en 3 días
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE client_id = ?').run(formatISO(addDays(todayStart, 3)), client.id)
+
+      const first = await checkAndSendExpiryReminders()
+      expect(first.sent).toBeGreaterThanOrEqual(1)
+
+      const history = getMessageHistory({ clientId: client.id })
+      const msg = history.data[0]
+      expect(msg.messageType).toBe('expiry_reminder_3d')
+      expect(msg.status).toBe('sent')
+      expect(msg.message).toContain('3 días')
+
+      // Segunda ejecución el mismo día: no debe duplicar
+      const second = await checkAndSendExpiryReminders()
+      expect(second.sent).toBe(0)
+      expect(getMessageHistory({ clientId: client.id }).total).toBe(1)
+    })
+
+    it('respeta los toggles de recordatorios (threeDays apagado = no envía)', async () => {
+      updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: false, oneDay: false, sameDay: false } })
+      const client = makeClientWithMembership('REMOFF')
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE client_id = ?').run(formatISO(addDays(todayStart, 3)), client.id)
+
+      const result = await checkAndSendExpiryReminders()
+      expect(result.sent).toBe(0)
+      expect(getMessageHistory({ clientId: client.id }).total).toBe(0)
+    })
+
+    it('envía mensaje de membresía vencida para vencidas dentro de los últimos 30 días', async () => {
+      updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: true, oneDay: true, sameDay: true } })
+      const client = makeClientWithMembership('REMEXP')
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const yesterday = formatISO(addDays(todayStart, -1))
+      getDatabase().prepare("UPDATE memberships SET end_date = ?, status = 'expired' WHERE client_id = ?").run(yesterday, client.id)
+
+      const result = await checkAndSendExpiryReminders()
+      expect(result.sent).toBeGreaterThanOrEqual(1)
+
+      const history = getMessageHistory({ clientId: client.id })
+      expect(history.data[0].messageType).toBe('membership_expired')
+      expect(history.data[0].message).toContain('ha vencido')
+    })
+
+    it('no envía recordatorio a una membresía que vence en más de 3 días', async () => {
+      updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: true, oneDay: true, sameDay: true } })
+      const client = makeClientWithMembership('REMFAR')
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE client_id = ?').run(formatISO(addDays(todayStart, 20)), client.id)
+
+      await checkAndSendExpiryReminders()
+      // Verificación por cliente (no por el conteo global sent, que depende del
+      // dedup de tests previos en este mismo archivo): este cliente no califica.
+      expect(getMessageHistory({ clientId: client.id }).total).toBe(0)
     })
   })
 

@@ -392,7 +392,6 @@ export interface BackupConfig {
 
 declare global {
   interface Window {
-    electronAPI: any
     __CURRENT_USER__?: User
   }
 }

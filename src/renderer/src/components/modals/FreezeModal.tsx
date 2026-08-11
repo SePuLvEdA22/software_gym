@@ -6,11 +6,18 @@ import { format, parseISO } from 'date-fns'
 
 interface FreezeModalProps {
   membership: Membership
+  /** Cuando es true se omite el overlay/modal/header: útil dentro de ventanas-formulario. */
+  embedded?: boolean
   onClose: () => void
   onSuccess: () => void
 }
 
-export function FreezeModal({ membership, onClose, onSuccess }: FreezeModalProps): JSX.Element {
+export function FreezeModal({
+  membership,
+  embedded = false,
+  onClose,
+  onSuccess
+}: FreezeModalProps): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [reason, setReason] = useState('')
   const [plannedDays, setPlannedDays] = useState<number | ''>('')
@@ -38,16 +45,9 @@ export function FreezeModal({ membership, onClose, onSuccess }: FreezeModalProps
     }
   }
 
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <h2 className="modal-title">Congelar Membresía</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            <Icons.Close />
-          </button>
-        </div>
-        <div className="modal-body">
+  const content = (
+    <>
+      <div className="modal-body">
           <div className="alert alert-info" style={{ marginBottom: 20 }}>
             <Icons.Snowflake />
             <div>
@@ -98,6 +98,23 @@ export function FreezeModal({ membership, onClose, onSuccess }: FreezeModalProps
             {loading ? 'Congelando...' : 'Confirmar Congelación'}
           </button>
         </div>
+    </>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Congelar Membresía</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            <Icons.Close />
+          </button>
+        </div>
+        {content}
       </div>
     </div>
   )

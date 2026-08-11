@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { formatISO, parseISO } from 'date-fns'
+import { formatISO, parseISO, differenceInDays } from 'date-fns'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import { createClient } from '../../main/database/clients'
 import {
@@ -27,6 +27,7 @@ import {
   getClientDebt,
   getDebtors,
   getTodayAccessCount,
+  getFreezeHistory,
 } from '../../main/database/memberships'
 import type { Client } from '../../shared/types'
 
@@ -445,6 +446,104 @@ describe('Memberships Database', () => {
       const count = getTodayAccessCount()
       expect(typeof count).toBe('number')
       expect(count).toBeGreaterThanOrEqual(0)
+    })
+  })
+
+  describe('Casos borde: congelación, renovación y fechas', () => {
+    it('NO permite congelar una membresía que ya no está activa', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `FZNACT-${Date.now()}`, accessCode: `FZ${Date.now()}` })
+      const plan = createPlan({ name: 'Plan No Activo', type: 'daily', price: 5000, durationDays: 1, description: '' })
+      const m = createMembership(c.id, plan.id)!
+      // Forzar vencimiento ayer y marcar como vencida
+      const pastDate = formatISO(new Date(Date.now() - 86400000))
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m.id)
+      updateExpiredMemberships()
+
+      const frozen = freezeMembership(m.id, 'Intento')
+      expect(frozen).toBeNull()
+      expect(getClientMemberships(c.id)[0].status).toBe('expired')
+    })
+
+    it('NO permite congelar dos veces la misma membresía', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `FRZ2-${Date.now()}`, accessCode: `F2${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Doble Freeze', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const m = createMembership(c.id, plan.id)!
+
+      expect(freezeMembership(m.id, 'Primera', 5)).not.toBeNull()
+      const second = freezeMembership(m.id, 'Segunda', 5)
+      expect(second).toBeNull()
+    })
+
+    it('al descongelar se extiende la fecha de vencimiento por los días congelados', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `UNF-${Date.now()}`, accessCode: `UF${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Extiende', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const m = createMembership(c.id, plan.id)!
+      const originalEnd = m.endDate
+
+      freezeMembership(m.id, 'Viaje', 10)
+      // Simular que estuvieron congelados 10 días
+      const tenDaysAgo = formatISO(new Date(Date.now() - 10 * 86400000))
+      getDatabase().prepare('UPDATE memberships SET frozen_at = ? WHERE id = ?').run(tenDaysAgo, m.id)
+
+      const unfrozen = unfreezeMembership(m.id)!
+      expect(unfrozen.status).toBe('active')
+      const extended = differenceInDays(parseISO(unfrozen.endDate), parseISO(originalEnd))
+      expect(extended).toBeGreaterThanOrEqual(9)
+      expect(extended).toBeLessThanOrEqual(11)
+    })
+
+    it('al descongelar se registra unfrozen_at y actual_days en el historial', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `HIST-${Date.now()}`, accessCode: `HS${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Historial', type: 'weekly', price: 20000, durationDays: 7, description: '' })
+      const m = createMembership(c.id, plan.id)!
+
+      freezeMembership(m.id, 'Motivo de prueba', 3)
+      const tenDaysAgo = formatISO(new Date(Date.now() - 10 * 86400000))
+      getDatabase().prepare('UPDATE memberships SET frozen_at = ? WHERE id = ?').run(tenDaysAgo, m.id)
+      unfreezeMembership(m.id)
+
+      const history = getFreezeHistory(m.id)
+      expect(history.length).toBeGreaterThanOrEqual(1)
+      const last = history[0]
+      expect(last.unfrozenAt).not.toBeNull()
+      expect(last.actualDays).toBeGreaterThanOrEqual(9)
+      expect(last.reason).toBe('Motivo de prueba')
+    })
+
+    it('bloquea renovar mientras la membresía está congelada', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `RENFZ-${Date.now()}`, accessCode: `RF${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Congelado R', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const m = createMembership(c.id, plan.id)!
+      freezeMembership(m.id, 'Vacaciones', 10)
+
+      const result = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
+      expect(result.membership).toBeNull()
+      expect(result.error).toContain('congelada')
+    })
+
+    it('NO crea membresía para un cliente suspendido', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `SUSP-${Date.now()}`, accessCode: `SP${Date.now()}`, status: 'suspended' })
+      const plan = createPlan({ name: 'Plan Suspendido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const m = createMembership(c.id, plan.id)
+      expect(m).toBeNull()
+    })
+
+    it('FALENCIA DOCUMENTADA: startDate retroactivo en un plan corto crea membresía ya vencida y registra el pago', () => {
+      // Riesgo real con planes de poca duración: un pase de 1 día con startDate
+      // retroactivo nace con status 'expired' (venció el día de inicio) y aún
+      // así se registra el cobro: el cliente paga por algo que ya no sirve.
+      // (Con planes largos el retroactivo es válido: cubre días pasados y se
+      //  extiende al futuro, por eso el caso de riesgo es el plan corto.)
+      const c = createClient({ ...sampleClientRaw, documentId: `BACK-${Date.now()}`, accessCode: `BK${Date.now()}` })
+      const plan = createPlan({ name: 'Pase Retroactivo', type: 'daily', price: 10000, durationDays: 1, description: '' })
+      const tenDaysAgo = formatISO(new Date(Date.now() - 10 * 86400000))
+
+      const result = createMembershipWithPayment(c.id, plan.id, 10000, 'cash', tenDaysAgo)
+
+      expect(result.membership).not.toBeNull()
+      expect(result.membership!.status).toBe('expired')
+      expect(result.payment).not.toBeNull()
+      expect(result.payment!.amount).toBe(10000)
     })
   })
 })
