@@ -1,6 +1,6 @@
 {
   "name": "bodyfitgym",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Sistema profesional de administracion y control de acceso para BodyFitGym",
   "main": "./out/main/index.js",
   "author": "BodyFitGym",
