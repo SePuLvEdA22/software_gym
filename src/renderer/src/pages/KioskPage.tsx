@@ -348,9 +348,12 @@ function IdleScreen({
     return debts.reduce((sum, d) => sum + d.balance, 0)
   }, [debts])
 
+  // Deuda pendiente en estado ACTIVO: blanco/neutro (paleta "verde + blanco"),
+  // sin rojo ni ámbar, para no chocar con el verde del acceso permitido.
+  // El rojo queda reservado para acceso denegado / membresía vencida.
   const debtColor = totalDebt <= 0
     ? (isExpired ? 'var(--color-on-surface-variant)' : 'var(--color-success)')
-    : 'var(--color-error)'
+    : (isExpired ? 'var(--color-error)' : 'var(--color-on-surface)')
   const debtText = totalDebt <= 0 ? 'Sin Deuda' : 'Pendiente'
 
   const expiryDate = membership
@@ -359,12 +362,21 @@ function IdleScreen({
 
   const statusColor = isExpired ? 'var(--color-error)' : 'var(--color-success)'
 
+  // Paleta activa "verde + blanco": se neutralizan los tonos cálidos (durazno)
+  // del tema kiosco para que los textos no aporten el cast rojizo que chocaba
+  // con el verde del estado activo. Solo aplica cuando el acceso está permitido.
+  const activeNeutralPalette = {
+    '--color-on-surface-variant': '#dedede',
+    '--color-outline': '#9e9e9e'
+  } as React.CSSProperties
+
   return (
     <div style={{
       height: '100vh', backgroundColor: 'var(--color-background)',
       fontFamily: "'Montserrat', 'Inter', sans-serif",
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      position: 'relative'
+      position: 'relative',
+      ...(isExpired ? {} : activeNeutralPalette)
     }}>
       {/* Ambient glow */}
       <div style={{
