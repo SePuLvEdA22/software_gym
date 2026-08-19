@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useFormSaved } from '@/hooks/useFormSaved'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useAppStore } from '@/store/appStore'
-import { Product, InventoryMovement } from '../../../shared/types'
+import { Product, InventoryMovement, SalesPeriod, SalesSummary } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
 import { formatCurrency } from '@/utils/format'
@@ -29,6 +29,18 @@ const filterCategories = [
   { value: 'accessory', label: 'Accesorios' },
   { value: 'drink', label: 'Bebidas' },
 ]
+
+const salesPeriods: { value: SalesPeriod; label: string }[] = [
+  { value: 'day', label: 'Hoy' },
+  { value: 'week', label: 'Esta Semana' },
+  { value: 'month', label: 'Este Mes' },
+]
+
+const salesPeriodLabels: Record<SalesPeriod, string> = {
+  day: 'de Hoy',
+  week: 'de la Semana',
+  month: 'del Mes',
+}
 
 function getStockLevel(stock: number): 'success' | 'warning' | 'error' {
   if (stock < 5) return 'error'
@@ -64,6 +76,11 @@ export function InventoryPage(): JSX.Element {
   const [movementsTotalPages, setMovementsTotalPages] = useState(1)
   const [pageSize] = useState(50)
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
+  const [salesPeriod, setSalesPeriod] = usePersistentState<SalesPeriod>(
+    'bodyfitgym-inventory-sales-period',
+    'month',
+  )
+  const [salesSummary, setSalesSummary] = useState<SalesSummary>({ total: 0, count: 0 })
 
   const loadProducts = async () => {
     const searchParam = search.trim() || undefined
@@ -99,6 +116,13 @@ export function InventoryPage(): JSX.Element {
     }
   }
 
+  const loadSalesSummary = async () => {
+    const r = await window.electronAPI.inventory.getSalesSummary(salesPeriod)
+    if (r.success && r.data) {
+      setSalesSummary(r.data)
+    }
+  }
+
   useEffect(() => {
     loadProducts()
   }, [page, search, selectedCategory])
@@ -106,9 +130,13 @@ export function InventoryPage(): JSX.Element {
     loadMovements()
   }, [movementsPage])
   useEffect(() => {
+    loadSalesSummary()
+  }, [salesPeriod])
+  useEffect(() => {
     loadProducts()
     loadMovements()
     loadLowStock()
+    loadSalesSummary()
   }, [])
 
   useEffect(() => {
@@ -130,6 +158,7 @@ export function InventoryPage(): JSX.Element {
     loadProducts()
     loadMovements()
     loadLowStock()
+    loadSalesSummary()
   })
 
   useEffect(() => {
@@ -154,20 +183,6 @@ export function InventoryPage(): JSX.Element {
   const uniqueCategories = useMemo(() => {
     return [...new Set(products.map((p) => p.category))].length
   }, [products])
-
-  const thisMonthSales = useMemo(() => {
-    const now = new Date()
-    return movements
-      .filter((m) => {
-        const d = parseISO(m.timestamp)
-        return (
-          m.type === 'out' &&
-          d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear()
-        )
-      })
-      .reduce((sum, m) => sum + m.total, 0)
-  }, [movements])
 
   const stockFillColor = (stock: number) => {
     if (stock < 5) return 'var(--color-error)'
@@ -231,6 +246,17 @@ export function InventoryPage(): JSX.Element {
 
       {tab === 'products' && (
         <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            {salesPeriods.map((sp) => (
+              <button
+                key={sp.value}
+                className={`filter-pill ${salesPeriod === sp.value ? 'active' : ''}`}
+                onClick={() => setSalesPeriod(sp.value)}
+              >
+                {sp.label}
+              </button>
+            ))}
+          </div>
           <div
             style={{
               display: 'grid',
@@ -296,8 +322,11 @@ export function InventoryPage(): JSX.Element {
                   right: -30,
                 }}
               />
-              <div className="metric-card-label">Ventas del Mes</div>
-              <div className="metric-card-value">{formatCurrency(thisMonthSales)}</div>
+              <div className="metric-card-label">Ventas {salesPeriodLabels[salesPeriod]}</div>
+              <div className="metric-card-value">{formatCurrency(salesSummary.total)}</div>
+              <div className="label-md" style={{ color: 'var(--color-on-surface-variant)' }}>
+                {salesSummary.count} ventas
+              </div>
             </div>
           </div>
 

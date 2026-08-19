@@ -1,7 +1,7 @@
 import { getDatabase } from './index'
-import { Product, InventoryMovement, PageResponse } from '../../shared/types'
+import { Product, InventoryMovement, PageResponse, SalesPeriod, SalesSummary } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
-import { formatISO } from 'date-fns'
+import { formatISO, startOfDay, startOfWeek, startOfMonth } from 'date-fns'
 import { getSessionUser } from './users'
 
 export interface DbProduct {
@@ -205,4 +205,24 @@ export function getMovements(productId?: string, page = 1, pageSize = 50): PageR
 export function getLowStockProducts(threshold?: number): Product[] {
   const result = getAllProducts(true, 1, 10000)
   return result.data.filter(p => p.stock <= (threshold || p.minStock))
+}
+
+export function getSalesSummary(period: SalesPeriod = 'month'): SalesSummary {
+  const db = getDatabase()
+  const today = new Date()
+  const start =
+    period === 'day'
+      ? startOfDay(today)
+      : period === 'week'
+        ? startOfWeek(today, { weekStartsOn: 1 })
+        : startOfMonth(today)
+  const startISO = formatISO(start)
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(total), 0) as total, COUNT(*) as count
+       FROM inventory_movements
+       WHERE type = 'out' AND timestamp >= ?`,
+    )
+    .get(startISO) as { total: number; count: number }
+  return { total: row.total, count: row.count }
 }

@@ -78,7 +78,7 @@ import {
 } from '../whatsapp/index'
 import {
   getAllProducts, getProductById, createProduct, updateProduct, deleteProduct,
-  registerMovement, getMovements, getLowStockProducts
+  registerMovement, getMovements, getLowStockProducts, getSalesSummary
 } from '../database/inventory'
 import {
   getClientRoutines, saveClientRoutine,
@@ -1135,6 +1135,11 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle('inventory:getLowStock', async (_, threshold) => {
     try { return { success: true, data: getLowStockProducts(threshold) } }
+    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+  })
+
+  ipcMain.handle('inventory:getSalesSummary', async (_, period?: 'day' | 'week' | 'month') => {
+    try { return { success: true, data: getSalesSummary(period) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 

@@ -22,6 +22,7 @@ import {
   UserRole,
   Product,
   InventoryMovement,
+  SalesSummary,
   BodyMeasurement,
   ClientGoal,
   MessageTemplate,
@@ -273,7 +274,9 @@ const electronAPI = {
     getMovements: (productId?: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<InventoryMovement>>> =>
       ipcRenderer.invoke('inventory:getMovements', productId, options),
     getLowStock: (threshold?: number): Promise<IpcResult<Product[]>> =>
-      ipcRenderer.invoke('inventory:getLowStock', threshold)
+      ipcRenderer.invoke('inventory:getLowStock', threshold),
+    getSalesSummary: (period?: 'day' | 'week' | 'month'): Promise<IpcResult<SalesSummary>> =>
+      ipcRenderer.invoke('inventory:getSalesSummary', period)
   },
 
   bodyTracking: {

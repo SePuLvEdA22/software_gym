@@ -290,6 +290,13 @@ export interface InventoryMovement {
   timestamp: string
 }
 
+export type SalesPeriod = 'day' | 'week' | 'month'
+
+export interface SalesSummary {
+  total: number
+  count: number
+}
+
 export interface BodyMeasurement {
   id: string
   clientId: string
