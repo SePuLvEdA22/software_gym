@@ -153,11 +153,6 @@ export function ClientsPage(): JSX.Element {
     loadClients()
   }
 
-  const handleRenew = (client: Client) => {
-    setSelectedClient(client)
-    window.electronAPI.window.openForm('renew', { clientId: client.id })
-  }
-
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setPage(newPage)
@@ -189,10 +184,6 @@ export function ClientsPage(): JSX.Element {
     setPage(1)
   }
 
-  const handleNewMembership = () => {
-    if (selectedClient) handleRenew(selectedClient)
-  }
-
   const filterPills: { label: string; value: ClientStatus | 'all' }[] = [
     { label: 'Todos', value: 'all' },
     { label: 'Activos', value: 'active' },
@@ -209,19 +200,6 @@ export function ClientsPage(): JSX.Element {
       >
         <h1 className="headline-md">Directorio de Miembros</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            className="btn btn-secondary"
-            onClick={handleNewMembership}
-            disabled={!selectedClient}
-            title={
-              selectedClient
-                ? `Nueva membresía para ${selectedClient.fullName}`
-                : 'Seleccione un cliente para crear una membresía'
-            }
-          >
-            <Icons.Membership />
-            Nueva Membresía
-          </button>
           <button className="btn btn-primary" onClick={handleNewClient}>
             <Icons.Plus />
             Nuevo Cliente

@@ -5,7 +5,7 @@ import { Icons } from '@/components/Icons'
 import { PaymentHistoryModal } from '@/components/modals/PaymentHistoryModal'
 import { FreezeHistoryModal } from '@/components/modals/FreezeHistoryModal'
 import { RoutinesModal } from '@/components/modals/RoutinesModal'
-import { getMembershipStatusBadge, statusBadge } from '@/components/StatusBadges'
+import { getMembershipStatusBadge } from '@/components/StatusBadges'
 import { Client, Membership, ClientDebt } from '@shared/types'
 import { format, parseISO } from 'date-fns'
 
@@ -107,6 +107,23 @@ export function ClientMembershipsModal({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {!activeMembership && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleRenew}
+                style={{ minHeight: 36 }}
+              >
+                <Icons.Plus />
+                Renovar
+              </button>
+            )}
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowRoutinesModal(true)}
+              style={{ minHeight: 36 }}
+            >
+              Rutina
+            </button>
             <button
               className="btn btn-secondary btn-sm"
               onClick={async () => {
@@ -135,21 +152,6 @@ export function ClientMembershipsModal({
             >
               <Icons.Bell />
             </button>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowRoutinesModal(true)}
-              title="Editar rutina de entrenamiento"
-              style={{
-                minWidth: 36,
-                minHeight: 36,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icons.Dumbbell />
-            </button>
-            {statusBadge(client.status)}
             <button type="button" className="modal-close" onClick={onClose}>
               <Icons.Close />
             </button>
@@ -204,16 +206,6 @@ export function ClientMembershipsModal({
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            {!activeMembership && (
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={handleRenew}
-                                title="Nueva membresía"
-                              >
-                                <Icons.Plus />
-                                Renovar
-                              </button>
-                            )}
                             {membership.status === 'active' && (
                               <button
                                 className="btn btn-secondary btn-sm"
