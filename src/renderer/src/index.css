@@ -36,6 +36,7 @@
   --color-success-container: #166534;
   --color-warning: #fbbf24;
   --color-warning-container: #78350f;
+  --color-on-warning: #3b2500;
 }
 
 [data-theme='light'] {
@@ -75,6 +76,7 @@
   --color-success-container: #C8E6C9;
   --color-warning: #C47A0B;
   --color-warning-container: #FEF3C7;
+  --color-on-warning: #FFFFFF;
 }
 
 :root {

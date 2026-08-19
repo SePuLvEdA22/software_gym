@@ -86,6 +86,27 @@ describe('Validación de acceso del kiosco (validateAccess)', () => {
     expect(result.message).toContain('congelada')
   })
 
+  it('membresía congelada cuyo vencimiento nominal pasó → denied_frozen (no denied_expired)', () => {
+    // Mientras está congelada, la membresía no consume días: aunque su end_date
+    // ya pasó sigue siendo "congelada", no "vencida". La validación debe
+    // responder denied_frozen y NO marcar al cliente como expired.
+    const client = makeClient('FRZEXP')
+    const plan = createPlan({ name: 'Plan Congelado Extendido', type: 'monthly', price: 80000, durationDays: 30, description: '' })
+    const m = createMembership(client.id, plan.id)!
+    freezeMembership(m.id, 'Viaje', 10)
+
+    const pastDate = formatISO(new Date(Date.now() - 5 * 86400000))
+    getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m.id)
+
+    const result = validateAccess('FRZEXP')
+
+    expect(result.valid).toBe(false)
+    expect(result.code).toBe('denied_frozen')
+    expect(result.membership!.status).toBe('frozen')
+    // El kiosco NO lo marca 'expired' porque tiene membresía congelada vigente
+    expect(getClientById(client.id)!.status).not.toBe('expired')
+  })
+
   it('cliente sin ninguna membresía → denied_expired y el estado pasa a expired', () => {
     const client = makeClient('EXP001')
     const result = validateAccess('EXP001')

@@ -335,6 +335,7 @@ function IdleScreen({
   // (0 días restantes = último día, NO vencida). Solo se considera vencida
   // cuando el acceso fue denegado o la fecha de vencimiento ya pasó.
   const isExpired = !validationResult.valid || daysRemaining < 0
+  const isFrozen = !validationResult.valid && validationResult.code === 'denied_frozen'
   const daysText = !membership
     ? '0 Días Restantes'
     : daysRemaining > 1
@@ -342,6 +343,30 @@ function IdleScreen({
       : daysRemaining === 1
         ? '1 Día Restante'
         : 'Vence Hoy'
+
+  // Estado visual del kiosco: verde (permitido), ámbar (congelada — denegado
+  // temporal que NO es un vencimiento) y rojo (vencida). Una membresía
+  // congelada no se muestra como "Vencida": el mensaje genérico invita a
+  // contactar recepción.
+  const statusColor = validationResult.valid
+    ? 'var(--color-success)'
+    : isFrozen
+      ? 'var(--color-warning)'
+      : 'var(--color-error)'
+
+  const statusLabel = validationResult.valid
+    ? 'Acceso Permitido — Membresía Activa'
+    : isFrozen
+      ? 'Acceso Denegado — Membresía Congelada'
+      : 'Acceso Denegado — Membresía Vencida'
+
+  const estadoLabel = validationResult.valid ? 'Activa' : isFrozen ? 'Congelada' : 'Vencida'
+
+  // Para congelada los días restantes no aplican: se muestra el mensaje del
+  // backend ("Membresía congelada - contacta recepción").
+  const statusSubtext = isFrozen
+    ? validationResult.message || 'Membresía congelada - contacta recepción'
+    : daysText
 
   const totalDebt = useMemo(() => {
     if (!debts || debts.length === 0) return 0
@@ -359,8 +384,6 @@ function IdleScreen({
   const expiryDate = membership
     ? format(parseISO(membership.endDate), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })
     : '—'
-
-  const statusColor = isExpired ? 'var(--color-error)' : 'var(--color-success)'
 
   // Paleta activa "verde + blanco": se neutralizan los tonos cálidos (durazno)
   // del tema kiosco para que los textos no aporten el cast rojizo que chocaba
@@ -382,9 +405,7 @@ function IdleScreen({
       <div style={{
         position: 'absolute', top: '5%', right: '-5%',
         width: '45vw', height: '45vw', borderRadius: '50%',
-        background: isExpired
-          ? 'color-mix(in srgb, var(--color-error) 6%, transparent)'
-          : 'color-mix(in srgb, var(--color-success) 6%, transparent)',
+        background: `color-mix(in srgb, ${statusColor} 6%, transparent)`,
         filter: 'blur(140px)', pointerEvents: 'none', zIndex: 0
       }} />
       <main style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -403,7 +424,7 @@ function IdleScreen({
                 animation: 'kiosk-pulse 2s ease-in-out infinite'
               }} />
               <span style={{ color: statusColor, fontWeight: 600, fontSize: 15 }}>
-                {isExpired ? 'Acceso Denegado — Membresía Vencida' : 'Acceso Permitido — Membresía Activa'}
+                {statusLabel}
               </span>
             </div>
           </div>
@@ -425,9 +446,7 @@ function IdleScreen({
               <div style={{
                 position: 'absolute', top: 0, left: 0, width: '100%', height: 96,
                 borderRadius: '16px 16px 0 0',
-                background: isExpired
-                  ? 'linear-gradient(to bottom, rgba(255,180,171,0.15), transparent)'
-                  : 'linear-gradient(to bottom, rgba(74,222,128,0.15), transparent)',
+                background: `linear-gradient(to bottom, color-mix(in srgb, ${statusColor} 15%, transparent), transparent)`,
                 pointerEvents: 'none'
               }} />
               <div style={{ position: 'relative', marginBottom: 24, marginTop: 16 }}>
@@ -453,9 +472,9 @@ function IdleScreen({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 2
                 }}>
-                  <MaterialIcon name={isExpired ? 'close' : 'check'} style={{
+                  <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'close' : 'check'} style={{
                     fontSize: 16,
-                    color: isExpired ? 'var(--color-on-error)' : '#fff'
+                    color: isFrozen ? 'var(--color-on-warning)' : isExpired ? 'var(--color-on-error)' : '#fff'
                   }} />
                 </div>
               </div>
@@ -509,13 +528,13 @@ function IdleScreen({
                   borderLeft: `4px solid ${statusColor}`
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <MaterialIcon name={isExpired ? 'event_busy' : 'check_circle'} style={{ color: statusColor, fontSize: 20 }} />
+                    <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'event_busy' : 'check_circle'} style={{ color: statusColor, fontSize: 20 }} />
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Estado</span>
                   </div>
                   <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-                    {isExpired ? 'Vencida' : 'Activa'}
+                    {estadoLabel}
                   </p>
-                  <p style={{ fontSize: 12, color: statusColor, fontWeight: 600, marginTop: 4 }}>{daysText}</p>
+                  <p style={{ fontSize: 12, color: statusColor, fontWeight: 600, marginTop: 4 }}>{statusSubtext}</p>
                 </div>
                 <div style={{
                   ...glass, borderRadius: 12, padding: 20,

@@ -528,22 +528,61 @@ describe('Memberships Database', () => {
       expect(m).toBeNull()
     })
 
-    it('FALENCIA DOCUMENTADA: startDate retroactivo en un plan corto crea membresía ya vencida y registra el pago', () => {
-      // Riesgo real con planes de poca duración: un pase de 1 día con startDate
-      // retroactivo nace con status 'expired' (venció el día de inicio) y aún
-      // así se registra el cobro: el cliente paga por algo que ya no sirve.
-      // (Con planes largos el retroactivo es válido: cubre días pasados y se
-      //  extiende al futuro, por eso el caso de riesgo es el plan corto.)
+    it('NO crea membresía ni registra pago cuando startDate retroactivo dejaría el plan ya vencido', () => {
+      // Corrección de la falencia documentada: un pase de 1 día con startDate
+      // retroactivo nacía con status 'expired' y aun así se registraba el cobro
+      // (el cliente pagaba por algo que ya no servía). Ahora la membresía no se
+      // crea y el pago no se registra.
       const c = createClient({ ...sampleClientRaw, documentId: `BACK-${Date.now()}`, accessCode: `BK${Date.now()}` })
       const plan = createPlan({ name: 'Pase Retroactivo', type: 'daily', price: 10000, durationDays: 1, description: '' })
       const tenDaysAgo = formatISO(new Date(Date.now() - 10 * 86400000))
 
       const result = createMembershipWithPayment(c.id, plan.id, 10000, 'cash', tenDaysAgo)
 
+      expect(result.membership).toBeNull()
+      expect(result.payment).toBeNull()
+      expect(result.error).toBeDefined()
+      expect(getClientMemberships(c.id)).toHaveLength(0)
+    })
+
+    it('un startDate retroactivo SÍ es válido cuando el plan aún cubre hoy', () => {
+      // Con planes largos el retroactivo es legítimo: cubre días pasados y se
+      // extiende hasta el futuro, por lo que la membresía sigue teniendo valor.
+      const c = createClient({ ...sampleClientRaw, documentId: `BACKOK-${Date.now()}`, accessCode: `BO${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Retroactivo Válido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const fiveDaysAgo = formatISO(new Date(Date.now() - 5 * 86400000))
+
+      const result = createMembershipWithPayment(c.id, plan.id, 50000, 'cash', fiveDaysAgo)
+
       expect(result.membership).not.toBeNull()
-      expect(result.membership!.status).toBe('expired')
+      expect(result.membership!.status).toBe('active')
       expect(result.payment).not.toBeNull()
-      expect(result.payment!.amount).toBe(10000)
+    })
+
+    it('una membresía congelada cuyo vencimiento nominal pasó NO se marca vencida ni al cliente', () => {
+      // Mientras la membresía está congelada NO consume días: aunque su end_date
+      // nominal ya pasó, sigue congelada (se extiende al descongelar). Ni
+      // getActiveOrFrozenMembership ni updateExpiredMemberships deben tratarla
+      // como vencida.
+      const c = createClient({ ...sampleClientRaw, documentId: `FZEXP-${Date.now()}`, accessCode: `FE${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Congelado Vencido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const m = createMembership(c.id, plan.id)!
+      freezeMembership(m.id, 'Ausencia', 10)
+
+      // Simular que el vencimiento nominal pasó mientras estaba congelada
+      const pastDate = formatISO(new Date(Date.now() - 5 * 86400000))
+      getDatabase().prepare('UPDATE memberships SET end_date = ? WHERE id = ?').run(pastDate, m.id)
+
+      // Sigue siendo "congelada" para el acceso, no "vencida"
+      const activeOrFrozen = getActiveOrFrozenMembership(c.id)
+      expect(activeOrFrozen).not.toBeNull()
+      expect(activeOrFrozen!.status).toBe('frozen')
+
+      // updateExpiredMemberships expira la membresía de status 'active' (no esta)
+      // y NO marca al cliente como 'expired' mientras tenga membresía congelada
+      updateExpiredMemberships()
+      const memberships = getClientMemberships(c.id)
+      expect(memberships[0].status).toBe('frozen')
     })
   })
 })

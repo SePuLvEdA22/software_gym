@@ -85,7 +85,7 @@ function resolveVariables(content: string, client: { fullName: string; documentI
     .replace(/\{vencimiento\}/g, client.planEnd || 'N/A')
 }
 
-export function sendTemplateToClient(templateId: string, clientId: string): { sent: boolean; message?: string } {
+export async function sendTemplateToClient(templateId: string, clientId: string): Promise<{ sent: boolean; message?: string }> {
   const template = getTemplateById(templateId)
   if (!template) return { sent: false, message: 'Plantilla no encontrada' }
 
@@ -110,8 +110,12 @@ export function sendTemplateToClient(templateId: string, clientId: string): { se
 
   try {
     if (template.type === 'whatsapp') {
-      sendMessage(clientId, client.phone, 'welcome', message)
-        .catch((err: unknown) => console.error('[Templates] Error sending WhatsApp:', err))
+      const result = await sendMessage(clientId, client.phone, 'welcome', message)
+      // Antes era fire-and-forget: devolvía {sent:true} aunque el proveedor
+      // fallara, inflando los conteos de sendToAll/sendToExpiring.
+      if (!result.success) {
+        return { sent: false, message: 'No se pudo enviar el mensaje por WhatsApp' }
+      }
     }
     if (template.type === 'email') {
       console.log(`[EMAIL] To: ${client.phone} | Subject: ${template.subject} | Message: ${message}`)
@@ -123,7 +127,7 @@ export function sendTemplateToClient(templateId: string, clientId: string): { se
   }
 }
 
-export function sendTemplateToAll(templateId: string): { sent: number; failed: number } {
+export async function sendTemplateToAll(templateId: string): Promise<{ sent: number; failed: number }> {
   const db = getDatabase()
   const activeClients = db.prepare(`
     SELECT id FROM clients WHERE status = 'active'
@@ -133,7 +137,7 @@ export function sendTemplateToAll(templateId: string): { sent: number; failed: n
   let failed = 0
 
   for (const c of activeClients) {
-    const r = sendTemplateToClient(templateId, c.id)
+    const r = await sendTemplateToClient(templateId, c.id)
     if (r.sent) sent++
     else failed++
   }
@@ -141,7 +145,7 @@ export function sendTemplateToAll(templateId: string): { sent: number; failed: n
   return { sent, failed }
 }
 
-export function sendTemplateToExpiring(templateId: string, days: number): { sent: number; failed: number } {
+export async function sendTemplateToExpiring(templateId: string, days: number): Promise<{ sent: number; failed: number }> {
   const db = getDatabase()
   const now = new Date()
   now.setHours(0, 0, 0, 0)
@@ -168,7 +172,7 @@ export function sendTemplateToExpiring(templateId: string, days: number): { sent
 
   for (const client of expiringClients) {
     try {
-      const r = sendTemplateToClient(templateId, client.id)
+      const r = await sendTemplateToClient(templateId, client.id)
       if (r.sent) sent++
       else failed++
     } catch {

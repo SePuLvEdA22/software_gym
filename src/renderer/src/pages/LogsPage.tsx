@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePersistentState } from '@/hooks/usePersistentState'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
@@ -36,8 +37,11 @@ function getResultIcon(result: AccessResult): JSX.Element {
 export function LogsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [logs, setLogs] = useState<AccessLog[]>([])
-  const [filterResult, setFilterResult] = useState<string>('all')
-  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('today')
+  const [filterResult, setFilterResult] = usePersistentState('bodyfitgym-logs-result', 'all')
+  const [dateRange, setDateRange] = usePersistentState<'today' | 'week' | 'month' | 'all'>(
+    'bodyfitgym-logs-daterange',
+    'today',
+  )
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
@@ -47,7 +51,7 @@ export function LogsPage(): JSX.Element {
     denied: 0,
     deniedExpired: 0,
     deniedInactive: 0,
-    deniedNotFound: 0
+    deniedNotFound: 0,
   })
 
   const [loading, setLoading] = useState(true)
@@ -56,52 +60,57 @@ export function LogsPage(): JSX.Element {
     setLoading(true)
     const resultParam = filterResult === 'all' ? undefined : filterResult
     const options = { page, pageSize, result: resultParam }
-    
-    const result = dateRange === 'all'
-      ? await window.electronAPI.access.getLogs(options)
-      : await (() => {
-          const now = new Date()
-          let startDate: Date
-          const endDate: Date = endOfDay(now)
 
-          switch (dateRange) {
-            case 'today':
-              startDate = startOfDay(now)
-              break
-            case 'week':
-              startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-              break
-            case 'month':
-              startDate = startOfMonth(now)
-              break
-            default:
-              startDate = new Date(0)
-          }
+    const result =
+      dateRange === 'all'
+        ? await window.electronAPI.access.getLogs(options)
+        : await (() => {
+            const now = new Date()
+            let startDate: Date
+            const endDate: Date = endOfDay(now)
 
-          return window.electronAPI.access.getLogsByDate(
-            startDate.toISOString(),
-            endDate.toISOString(),
-            options
-          )
-        })()
+            switch (dateRange) {
+              case 'today':
+                startDate = startOfDay(now)
+                break
+              case 'week':
+                startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+                break
+              case 'month':
+                startDate = startOfMonth(now)
+                break
+              default:
+                startDate = new Date(0)
+            }
+
+            return window.electronAPI.access.getLogsByDate(
+              startDate.toISOString(),
+              endDate.toISOString(),
+              options,
+            )
+          })()
 
     if (result.success && result.data) {
       const logsData = result.data.data
       setTotalPages(result.data.totalPages)
       setLogs(logsData)
-      
+
       const granted = logsData.filter((l: AccessLog) => l.result === 'granted').length
       const deniedExpired = logsData.filter((l: AccessLog) => l.result === 'denied_expired').length
-      const deniedInactive = logsData.filter((l: AccessLog) => l.result === 'denied_inactive').length
-      const deniedNotFound = logsData.filter((l: AccessLog) => l.result === 'denied_not_found').length
-      
+      const deniedInactive = logsData.filter(
+        (l: AccessLog) => l.result === 'denied_inactive',
+      ).length
+      const deniedNotFound = logsData.filter(
+        (l: AccessLog) => l.result === 'denied_not_found',
+      ).length
+
       setStats({
         total: logsData.length,
         granted,
         denied: deniedExpired + deniedInactive + deniedNotFound,
         deniedExpired,
         deniedInactive,
-        deniedNotFound
+        deniedNotFound,
       })
     }
     setLoading(false)
@@ -119,10 +128,14 @@ export function LogsPage(): JSX.Element {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}
+      >
         <div style={{ textAlign: 'center' }}>
           <div className="spinner" />
-          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>Cargando historial de accesos...</p>
+          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>
+            Cargando historial de accesos...
+          </p>
         </div>
       </div>
     )
@@ -133,60 +146,79 @@ export function LogsPage(): JSX.Element {
       <div className="grid grid-5" style={{ gap: 16 }}>
         <div className="kpi-card">
           <p className="kpi-label">Total Accesos</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>{stats.total}</p>
+          <p className="kpi-value" style={{ fontSize: 28 }}>
+            {stats.total}
+          </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Permitidos</p>
-          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>{stats.granted}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>
+            {stats.granted}
+          </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Denegados</p>
-          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 28 }}>{stats.denied}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 28 }}>
+            {stats.denied}
+          </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Vencidos</p>
-          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>{stats.deniedExpired}</p>
+          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>
+            {stats.deniedExpired}
+          </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">No Encontrados</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>{stats.deniedNotFound}</p>
+          <p className="kpi-value" style={{ fontSize: 28 }}>
+            {stats.deniedNotFound}
+          </p>
         </div>
       </div>
 
       <div className="card">
-        <div className="card-header" style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16
-        }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          className="card-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}
+        >
+          <h3
+            style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
+          >
             <Icons.History />
             Historial de Accesos
           </h3>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <div className="tabs" style={{ borderBottom: 'none' }}>
-              {(['today', 'week', 'month', 'all'] as const).map(range => (
-                <div 
+              {(['today', 'week', 'month', 'all'] as const).map((range) => (
+                <div
                   key={range}
                   className={`tab ${dateRange === range ? 'active' : ''}`}
                   onClick={() => setDateRange(range)}
-                  style={{ 
-                    padding: '8px 16px', 
+                  style={{
+                    padding: '8px 16px',
                     fontSize: 13,
                     borderRadius: 8,
-                    borderBottom: dateRange === range ? '2px solid var(--color-primary-container)' : 'none'
+                    borderBottom:
+                      dateRange === range ? '2px solid var(--color-primary-container)' : 'none',
                   }}
                 >
-                  {range === 'today' ? 'Hoy' 
-                    : range === 'week' ? 'Semana' 
-                    : range === 'month' ? 'Mes' 
-                    : 'Todo'}
+                  {range === 'today'
+                    ? 'Hoy'
+                    : range === 'week'
+                      ? 'Semana'
+                      : range === 'month'
+                        ? 'Mes'
+                        : 'Todo'}
                 </div>
               ))}
             </div>
-            <select 
+            <select
               className="form-select"
               value={filterResult}
               onChange={(e) => setFilterResult(e.target.value)}
@@ -201,12 +233,16 @@ export function LogsPage(): JSX.Element {
             <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
               <Icons.Refresh />
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={async () => {
-              if (window.electronAPI?.system?.exportCsv) {
-                const result = await window.electronAPI.system.exportCsv('access')
-                if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
-              }
-            }} title="Exportar CSV">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={async () => {
+                if (window.electronAPI?.system?.exportCsv) {
+                  const result = await window.electronAPI.system.exportCsv('access')
+                  if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+                }
+              }}
+              title="Exportar CSV"
+            >
               <Icons.Download />
             </button>
           </div>
@@ -251,9 +287,14 @@ export function LogsPage(): JSX.Element {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ 
-                            color: log.result === 'granted' ? 'var(--color-success)' : 'var(--color-error)' 
-                          }}>
+                          <div
+                            style={{
+                              color:
+                                log.result === 'granted'
+                                  ? 'var(--color-success)'
+                                  : 'var(--color-error)',
+                            }}
+                          >
                             {getResultIcon(log.result)}
                           </div>
                           {getResultBadge(log.result)}

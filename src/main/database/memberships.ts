@@ -3,7 +3,7 @@ import { cached, clearQueryCache } from './queryCache'
 import { Membership, MembershipPlan, MembershipStatus, MembershipType, Payment, PaymentMethod, AccessLog, AccessType, AccessResult, Promotion, ClientDebt, DebtorSummary, FreezeHistory, ClientAttendanceStats, InactiveClient, PageResponse } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { getClientById, updateClientStatus } from './clients'
-import { addDays, formatISO, isAfter, parseISO, differenceInDays, startOfDay, endOfDay } from 'date-fns'
+import { addDays, formatISO, parseISO, differenceInDays, startOfDay, endOfDay } from 'date-fns'
 import log from 'electron-log'
 
 export interface DbMembership {
@@ -419,12 +419,19 @@ export function getActiveOrFrozenMembership(clientId: string): Membership | null
   // exacto. Una membresía cuyo vencimiento es hoy sigue siendo válida todo el
   // día (no se vence a mitad de día por la hora de compra).
   const now = todayKey()
-  
+
+  // Una membresía CONGELADA NO consume días: si su vencimiento nominal pasó
+  // mientras estaba congelada no está "vencida", está congelada (al descongelar
+  // se extiende en unfreezeMembership). Por eso el filtro de end_date solo
+  // aplica a las activas; así el kiosco responde denied_frozen (no
+  // denied_expired) y updateExpiredMemberships no las marca vencidas.
   const stmt = db.prepare(`
     SELECT * FROM memberships 
     WHERE client_id = ? 
-      AND (status = 'active' OR status = 'frozen')
-      AND end_date >= ?
+      AND (
+        (status = 'active' AND end_date >= ?)
+        OR status = 'frozen'
+      )
     ORDER BY end_date DESC
     LIMIT 1
   `)
@@ -467,6 +474,15 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   const durationDays = Math.max(1, plan.durationDays)
   const endDate = endOfDay(addDays(startOfDay(actualStartDate), durationDays - 1))
   const now = new Date()
+
+  // Día-consciente: si la fecha de vencimiento cae en un día ya pasado, la
+  // membresía no tiene ningún valor (p. ej. startDate muy retroactivo + plan de
+  // 1 día) y NO se crea. Antes nacía con status 'expired' pero igual se cobraba
+  // el pago en createMembershipWithPayment: el cliente pagaba por algo vencido.
+  if (formatISO(endDate).slice(0, 10) < todayKey()) {
+    log.error(`Cannot create membership: end date ${formatISO(endDate)} is already in the past`)
+    return null
+  }
   
   const newMembership: Membership = {
     id: uuidv4(),
@@ -475,7 +491,7 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     planName: plan.name,
     startDate: formatISO(actualStartDate),
     endDate: formatISO(endDate),
-    status: isAfter(endDate, now) ? 'active' : 'expired',
+    status: formatISO(endDate).slice(0, 10) >= todayKey() ? 'active' : 'expired',
     createdAt: formatISO(now),
     frozenAt: null,
     freezeReason: null,
@@ -682,8 +698,11 @@ export function updateExpiredMemberships(): number {
     const result = updateStmt.run(now)
 
     for (const client of expiredClients) {
-      const activeMembership = getActiveMembership(client.client_id)
-      if (!activeMembership) {
+      // Si el cliente conserva una membresía congelada (válida aunque su
+      // vencimiento nominal haya pasado, porque no consume días congelado),
+      // NO se le marca 'expired': sigue congelado hasta que se descongele.
+      const activeOrFrozen = getActiveOrFrozenMembership(client.client_id)
+      if (!activeOrFrozen) {
         updateClientStatus(client.client_id, 'expired')
       }
     }

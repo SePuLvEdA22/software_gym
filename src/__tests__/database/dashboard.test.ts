@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { initDatabase, closeDatabase } from '../../main/database/index'
 import { createClient } from '../../main/database/clients'
-import { createPlan, createMembership, recordPayment, logAccess } from '../../main/database/memberships'
+import {
+  createPlan,
+  createMembership,
+  recordPayment,
+  logAccess,
+} from '../../main/database/memberships'
+import { createProduct, registerMovement } from '../../main/database/inventory'
 import {
   getDashboardMetrics,
   getClientsByStatus,
@@ -41,6 +47,17 @@ describe('Dashboard', () => {
     createMembership(client.id, plan.id)
     recordPayment(client.id, 50000, 'cash', 'Pago dashboard')
     logAccess('DASH01', 'granted', 'Acceso dashboard', client.id, client.fullName)
+    const product = createProduct({
+      name: 'Dashboard Product',
+      category: 'supplement',
+      description: '',
+      price: 30000,
+      cost: 20000,
+      stock: 50,
+      minStock: 5,
+      barcode: 'DASH-ROD',
+    })
+    registerMovement(product.id, 'out', 3, 20000, 'Venta dashboard')
   })
 
   afterAll(() => {
@@ -70,6 +87,12 @@ describe('Dashboard', () => {
       expect(typeof metrics.todayAccesses).toBe('number')
       expect(typeof metrics.todayRevenue).toBe('number')
       expect(typeof metrics.monthRevenue).toBe('number')
+    })
+
+    it('should include inventory sales in today revenue', () => {
+      const metrics = getDashboardMetrics('day')
+      // Pago de membresía (50000) + venta de inventario (3 x 20000 = 60000)
+      expect(metrics.todayRevenue).toBe(110000)
     })
 
     it('should return peakHours as array', () => {
@@ -143,6 +166,11 @@ describe('Dashboard', () => {
       expect(result.length).toBe(3)
       expect(result[0]).toHaveProperty('month')
       expect(result[0]).toHaveProperty('revenue')
+    })
+
+    it('should include inventory sales in the current month revenue', () => {
+      const current = getRevenueByMonth(1)
+      expect(current[0].revenue).toBe(110000)
     })
 
     it('should default to 6 months', () => {

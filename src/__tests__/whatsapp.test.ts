@@ -177,6 +177,27 @@ describe('WhatsApp Module', () => {
       expect(history.data[0].message).toContain('ha vencido')
     })
 
+    it('envía mensaje de membresía vencida también cuando el CLIENTE está marcado expired (bug producción)', async () => {
+      // En producción updateExpiredMemberships marca c.status = 'expired' al
+      // vencer la membresía. El filtro anterior exigía c.status = 'active' en
+      // ambas ramas, así que "membresía vencida" nunca se enviaba para clientes
+      // ya vencidos. Este test reproduce ese escenario real.
+      updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: true, oneDay: true, sameDay: true } })
+      const client = makeClientWithMembership('REMEXP2')
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const yesterday = formatISO(addDays(todayStart, -1))
+      getDatabase().prepare("UPDATE memberships SET end_date = ?, status = 'expired' WHERE client_id = ?").run(yesterday, client.id)
+      getDatabase().prepare("UPDATE clients SET status = 'expired' WHERE id = ?").run(client.id)
+
+      const result = await checkAndSendExpiryReminders()
+      expect(result.sent).toBeGreaterThanOrEqual(1)
+
+      const history = getMessageHistory({ clientId: client.id })
+      expect(history.data[0].messageType).toBe('membership_expired')
+      expect(history.data[0].message).toContain('ha vencido')
+    })
+
     it('no envía recordatorio a una membresía que vence en más de 3 días', async () => {
       updateWhatsappConfig({ enabled: true, provider: 'mock', reminders: { threeDays: true, oneDay: true, sameDay: true } })
       const client = makeClientWithMembership('REMFAR')

@@ -2,7 +2,19 @@ import { getDatabase } from './index'
 import { cached } from './queryCache'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
 import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
-import { formatISO, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, parseISO, startOfYear, endOfYear, startOfWeek } from 'date-fns'
+import {
+  formatISO,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  parseISO,
+  startOfYear,
+  endOfYear,
+  startOfWeek,
+  differenceInDays,
+} from 'date-fns'
 
 export interface DbAccessLog {
   id: string
@@ -25,33 +37,48 @@ export function getDashboardMetrics(period?: 'day' | 'week' | 'month'): Dashboar
   const endOfThisMonth = formatISO(endOfMonth(today))
 
   // Determine revenue range based on period
-  const revenueStart = period === 'week' ? startOfThisWeek : 
-                        period === 'month' ? startOfThisMonth : 
-                        startOfToday
+  const revenueStart =
+    period === 'week' ? startOfThisWeek : period === 'month' ? startOfThisMonth : startOfToday
   const revenueEnd = period === 'month' ? endOfThisMonth : endOfToday
 
-  const counts = db.prepare(`
+  const counts = db
+    .prepare(
+      `
     SELECT status, COUNT(*) as count FROM clients GROUP BY status
-  `).all() as { status: string; count: number }[]
+  `,
+    )
+    .all() as { status: string; count: number }[]
   const countMap: Record<string, number> = {}
   for (const row of counts) countMap[row.status] = row.count
   const totalClients = counts.reduce((sum, r) => sum + r.count, 0)
   const activeClients = countMap['active'] || 0
   const expiredClients = countMap['expired'] || 0
   const inactiveClients = (countMap['inactive'] || 0) + (countMap['suspended'] || 0)
-  
+
   const newThisMonthStmt = db.prepare(`
     SELECT COUNT(*) as count FROM clients 
     WHERE registration_date >= ?
   `)
   const newThisMonthResult = newThisMonthStmt.get(startOfThisMonth) as { count: number }
-  
+
   const periodRevenueStmt = db.prepare(`
     SELECT COALESCE(SUM(amount), 0) as total FROM payments 
     WHERE date >= ? AND date <= ?
   `)
   const periodRevenueResult = periodRevenueStmt.get(revenueStart, revenueEnd) as { total: number }
-  
+
+  // Ventas de tienda (movimientos de inventario tipo 'out') dentro del mismo
+  // período: se suman a los ingresos para que una salida registrada en la
+  // sección Inventario se refleje en el panel.
+  const inventoryRevenueStmt = db.prepare(`
+    SELECT COALESCE(SUM(total), 0) as total FROM inventory_movements
+    WHERE type = 'out' AND timestamp >= ? AND timestamp <= ?
+  `)
+  const inventoryRevenueResult = inventoryRevenueStmt.get(revenueStart, revenueEnd) as {
+    total: number
+  }
+  const periodRevenue = periodRevenueResult.total + inventoryRevenueResult.total
+
   const thirtyDaysAgo = formatISO(subMonths(today, 1))
   const topPlansStmt = db.prepare(`
     SELECT 
@@ -68,36 +95,48 @@ export function getDashboardMetrics(period?: 'day' | 'week' | 'month'): Dashboar
     ORDER BY count DESC
     LIMIT 5
   `)
-  const topPlansResults = topPlansStmt.all(thirtyDaysAgo, thirtyDaysAgo) as { plan_name: string; count: number; revenue: number }[]
-  const topPlans: PlanStat[] = topPlansResults.map(r => ({
+  const topPlansResults = topPlansStmt.all(thirtyDaysAgo, thirtyDaysAgo) as {
+    plan_name: string
+    count: number
+    revenue: number
+  }[]
+  const topPlans: PlanStat[] = topPlansResults.map((r) => ({
     planName: r.plan_name,
     count: r.count,
-    revenue: r.revenue
+    revenue: r.revenue,
   }))
-  
-  const recentAccesses = getAccessLogsByDate(startOfToday, endOfToday).data
-    .sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime())
+
+  const recentAccesses = getAccessLogsByDate(startOfToday, endOfToday)
+    .data.sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime())
     .slice(0, 20)
-  
-  const hourCounts = db.prepare(`
+
+  const hourCounts = db
+    .prepare(
+      `
     SELECT CAST(strftime('%H', timestamp) AS INTEGER) as hour, COUNT(*) as count
     FROM access_logs
     WHERE result = 'granted' AND timestamp >= ?
     GROUP BY hour
     ORDER BY count DESC
     LIMIT 5
-  `).all(thirtyDaysAgo) as { hour: number; count: number }[]
-  
-  const peakHours: PeakHour[] = hourCounts.map(h => ({ hour: h.hour, count: h.count }))
-  
-  const debtorsCount = db.prepare(`
+  `,
+    )
+    .all(thirtyDaysAgo) as { hour: number; count: number }[]
+
+  const peakHours: PeakHour[] = hourCounts.map((h) => ({ hour: h.hour, count: h.count }))
+
+  const debtorsCount = db
+    .prepare(
+      `
     SELECT COUNT(DISTINCT m.client_id) as count
     FROM memberships m
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE (m.status = 'active' OR m.status = 'frozen')
       AND (SELECT COALESCE(SUM(pm.amount), 0) FROM payments pm WHERE pm.membership_id = m.id) 
           < (p.price - (SELECT COALESCE(SUM(pm2.discount), 0) FROM payments pm2 WHERE pm2.membership_id = m.id))
-  `).get() as { count: number }
+  `,
+    )
+    .get() as { count: number }
 
   const inactiveClientsCount = getInactiveClients(30).length
 
@@ -107,14 +146,14 @@ export function getDashboardMetrics(period?: 'day' | 'week' | 'month'): Dashboar
     expiredClients,
     inactiveClients,
     todayAccesses: getTodayAccessCount(),
-    todayRevenue: periodRevenueResult.total,
-    monthRevenue: periodRevenueResult.total,
+    todayRevenue: periodRevenue,
+    monthRevenue: periodRevenue,
     newThisMonth: newThisMonthResult.count,
     debtorsCount: debtorsCount.count,
     inactiveClientsCount,
     peakHours,
     topPlans,
-    recentAccesses
+    recentAccesses,
   }
 }
 
@@ -124,25 +163,31 @@ export function getClientsByStatus(): { [key: string]: number } {
     active: 0,
     expired: 0,
     inactive: 0,
-    suspended: 0
+    suspended: 0,
   }
-  
-  const rows = db.prepare('SELECT status, COUNT(*) as count FROM clients GROUP BY status').all() as { status: string; count: number }[]
+
+  const rows = db
+    .prepare('SELECT status, COUNT(*) as count FROM clients GROUP BY status')
+    .all() as { status: string; count: number }[]
   for (const row of rows) {
     counts[row.status] = row.count
   }
-  
+
   return counts
 }
 
-export function getExpiringSoon(days: number): { clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[] {
+export function getExpiringSoon(
+  days: number,
+): { clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[] {
   const db = getDatabase()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const future = new Date(today)
   future.setDate(future.getDate() + days)
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(
+      `
     SELECT c.id as clientId, c.full_name as clientName,
            m.plan_name as planName, m.end_date as endDate
     FROM memberships m
@@ -150,34 +195,53 @@ export function getExpiringSoon(days: number): { clientId: string; clientName: s
     WHERE m.status = 'active'
       AND m.end_date >= ? AND m.end_date <= ?
     ORDER BY m.end_date ASC
-  `).all(formatISO(today), formatISO(future)) as { clientId: string; clientName: string; planName: string; endDate: string }[]
+  `,
+    )
+    .all(formatISO(today), formatISO(future)) as {
+    clientId: string
+    clientName: string
+    planName: string
+    endDate: string
+  }[]
 
-  return rows.map(r => ({
+  return rows.map((r) => ({
     ...r,
-    daysLeft: Math.ceil((new Date(r.endDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    // Día-consciente y consistente con memberships.getExpiringMemberships y con
+    // el renderer: diff de días sobre fecha local (no Math.ceil del delta ms,
+    // que mostraba 1d para un vencimiento de HOY).
+    daysLeft: differenceInDays(parseISO(r.endDate), today),
   }))
 }
 
 // Cacheada con TTL (la key incluye el mes para no servir cumpleaños del mes
 // anterior si la app queda abierta al cruzar la medianoche). Se invalida desde
 // createClient/updateClient/deleteClient (clients.ts).
-export function getBirthdaysThisMonth(): { clientId: string; clientName: string; birthDate: string; day: number }[] {
+export function getBirthdaysThisMonth(): {
+  clientId: string
+  clientName: string
+  birthDate: string
+  day: number
+}[] {
   const now = new Date()
   const month = now.getMonth() + 1
   return cached(`birthdaysThisMonth:${month}`, 10 * 60_000, () => {
     const db = getDatabase()
 
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(
+        `
       SELECT id as clientId, full_name as clientName, birth_date as birthDate
       FROM clients
       WHERE birth_date IS NOT NULL AND birth_date != ''
         AND CAST(strftime('%m', birth_date) AS INTEGER) = ?
       ORDER BY CAST(strftime('%d', birth_date) AS INTEGER) ASC
-    `).all(month) as { clientId: string; clientName: string; birthDate: string }[]
+    `,
+      )
+      .all(month) as { clientId: string; clientName: string; birthDate: string }[]
 
-    return rows.map(r => ({
+    return rows.map((r) => ({
       ...r,
-      day: parseInt(r.birthDate.split('-')[2] || '0', 10)
+      day: parseInt(r.birthDate.split('-')[2] || '0', 10),
     }))
   })
 }
@@ -190,21 +254,26 @@ export function getRevenueByMonth(months: number = 6): { month: string; revenue:
     SELECT COALESCE(SUM(amount), 0) as total FROM payments 
     WHERE date >= ? AND date <= ?
   `)
-  
+  const inventoryStmt = db.prepare(`
+    SELECT COALESCE(SUM(total), 0) as total FROM inventory_movements
+    WHERE type = 'out' AND timestamp >= ? AND timestamp <= ?
+  `)
+
   for (let i = months - 1; i >= 0; i--) {
     const date = subMonths(today, i)
     const monthStart = formatISO(startOfMonth(date))
     const monthEnd = formatISO(endOfMonth(date))
     const monthLabel = date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })
-    
+
     const result = stmt.get(monthStart, monthEnd) as { total: number }
-    
+    const inventoryResult = inventoryStmt.get(monthStart, monthEnd) as { total: number }
+
     results.push({
       month: monthLabel,
-      revenue: result.total
+      revenue: result.total + inventoryResult.total,
     })
   }
-  
+
   return results
 }
 
@@ -213,16 +282,22 @@ export function getRevenueByYear(year: number): number {
   const date = new Date(year, 0, 1)
   const yearStart = formatISO(startOfYear(date))
   const yearEnd = formatISO(endOfYear(date))
-  const result = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE date >= ? AND date <= ?').get(yearStart, yearEnd) as { total: number }
+  const result = db
+    .prepare('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE date >= ? AND date <= ?')
+    .get(yearStart, yearEnd) as { total: number }
   return result.total
 }
 
 export function getRevenueByTimeOfDay(startDate: string, endDate: string): RevenueByPeriod {
   const db = getDatabase()
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(
+      `
     SELECT amount, date FROM payments 
     WHERE date >= ? AND date <= ?
-  `).all(startDate, endDate) as { amount: number; date: string }[]
+  `,
+    )
+    .all(startDate, endDate) as { amount: number; date: string }[]
 
   let morning = 0
   let afternoon = 0

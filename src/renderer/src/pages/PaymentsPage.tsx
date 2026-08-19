@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePersistentState } from '@/hooks/usePersistentState'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
@@ -11,16 +12,16 @@ const paymentMethods: { value: PaymentMethod; label: string; color: string }[] =
   { value: 'transfer', label: 'Transferencia', color: '#60a5fa' },
   { value: 'card', label: 'Tarjeta', color: '#f472b6' },
   { value: 'nequi', label: 'Nequi', color: '#ff6b00' },
-  { value: 'daviplata', label: 'Daviplata', color: '#a78bfa' }
+  { value: 'daviplata', label: 'Daviplata', color: '#a78bfa' },
 ]
 
 function getPaymentMethodLabel(method: string): string {
-  const pm = paymentMethods.find(p => p.value === method)
+  const pm = paymentMethods.find((p) => p.value === method)
   return pm ? pm.label : method
 }
 
 function getPaymentMethodBadge(method: string): JSX.Element {
-  const pm = paymentMethods.find(p => p.value === method)
+  const pm = paymentMethods.find((p) => p.value === method)
   const color = pm?.color || 'var(--color-secondary)'
 
   return (
@@ -29,7 +30,7 @@ function getPaymentMethodBadge(method: string): JSX.Element {
       style={{
         backgroundColor: `${color}20`,
         color: color,
-        border: `1px solid ${color}40`
+        border: `1px solid ${color}40`,
       }}
     >
       {getPaymentMethodLabel(method)}
@@ -39,25 +40,40 @@ function getPaymentMethodBadge(method: string): JSX.Element {
 
 function getInitials(name: string): string {
   if (!name) return '?'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 
 export function PaymentsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [payments, setPayments] = useState<Payment[]>([])
-  const [filterMethod, setFilterMethod] = useState<string>('all')
-  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'all'>('month')
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [filterMethod, setFilterMethod] = usePersistentState('bodyfitgym-payments-method', 'all')
+  const [dateRange, setDateRange] = usePersistentState<'today' | 'week' | 'month' | 'all'>(
+    'bodyfitgym-payments-daterange',
+    'month',
+  )
+  const [selectedYear, setSelectedYear] = usePersistentState<number>(
+    'bodyfitgym-payments-year',
+    new Date().getFullYear(),
+  )
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
-  const [revenueByTime, setRevenueByTime] = useState<RevenueByPeriod>({ morning: 0, afternoon: 0, total: 0 })
+  const [revenueByTime, setRevenueByTime] = useState<RevenueByPeriod>({
+    morning: 0,
+    afternoon: 0,
+    total: 0,
+  })
   const [yearRevenue, setYearRevenue] = useState<number>(0)
   const [summary, setSummary] = useState({
     total: 0,
     count: 0,
     totalDiscount: 0,
-    byMethod: {} as { [key: string]: number }
+    byMethod: {} as { [key: string]: number },
   })
 
   const [loading, setLoading] = useState(true)
@@ -90,7 +106,7 @@ export function PaymentsPage(): JSX.Element {
     const result = await window.electronAPI.payment.getByDateRange(
       startDate.toISOString(),
       endDate.toISOString(),
-      { page, pageSize, method: methodParam }
+      { page, pageSize, method: methodParam },
     )
 
     if (result.success && result.data) {
@@ -99,7 +115,10 @@ export function PaymentsPage(): JSX.Element {
       setPayments(paymentsData)
 
       const total = paymentsData.reduce((sum: number, p: Payment) => sum + p.amount, 0)
-      const totalDiscount = paymentsData.reduce((sum: number, p: Payment) => sum + (p.discount || 0), 0)
+      const totalDiscount = paymentsData.reduce(
+        (sum: number, p: Payment) => sum + (p.discount || 0),
+        0,
+      )
       const byMethod: { [key: string]: number } = {}
 
       for (const payment of paymentsData) {
@@ -110,7 +129,7 @@ export function PaymentsPage(): JSX.Element {
         total,
         count: paymentsData.length,
         totalDiscount,
-        byMethod
+        byMethod,
       })
     }
 
@@ -121,7 +140,7 @@ export function PaymentsPage(): JSX.Element {
 
     const timeResult = await window.electronAPI.dashboard.getRevenueByTimeOfDay(
       startDate.toISOString(),
-      endDate.toISOString()
+      endDate.toISOString(),
     )
     if (timeResult.success && timeResult.data) {
       setRevenueByTime(timeResult.data)
@@ -139,10 +158,14 @@ export function PaymentsPage(): JSX.Element {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}
+      >
         <div style={{ textAlign: 'center' }}>
           <div className="spinner" />
-          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>Cargando pagos...</p>
+          <p style={{ marginTop: 16, color: 'var(--color-on-surface-variant)' }}>
+            Cargando pagos...
+          </p>
         </div>
       </div>
     )
@@ -174,26 +197,62 @@ export function PaymentsPage(): JSX.Element {
 
       <div className="grid grid-4">
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-success)', width: 120, height: 120, top: -40, right: -20 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-success)',
+              width: 120,
+              height: 120,
+              top: -40,
+              right: -20,
+            }}
+          />
           <p className="metric-card-label">Total Recaudado</p>
           <p className="metric-card-value" style={{ color: 'var(--color-success)' }}>
             {formatCurrency(summary.total)}
           </p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-info)', width: 100, height: 100, top: -30, right: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-info)',
+              width: 100,
+              height: 100,
+              top: -30,
+              right: -10,
+            }}
+          />
           <p className="metric-card-label">Cantidad de Pagos</p>
           <p className="metric-card-value">{summary.count}</p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-primary-container)', width: 100, height: 100, bottom: -30, left: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-primary-container)',
+              width: 100,
+              height: 100,
+              bottom: -30,
+              left: -10,
+            }}
+          />
           <p className="metric-card-label">Promedio por Pago</p>
           <p className="metric-card-value">
             {summary.count > 0 ? formatCurrency(summary.total / summary.count) : '$0'}
           </p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-primary-container)', width: 100, height: 100, top: -30, right: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-primary-container)',
+              width: 100,
+              height: 100,
+              top: -30,
+              right: -10,
+            }}
+          />
           <p className="metric-card-label">Total Descuentos</p>
           <p className="metric-card-value" style={{ color: 'var(--color-primary-container)' }}>
             {formatCurrency(summary.totalDiscount)}
@@ -203,28 +262,52 @@ export function PaymentsPage(): JSX.Element {
 
       <div className="grid grid-4">
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-info)', width: 100, height: 100, bottom: -30, left: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-info)',
+              width: 100,
+              height: 100,
+              bottom: -30,
+              left: -10,
+            }}
+          />
           <p className="metric-card-label">Mañana (antes 12pm)</p>
           <p className="metric-card-value" style={{ color: 'var(--color-info)' }}>
             {formatCurrency(revenueByTime.morning)}
           </p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: '#f472b6', width: 100, height: 100, top: -30, right: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{ background: '#f472b6', width: 100, height: 100, top: -30, right: -10 }}
+          />
           <p className="metric-card-label">Tarde (después 12pm)</p>
           <p className="metric-card-value" style={{ color: '#f472b6' }}>
             {formatCurrency(revenueByTime.afternoon)}
           </p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: 'var(--color-success)', width: 100, height: 100, top: -30, left: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{
+              background: 'var(--color-success)',
+              width: 100,
+              height: 100,
+              top: -30,
+              left: -10,
+            }}
+          />
           <p className="metric-card-label">Efectivo</p>
           <p className="metric-card-value" style={{ color: 'var(--color-success)' }}>
             {formatCurrency(summary.byMethod['cash'] || 0)}
           </p>
         </div>
         <div className="metric-card">
-          <div className="metric-card-blur" style={{ background: '#a78bfa', width: 100, height: 100, bottom: -30, right: -10 }} />
+          <div
+            className="metric-card-blur"
+            style={{ background: '#a78bfa', width: 100, height: 100, bottom: -30, right: -10 }}
+          />
           <p className="metric-card-label">Anual ({selectedYear})</p>
           <p className="metric-card-value" style={{ color: 'var(--color-primary-container)' }}>
             {formatCurrency(yearRevenue)}
@@ -234,18 +317,22 @@ export function PaymentsPage(): JSX.Element {
 
       <div style={{ display: 'flex', gap: 24 }}>
         <div className="bento-card" style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 16,
-            padding: 'var(--spacing-md)'
-          }}>
-            <h3 className="headline-md" style={{ paddingLeft: 4 }}>Transacciones Recientes</h3>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 16,
+              padding: 'var(--spacing-md)',
+            }}
+          >
+            <h3 className="headline-md" style={{ paddingLeft: 4 }}>
+              Transacciones Recientes
+            </h3>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div className="tabs" style={{ borderBottom: 'none' }}>
-                {(['today', 'week', 'month', 'all'] as const).map(range => (
+                {(['today', 'week', 'month', 'all'] as const).map((range) => (
                   <div
                     key={range}
                     className={`tab ${dateRange === range ? 'active' : ''}`}
@@ -254,12 +341,16 @@ export function PaymentsPage(): JSX.Element {
                       padding: '8px 16px',
                       fontSize: 13,
                       borderRadius: 8,
-                      borderBottom: dateRange === range ? '2px solid var(--color-primary-container)' : 'none'
+                      borderBottom:
+                        dateRange === range ? '2px solid var(--color-primary-container)' : 'none',
                     }}
                   >
-                    {range === 'today' ? 'Hoy'
-                      : range === 'week' ? 'Semana'
-                        : range === 'month' ? 'Mes'
+                    {range === 'today'
+                      ? 'Hoy'
+                      : range === 'week'
+                        ? 'Semana'
+                        : range === 'month'
+                          ? 'Mes'
                           : 'Todo'}
                   </div>
                 ))}
@@ -271,8 +362,10 @@ export function PaymentsPage(): JSX.Element {
                 style={{ width: 140 }}
               >
                 <option value="all">Todos los métodos</option>
-                {paymentMethods.map(pm => (
-                  <option key={pm.value} value={pm.value}>{pm.label}</option>
+                {paymentMethods.map((pm) => (
+                  <option key={pm.value} value={pm.value}>
+                    {pm.label}
+                  </option>
                 ))}
               </select>
               <select
@@ -284,11 +377,19 @@ export function PaymentsPage(): JSX.Element {
                 }}
                 style={{ width: 110 }}
               >
-                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(
+                  (year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ),
+                )}
               </select>
-              <button className="btn btn-secondary btn-sm" onClick={loadPayments} title="Actualizar">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={loadPayments}
+                title="Actualizar"
+              >
                 <Icons.Refresh />
               </button>
             </div>
@@ -340,18 +441,25 @@ export function PaymentsPage(): JSX.Element {
                         </span>
                       </td>
                       <td>{getPaymentMethodBadge(payment.method)}</td>
-                      <td style={{
-                        textAlign: 'right',
-                        fontWeight: 600,
-                        fontFamily: 'monospace'
-                      }}>
+                      <td
+                        style={{
+                          textAlign: 'right',
+                          fontWeight: 600,
+                          fontFamily: 'monospace',
+                        }}
+                      >
                         {formatCurrency(payment.amount)}
                       </td>
-                      <td style={{
-                        textAlign: 'right',
-                        fontFamily: 'monospace',
-                        color: payment.discount > 0 ? 'var(--color-primary-container)' : 'var(--color-on-surface-variant)'
-                      }}>
+                      <td
+                        style={{
+                          textAlign: 'right',
+                          fontFamily: 'monospace',
+                          color:
+                            payment.discount > 0
+                              ? 'var(--color-primary-container)'
+                              : 'var(--color-on-surface-variant)',
+                        }}
+                      >
                         {payment.discount > 0 ? formatCurrency(payment.discount) : '-'}
                       </td>
                       <td>
@@ -368,9 +476,13 @@ export function PaymentsPage(): JSX.Element {
           </div>
         </div>
 
-        <div style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0 }}>
+        <div
+          style={{ width: 280, display: 'flex', flexDirection: 'column', gap: 16, flexShrink: 0 }}
+        >
           <div className="bento-card bento-card-highlight">
-            <h3 className="headline-md" style={{ marginBottom: 16 }}>Acciones Rápidas</h3>
+            <h3 className="headline-md" style={{ marginBottom: 16 }}>
+              Acciones Rápidas
+            </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
                 className="btn btn-secondary"
@@ -378,7 +490,8 @@ export function PaymentsPage(): JSX.Element {
                 onClick={async () => {
                   if (window.electronAPI?.system?.exportCsv) {
                     const result = await window.electronAPI.system.exportCsv('payments')
-                    if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
+                    if (result.success)
+                      showToast('success', `Exportado: ${result.data}`, 'Exportado')
                   }
                 }}
               >
@@ -398,26 +511,60 @@ export function PaymentsPage(): JSX.Element {
 
           <div className="bento-card">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary-container)' }} />
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: 'var(--color-primary-container)',
+                }}
+              />
               <h3 className="headline-md">Análisis de Ingresos</h3>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Ingresos Mañana</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-info)' }}>{formatCurrency(revenueByTime.morning)}</span>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                  Ingresos Mañana
+                </span>
+                <span style={{ fontWeight: 600, color: 'var(--color-info)' }}>
+                  {formatCurrency(revenueByTime.morning)}
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Ingresos Tarde</span>
-                <span style={{ fontWeight: 600, color: '#f472b6' }}>{formatCurrency(revenueByTime.afternoon)}</span>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                  Ingresos Tarde
+                </span>
+                <span style={{ fontWeight: 600, color: '#f472b6' }}>
+                  {formatCurrency(revenueByTime.afternoon)}
+                </span>
               </div>
               <div style={{ height: 1, background: 'var(--color-surface-container-highest)' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700 }}>Ingresos Anuales</span>
-                <span style={{ fontWeight: 700, color: 'var(--color-primary-container)' }}>{formatCurrency(yearRevenue)}</span>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span
+                  className="label-md"
+                  style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700 }}
+                >
+                  Ingresos Anuales
+                </span>
+                <span style={{ fontWeight: 700, color: 'var(--color-primary-container)' }}>
+                  {formatCurrency(yearRevenue)}
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>Total Descuentos</span>
-                <span style={{ fontWeight: 600, color: 'var(--color-on-surface-variant)' }}>{formatCurrency(summary.totalDiscount)}</span>
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                  Total Descuentos
+                </span>
+                <span style={{ fontWeight: 600, color: 'var(--color-on-surface-variant)' }}>
+                  {formatCurrency(summary.totalDiscount)}
+                </span>
               </div>
             </div>
           </div>

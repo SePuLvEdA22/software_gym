@@ -47,6 +47,37 @@ export function getWhatsappConfig(): WhatsappConfig {
   return { ...config }
 }
 
+// ── Scheduler de recordatorios ────────────────────────────────────────────
+// Vive en este módulo para que cambiando la configuración (checkIntervalHours)
+// se pueda reiniciar el intervalo sin reiniciar la app. El timer se inicia en
+// main/index.ts al arrancar y se reinicia desde el handler whatsapp:saveConfig.
+let reminderTimer: NodeJS.Timeout | null = null
+
+export function startReminderScheduler(): void {
+  if (reminderTimer) clearInterval(reminderTimer)
+  const intervalMs = (config.checkIntervalHours || 6) * 60 * 60 * 1000
+  reminderTimer = setInterval(async () => {
+    try {
+      if (config.enabled) {
+        const result = await checkAndSendExpiryReminders()
+        if (result.sent > 0) {
+          log.info(`Periodic reminder check: ${result.sent} sent`)
+        }
+      }
+    } catch (e) {
+      log.error('Periodic reminder check error:', e)
+    }
+  }, intervalMs)
+  log.info(`Reminder scheduler started: every ${intervalMs / (60 * 60 * 1000)} hours`)
+}
+
+export function stopReminderScheduler(): void {
+  if (reminderTimer) {
+    clearInterval(reminderTimer)
+    reminderTimer = null
+  }
+}
+
 export function generatePaymentConfirmationMessage(clientName: string, planName: string, endDate: string): string {
   const date = new Date(endDate)
   const formattedDate = date.toLocaleDateString('es-ES', {
@@ -289,18 +320,31 @@ export async function checkAndSendExpiryReminders(): Promise<{ sent: number }> {
   
   const thirtyDaysAgo = formatISO(addDays(today, -30))
 
-  const candidates = db.prepare(`
+  // Los recordatorios de "membresía vencida" DEBEN llegar también a clientes ya
+  // marcados como 'expired': updateExpiredMemberships cambia c.status a 'expired'
+  // cuando vence su membresía, así que filtrar por c.status = 'active' dejaba ese
+  // mensaje sin enviarse nunca en producción. Para la rama activa (por vencer) sí
+  // se conserva el requisito de cliente activo; para la rama vencida solo importa
+  // el estado de la membresía. Se deduplica por cliente quedándose con la
+  // membresía de vencimiento más reciente (evita spam cuando hay renovaciones).
+  const rows = db.prepare(`
     SELECT c.id, c.full_name, c.phone, m.plan_name, m.end_date
     FROM clients c
     JOIN memberships m ON m.client_id = c.id
-    WHERE c.status = 'active'
-      AND (
-        (m.status = 'active' AND m.end_date BETWEEN ? AND ?)
+    WHERE (
+        (c.status = 'active' AND m.status = 'active' AND m.end_date BETWEEN ? AND ?)
         OR
         (m.status = 'expired' AND m.end_date BETWEEN ? AND ?)
       )
     ORDER BY m.end_date ASC
   `).all(todayStr, threeDaysFromNow, thirtyDaysAgo, todayStr) as { id: string; full_name: string; phone: string; plan_name: string; end_date: string }[]
+
+  const byClient = new Map<string, { id: string; full_name: string; phone: string; plan_name: string; end_date: string }>()
+  for (const row of rows) {
+    const existing = byClient.get(row.id)
+    if (!existing || row.end_date > existing.end_date) byClient.set(row.id, row)
+  }
+  const candidates = [...byClient.values()]
   
   let sentCount = 0
   

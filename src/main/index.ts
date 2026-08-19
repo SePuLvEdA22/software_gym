@@ -7,7 +7,7 @@ import { initDatabase, closeDatabase, getDatabase } from './database'
 import { setupIpcHandlers } from './ipc'
 import { initializeDoorController } from './door/controller'
 import { setDoorConfig } from './door/config'
-import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig } from './whatsapp'
+import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig, startReminderScheduler } from './whatsapp'
 import { initUpdater } from './updater'
 import { getBackupConfig, performAutoBackup } from './backup'
 import { ensureThumbnails } from './photos'
@@ -816,28 +816,10 @@ app.whenReady().then(async () => {
     log.info(`Startup reminder check: ${reminderResult.sent} sent`)
   }
 
-  // Store interval reference for dynamic updates
-  let reminderInterval: ReturnType<typeof setInterval> | null = null
-
-  function startReminderInterval(): void {
-    if (reminderInterval) clearInterval(reminderInterval)
-    const intervalMs = (getWhatsappConfig().checkIntervalHours || 6) * 60 * 60 * 1000
-    log.info(`Starting reminder interval: every ${getWhatsappConfig().checkIntervalHours || 6} hours`)
-    reminderInterval = setInterval(async () => {
-      try {
-        if (getWhatsappConfig().enabled) {
-          const result = await checkAndSendExpiryReminders()
-          if (result.sent > 0) {
-            log.info(`Periodic reminder check: ${result.sent} sent`)
-          }
-        }
-      } catch (e) {
-        log.error('Periodic reminder check error:', e)
-      }
-    }, intervalMs)
-  }
-
-  startReminderInterval()
+  // Inicia el timer de recordatorios. Vive en ../whatsapp para que se pueda
+  // reiniciar al cambiar checkIntervalHours en la configuración (sin reiniciar
+  // la app); sees reinicia además vía IPC (system:restartReminderInterval).
+  startReminderScheduler()
 
   // ── Respaldo automático de la base de datos ──
   // Copia al iniciar la aplicación (si está habilitado) y luego una copia
@@ -866,7 +848,7 @@ app.whenReady().then(async () => {
 
   // Allow dynamic interval restart when config changes
   ipcMain.handle('system:restartReminderInterval', async () => {
-    startReminderInterval()
+    startReminderScheduler()
     return { success: true }
   })
 

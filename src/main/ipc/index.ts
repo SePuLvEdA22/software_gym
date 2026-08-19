@@ -73,7 +73,8 @@ import {
   getMessageHistory,
   checkAndSendExpiryReminders,
   sendExpiryReminderToClient,
-  sendTestMessage
+  sendTestMessage,
+  startReminderScheduler
 } from '../whatsapp/index'
 import {
   getAllProducts, getProductById, createProduct, updateProduct, deleteProduct,
@@ -844,6 +845,9 @@ export function setupIpcHandlers(): void {
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
         .run(JSON.stringify(savedConfig))
       log.info('WhatsApp config saved:', { ...savedConfig, apiKey: '***' })
+      // Si cambió checkIntervalHours (o el estado), reinicia el timer de
+      // recordatorios para que surta efecto sin necesidad de reiniciar la app.
+      startReminderScheduler()
       return { success: true }
     } catch (error: any) {
       log.error('Error saving WhatsApp config:', error)
@@ -1192,21 +1196,21 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('messageTemplates:sendToClient', async (_, templateId: string, clientId: string) => {
     const auth = requireRole('admin')
     if (auth) return auth
-    try { return { success: true, data: sendTemplateToClient(templateId, clientId) } }
+    try { return { success: true, data: await sendTemplateToClient(templateId, clientId) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
   ipcMain.handle('messageTemplates:sendToAll', async (_, templateId: string) => {
     const auth = requireRole('admin')
     if (auth) return auth
-    try { return { success: true, data: sendTemplateToAll(templateId) } }
+    try { return { success: true, data: await sendTemplateToAll(templateId) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
   ipcMain.handle('messageTemplates:sendToExpiring', async (_, templateId: string, days: number) => {
     const auth = requireRole('admin')
     if (auth) return auth
-    try { return { success: true, data: sendTemplateToExpiring(templateId, days) } }
+    try { return { success: true, data: await sendTemplateToExpiring(templateId, days) } }
     catch (error: any) { return { success: false, error: sanitizeError(error) } }
   })
 
