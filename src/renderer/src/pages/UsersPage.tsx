@@ -329,16 +329,19 @@ interface LogRowProps {
 function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
   const before = parseSnapshot(log.oldValues)
   const after = parseSnapshot(log.newValues)
+  // Contexto humano de la fila: dueño de la membresía cuando aplica
+  const contextClient = ((after?.clientName ?? before?.clientName) as string | undefined) || null
 
   let rows: Array<{ field: string; from?: unknown; to?: unknown }> = []
   if (log.action === 'update' && before && after) {
     rows = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+      .filter(k => k !== 'clientName')
       .filter(k => JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null))
       .map(k => ({ field: k, from: before[k], to: after[k] }))
   } else if ((log.action === 'create' || log.action === 'login') && after) {
-    rows = Object.entries(after).map(([field, to]) => ({ field, to }))
+    rows = Object.entries(after).filter(([k]) => k !== 'clientName').map(([field, to]) => ({ field, to }))
   } else if (log.action === 'delete' && before) {
-    rows = Object.entries(before).map(([field, from]) => ({ field, from }))
+    rows = Object.entries(before).filter(([k]) => k !== 'clientName').map(([field, from]) => ({ field, from }))
   }
 
   return (
@@ -371,6 +374,11 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
       {expanded && (
         <tr>
           <td colSpan={6} style={{ backgroundColor: 'var(--color-surface-container-low)', padding: '16px 24px' }}>
+            {contextClient && (
+              <p style={{ margin: '0 0 10px', fontSize: 13 }}>
+                <strong>Cliente:</strong> {contextClient}
+              </p>
+            )}
             {rows.length === 0 ? (
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-secondary)' }}>Sin detalle disponible</p>
             ) : (

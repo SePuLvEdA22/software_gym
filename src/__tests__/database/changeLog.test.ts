@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { initDatabase, closeDatabase } from '../../main/database/index'
 import { logChange, getChangeLogs, setSessionUser } from '../../main/database/users'
+import { createClient } from '../../main/database/clients'
 import type { User } from '../../shared/types'
 
 const trainer = {
@@ -97,6 +98,35 @@ describe('Historial de cambios (auditoría)', () => {
     // Un login no debe aparecer como Actualización
     const asUpdate = getChangeLogs(1, 100, undefined, 'update')
     expect(asUpdate.data.some(l => l.recordId === 'user_trainer_test' && l.newValues?.includes('lastLogin'))).toBe(false)
+    setSessionUser(null)
+  })
+
+  it('las entradas de membresía incluyen el nombre del cliente (como lo resuelve el handler IPC)', () => {
+    const client = createClient({
+      fullName: 'Juan Pérez Congelado',
+      documentId: `AUD-${Date.now()}`,
+      birthDate: '1990-01-01',
+      gender: 'male',
+      phone: '3001112233',
+      email: 'audit@example.com',
+      address: 'Calle 1',
+      photo: null,
+      accessCode: `AUD${Date.now()}`,
+      status: 'active',
+      emergencyContact: { name: '', phone: '', relationship: '', notes: '' },
+    })
+
+    setSessionUser(trainer)
+    // Replica exactamente la llamada del handler membership:freeze
+    logChange('memberships', 'mem_named_1', 'update',
+      { status: 'active', clientName: client.fullName },
+      { status: 'frozen', reason: 'Vacaciones', plannedDays: 6, clientName: client.fullName }
+    )
+
+    const row = getChangeLogs(1, 100, 'memberships').data.find(l => l.recordId === 'mem_named_1')
+    expect(row).toBeDefined()
+    expect(JSON.parse(row!.newValues!).clientName).toBe('Juan Pérez Congelado')
+    expect(JSON.parse(row!.oldValues!).clientName).toBe('Juan Pérez Congelado')
     setSessionUser(null)
   })
 })

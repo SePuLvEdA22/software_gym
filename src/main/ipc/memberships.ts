@@ -20,6 +20,7 @@ import {
   updatePlan,
   deletePlan
 } from '../database/memberships'
+import { getClientById } from '../database/clients'
 import { logChange } from '../database/users'
 import {
   getWhatsappConfig,
@@ -28,6 +29,16 @@ import {
 } from '../whatsapp/index'
 import { sanitizeError } from '../helpers'
 import { requirePermission, requireRole, validateOrThrow } from './helpers'
+
+/** Nombre legible del dueño de la membresía para el historial de cambios. */
+function clientLabel(clientId?: string | null): string | null {
+  if (!clientId) return null
+  try {
+    return getClientById(clientId)?.fullName ?? null
+  } catch {
+    return null
+  }
+}
 
 export function registerMembershipHandlers(): void {
   ipcMain.handle('plans:getAll', async (_, activeOnly = true) => {
@@ -62,6 +73,7 @@ export function registerMembershipHandlers(): void {
       if (membership) {
         logChange('memberships', membership.id, 'create', null, {
           clientId,
+          clientName: clientLabel(clientId),
           planId,
           planName: membership.planName,
           startDate: membership.startDate,
@@ -84,6 +96,7 @@ export function registerMembershipHandlers(): void {
       if (result.membership) {
         logChange('memberships', result.membership.id, 'create', null, {
           clientId,
+          clientName: clientLabel(clientId),
           planId,
           planName: result.membership.planName,
           startDate: result.membership.startDate,
@@ -137,11 +150,11 @@ export function registerMembershipHandlers(): void {
     try {
       const membership = freezeMembership(membershipId, reason, plannedDays)
       if (membership) {
-        logChange('memberships', membershipId, 'update', { status: 'active' }, {
-          status: 'frozen',
-          reason: reason || null,
-          plannedDays: plannedDays || null
-        })
+        const clientName = clientLabel(membership.clientId)
+        logChange('memberships', membershipId, 'update',
+          { status: 'active', clientName },
+          { status: 'frozen', reason: reason || null, plannedDays: plannedDays || null, clientName }
+        )
       }
       return { success: !!membership, data: membership }
     } catch (error: any) {
@@ -156,7 +169,11 @@ export function registerMembershipHandlers(): void {
     try {
       const membership = unfreezeMembership(membershipId)
       if (membership) {
-        logChange('memberships', membershipId, 'update', { status: 'frozen' }, { status: 'active' })
+        const clientName = clientLabel(membership.clientId)
+        logChange('memberships', membershipId, 'update',
+          { status: 'frozen', clientName },
+          { status: 'active', clientName }
+        )
       }
       return { success: !!membership, data: membership }
     } catch (error: any) {
