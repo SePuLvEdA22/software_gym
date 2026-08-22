@@ -16,3 +16,17 @@ export function requireRole(...roles: UserRole[]): { success: false; error: stri
   if (!roles.includes(user.role)) return { success: false, error: 'No autorizado' }
   return null
 }
+
+/**
+ * Verificación de permiso granular. El admin tiene acceso total; el resto
+ * depende del array de permisos guardado en el usuario (shared/permissions).
+ */
+export function requirePermission(permission: string): { success: false; error: string } | null {
+  const user = getSessionUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role === 'admin') return null
+  if (!(user.permissions ?? []).includes(permission)) {
+    return { success: false, error: 'No autorizado' }
+  }
+  return null
+}

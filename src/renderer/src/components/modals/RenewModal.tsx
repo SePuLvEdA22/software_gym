@@ -19,6 +19,11 @@ interface RenewModalProps {
   plans: MembershipPlan[]
   /** Cuando es true se omite el overlay/modal/header: útil dentro de ventanas-formulario. */
   embedded?: boolean
+  /**
+   * Usa los canales públicos del kiosco (kiosk:*), que no requieren sesión.
+   * El panel de administración debe dejarlo en false (canales con permisos).
+   */
+  useKioskApi?: boolean
   onClose: () => void
   onSuccess: () => void
 }
@@ -28,6 +33,7 @@ export function RenewModal({
   activeMembership,
   plans,
   embedded = false,
+  useKioskApi = false,
   onClose,
   onSuccess
 }: RenewModalProps): JSX.Element {
@@ -53,7 +59,9 @@ export function RenewModal({
 
   const loadEffectivePrice = async (planId: string) => {
     try {
-      const result = await window.electronAPI.promotion.getEffectivePrice(planId)
+      const result = useKioskApi
+        ? await window.electronAPI.kiosk.getEffectivePrice(planId)
+        : await window.electronAPI.promotion.getEffectivePrice(planId)
       if (result.success && result.data) {
         setPromoInfo(result.data)
         if (result.data.promotionName) {
@@ -77,15 +85,25 @@ export function RenewModal({
       const parsedStart = startDate ? parse(startDate, 'dd/MM/yyyy', new Date()) : null
       const startDateIso = parsedStart && isValid(parsedStart) ? parsedStart.toISOString() : undefined
 
-      const result = await window.electronAPI.membership.createWithPayment(
-        client.id,
-        selectedPlan,
-        amount,
-        paymentMethod,
-        startDateIso,
-        notes,
-        discount > 0 ? discount : undefined
-      )
+      const result = useKioskApi
+        ? await window.electronAPI.kiosk.createRenewal(
+            client.id,
+            selectedPlan,
+            amount,
+            paymentMethod,
+            startDateIso,
+            notes,
+            discount > 0 ? discount : undefined
+          )
+        : await window.electronAPI.membership.createWithPayment(
+            client.id,
+            selectedPlan,
+            amount,
+            paymentMethod,
+            startDateIso,
+            notes,
+            discount > 0 ? discount : undefined
+          )
 
       if (result.success && result.data?.membership) {
         showToast('success', 'Membresía creada exitosamente', 'Éxito')

@@ -2,27 +2,31 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icons } from './Icons'
 import logoSrc from '../assets/logo.png'
+import { hasPermission } from '../../../shared/permissions'
 import type { UserRole } from '../../../shared/types'
+
+/** Mínimo que el sidebar/guards necesitan del usuario autenticado. */
+export type SessionUser = { role: UserRole; permissions?: string[] } | null
 
 interface NavItem {
   id: string
   label: string
   icon: keyof typeof Icons
   path: string
-  roles?: UserRole[]
+  permission: string
 }
 
 const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Panel Principal', icon: 'Dashboard', path: '/', roles: ['admin', 'reception', 'accounting'] },
-  { id: 'clients', label: 'Clientes', icon: 'Users', path: '/clients' },
-  { id: 'payments', label: 'Pagos', icon: 'CreditCard', path: '/payments', roles: ['admin', 'reception', 'accounting'] },
-  { id: 'inventory', label: 'Inventario', icon: 'Package', path: '/inventory', roles: ['admin', 'reception', 'accounting'] },
-  { id: 'tracking', label: 'Seguimiento', icon: 'Activity', path: '/tracking', roles: ['admin', 'trainer'] },
-  { id: 'logs', label: 'Historial', icon: 'History', path: '/logs' },
-  { id: 'whatsapp', label: 'Notificaciones', icon: 'Bell', path: '/whatsapp', roles: ['admin', 'reception'] },
-  { id: 'messages', label: 'Mensajes', icon: 'Send', path: '/messages', roles: ['admin'] },
-  { id: 'users', label: 'Usuarios', icon: 'Shield', path: '/users', roles: ['admin'] },
-  { id: 'settings', label: 'Configuración', icon: 'Settings', path: '/settings', roles: ['admin'] }
+  { id: 'dashboard', label: 'Panel Principal', icon: 'Dashboard', path: '/', permission: 'dashboard.view' },
+  { id: 'clients', label: 'Clientes', icon: 'Users', path: '/clients', permission: 'clients.view' },
+  { id: 'payments', label: 'Pagos', icon: 'CreditCard', path: '/payments', permission: 'payments.view' },
+  { id: 'inventory', label: 'Inventario', icon: 'Package', path: '/inventory', permission: 'inventory.view' },
+  { id: 'tracking', label: 'Seguimiento', icon: 'Activity', path: '/tracking', permission: 'tracking.view' },
+  { id: 'logs', label: 'Historial', icon: 'History', path: '/logs', permission: 'logs.view' },
+  { id: 'whatsapp', label: 'Notificaciones', icon: 'Bell', path: '/whatsapp', permission: 'whatsapp.view' },
+  { id: 'messages', label: 'Mensajes', icon: 'Send', path: '/messages', permission: 'messages.view' },
+  { id: 'users', label: 'Usuarios', icon: 'Shield', path: '/users', permission: 'users.view' },
+  { id: 'settings', label: 'Configuración', icon: 'Settings', path: '/settings', permission: 'settings.view' }
 ]
 
 const roleLabels: Record<string, string> = {
@@ -32,15 +36,23 @@ const roleLabels: Record<string, string> = {
   accounting: 'Contabilidad'
 }
 
+/**
+ * Primera ruta a la que puede entrar el usuario. Se usa al aterrizar en "/"
+ * cuando no tiene dashboard.view (p. ej. entrenador → seguimiento).
+ */
+export function landingPathFor(currentUser: SessionUser): string {
+  if (hasPermission(currentUser, 'dashboard.view')) return '/'
+  const item = navItems.find(i => i.path !== '/' && hasPermission(currentUser, i.permission))
+  return item?.path ?? '/no-access'
+}
+
 export function Sidebar({ currentUser, collapsed, onToggle }: { currentUser: any; collapsed: boolean; onToggle: () => void }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const visibleItems = navItems.filter(item => {
-    if (!item.roles) return true
-    if (!currentUser) return false
-    return item.roles.includes(currentUser.role)
-  })
+  // Solo se muestran las secciones cuyo permiso tiene otorgado el usuario
+  // (el admin pasa siempre: bypass en hasPermission).
+  const visibleItems = navItems.filter(item => hasPermission(currentUser, item.permission))
 
   return (
     <>

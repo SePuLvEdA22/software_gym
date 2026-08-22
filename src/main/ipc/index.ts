@@ -6,6 +6,7 @@ import { registerMembershipHandlers } from './memberships'
 import { registerAccessHandlers } from './access'
 import { registerDashboardHandlers } from './dashboard'
 import { registerDoorHandlers } from './door'
+import { registerKioskHandlers } from './kiosk'
 import { registerSystemHandlers } from './system'
 import { registerPromotionHandlers } from './promotions'
 import { registerWhatsappHandlers } from './whatsapp'
@@ -23,6 +24,7 @@ export function setupIpcHandlers(): void {
   registerAccessHandlers()
   registerDashboardHandlers()
   registerDoorHandlers()
+  registerKioskHandlers()
   registerSystemHandlers()
   registerPromotionHandlers()
   registerWhatsappHandlers()

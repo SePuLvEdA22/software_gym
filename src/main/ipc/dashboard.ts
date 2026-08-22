@@ -11,9 +11,12 @@ import {
 } from '../database/dashboard'
 import { deactivateExpiredPromotions, updateExpiredMemberships } from '../database/memberships'
 import { sanitizeError } from '../helpers'
+import { requirePermission } from './helpers'
 
 export function registerDashboardHandlers(): void {
   ipcMain.handle('dashboard:getMetrics', async (_, period?: 'day' | 'week' | 'month') => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       deactivateExpiredPromotions()
       updateExpiredMemberships()
@@ -26,6 +29,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getRevenueByMonth', async (_, months) => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       const data = getRevenueByMonth(months)
       return { success: true, data }
@@ -36,6 +41,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getClientsByStatus', async () => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       const data = getClientsByStatus()
       return { success: true, data }
@@ -46,6 +53,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getRevenueByYear', async (_, year) => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       return { success: true, data: getRevenueByYear(year) }
     } catch (error: any) {
@@ -55,6 +64,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getRevenueByTimeOfDay', async (_, startDate, endDate) => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       return { success: true, data: getRevenueByTimeOfDay(startDate, endDate) }
     } catch (error: any) {
@@ -64,6 +75,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getExpiringSoon', async (_, days) => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       return { success: true, data: getExpiringSoon(days) }
     } catch (error: any) {
@@ -73,6 +86,8 @@ export function registerDashboardHandlers(): void {
   })
 
   ipcMain.handle('dashboard:getBirthdays', async () => {
+    const auth = requirePermission('dashboard.view')
+    if (auth) return auth
     try {
       return { success: true, data: getBirthdaysThisMonth() }
     } catch (error: any) {

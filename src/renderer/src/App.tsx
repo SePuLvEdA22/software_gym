@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
-import { Sidebar, Header } from '@/components/Layout'
+import { Sidebar, Header, landingPathFor, type SessionUser } from '@/components/Layout'
 import { ToastContainer } from '@/components/ToastContainer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useAppStore } from '@/store/appStore'
+import { hasPermission } from '@shared/permissions'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
@@ -18,7 +19,6 @@ import { BodyTrackingPage } from '@/pages/BodyTrackingPage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { KioskRenewPage } from '@/pages/KioskRenewPage'
 import { FormPage } from '@/pages/forms/FormPage'
-import type { UserRole } from '@shared/types'
 
 // DashboardPage es el único consumidor de recharts (~500 KB). Se carga de forma
 // diferida para que el chunk inicial de la app no incluya esa librería.
@@ -50,10 +50,36 @@ function getPageTitle(pathname: string): string {
   }
 }
 
-function RoleGuard({ roles, currentUser, children }: { roles?: UserRole[]; currentUser: any; children: JSX.Element }): JSX.Element {
+/**
+ * Protege una ruta por permiso granular. Sin el permiso se redirige a la
+ * primera sección permitida; si no hay ninguna, a /no-access.
+ */
+function PermissionGuard({ permission, currentUser, children }: { permission: string; currentUser: SessionUser; children: JSX.Element }): JSX.Element {
   if (!currentUser) return <Navigate to="/" replace />
-  if (roles && !roles.includes(currentUser.role)) return <Navigate to="/" replace />
-  return children
+  if (hasPermission(currentUser, permission)) return children
+  return <Navigate to={landingPathFor(currentUser)} replace />
+}
+
+function NoAccessPanel(): JSX.Element {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 12 }}>
+      <h2 className="headline-md">Sin acceso</h2>
+      <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)' }}>
+        Tu usuario no tiene permisos para ninguna sección. Contacta al administrador.
+      </p>
+    </div>
+  )
+}
+
+/** Ruta raíz: dashboard si tiene permiso; si no, primera sección permitida. */
+function HomeRoute({ currentUser }: { currentUser: SessionUser }): JSX.Element {
+  if (!currentUser) return <PageLoader />
+  if (!hasPermission(currentUser, 'dashboard.view')) {
+    const alt = landingPathFor(currentUser)
+    if (alt !== '/') return <Navigate to={alt} replace />
+    return <NoAccessPanel />
+  }
+  return <DashboardPage />
 }
 
 function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
@@ -148,20 +174,17 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
         <div className="page-content">
           <Suspense fallback={<PageLoader />}>
           <Routes>
-            <Route path="/" element={
-              currentUser?.role === 'trainer'
-                ? <Navigate to="/tracking" replace />
-                : <DashboardPage />
-            } />
-            <Route path="/clients" element={<RoleGuard roles={undefined} currentUser={currentUser}><ClientsPage /></RoleGuard>} />
-            <Route path="/payments" element={<RoleGuard roles={['admin', 'reception', 'accounting']} currentUser={currentUser}><PaymentsPage /></RoleGuard>} />
-            <Route path="/logs" element={<RoleGuard roles={undefined} currentUser={currentUser}><LogsPage /></RoleGuard>} />
-            <Route path="/whatsapp" element={<RoleGuard roles={['admin', 'reception']} currentUser={currentUser}><WhatsappPage /></RoleGuard>} />
-            <Route path="/users" element={<RoleGuard roles={['admin']} currentUser={currentUser}><UsersPage /></RoleGuard>} />
-            <Route path="/inventory" element={<RoleGuard roles={['admin', 'reception', 'accounting']} currentUser={currentUser}><InventoryPage /></RoleGuard>} />
-            <Route path="/tracking" element={<RoleGuard roles={['admin', 'trainer']} currentUser={currentUser}><BodyTrackingPage /></RoleGuard>} />
-            <Route path="/messages" element={<RoleGuard roles={['admin']} currentUser={currentUser}><MessagesPage /></RoleGuard>} />
-            <Route path="/settings" element={<RoleGuard roles={['admin']} currentUser={currentUser}><SettingsPage /></RoleGuard>} />
+            <Route path="/" element={<HomeRoute currentUser={currentUser} />} />
+            <Route path="/clients" element={<PermissionGuard permission="clients.view" currentUser={currentUser}><ClientsPage /></PermissionGuard>} />
+            <Route path="/payments" element={<PermissionGuard permission="payments.view" currentUser={currentUser}><PaymentsPage /></PermissionGuard>} />
+            <Route path="/logs" element={<PermissionGuard permission="logs.view" currentUser={currentUser}><LogsPage /></PermissionGuard>} />
+            <Route path="/whatsapp" element={<PermissionGuard permission="whatsapp.view" currentUser={currentUser}><WhatsappPage /></PermissionGuard>} />
+            <Route path="/users" element={<PermissionGuard permission="users.view" currentUser={currentUser}><UsersPage /></PermissionGuard>} />
+            <Route path="/inventory" element={<PermissionGuard permission="inventory.view" currentUser={currentUser}><InventoryPage /></PermissionGuard>} />
+            <Route path="/tracking" element={<PermissionGuard permission="tracking.view" currentUser={currentUser}><BodyTrackingPage /></PermissionGuard>} />
+            <Route path="/messages" element={<PermissionGuard permission="messages.view" currentUser={currentUser}><MessagesPage /></PermissionGuard>} />
+            <Route path="/settings" element={<PermissionGuard permission="settings.view" currentUser={currentUser}><SettingsPage /></PermissionGuard>} />
+            <Route path="/no-access" element={<NoAccessPanel />} />
           </Routes>
           </Suspense>
         </div>

@@ -9,7 +9,7 @@ import {
   clearMustChangePassword
 } from '../database/users'
 import { sanitizeError } from '../helpers'
-import { requireRole } from './helpers'
+import { requirePermission, requireRole } from './helpers'
 
 export function registerSystemHandlers(): void {
   ipcMain.handle('system:updateExpired', async () => {
@@ -96,7 +96,7 @@ export function registerSystemHandlers(): void {
   })
 
   ipcMain.handle('system:exportCsv', async (_, type: string, filters?: any) => {
-    const auth = requireRole('admin')
+    const auth = requirePermission('reports.export')
     if (auth) return auth
     try {
       const db = getDatabase()

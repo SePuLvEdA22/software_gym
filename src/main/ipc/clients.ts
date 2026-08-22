@@ -23,10 +23,12 @@ import {
 import { getNextClientNumber, logChange } from '../database/users'
 import { scheduleThumbnail } from '../photos'
 import { sanitizeError } from '../helpers'
-import { validateOrThrow } from './helpers'
+import { requirePermission, validateOrThrow } from './helpers'
 
 export function registerClientHandlers(): void {
   ipcMain.handle('client:getNextNumber', async () => {
+    const auth = requirePermission('clients.create')
+    if (auth) return auth
     try {
       return { success: true, data: getNextClientNumber() }
     } catch (error: any) {
@@ -34,6 +36,8 @@ export function registerClientHandlers(): void {
     }
   })
   ipcMain.handle('client:create', async (_, data) => {
+    const auth = requirePermission('clients.create')
+    if (auth) return auth
     try {
       validateOrThrow(CreateClientSchema, data)
       const client = createClient(data)
@@ -56,6 +60,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:update', async (_, id, data) => {
+    const auth = requirePermission('clients.edit')
+    if (auth) return auth
     try {
       const cleaned = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== '')
@@ -84,6 +90,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getById', async (_, id) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const client = getClientById(id)
       return { success: true, data: client }
@@ -94,6 +102,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getByAccessCode', async (_, code) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const client = getClientByAccessCode(code)
       return { success: true, data: client }
@@ -104,6 +114,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getByDocumentId', async (_, docId) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const client = getClientByDocumentId(docId)
       return { success: true, data: client }
@@ -114,6 +126,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent' }) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status, options?.sortBy)
       return { success: true, data: result }
@@ -124,6 +138,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:search', async (_, query) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const clients = searchClients(query)
       return { success: true, data: clients }
@@ -134,6 +150,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:delete', async (_, id) => {
+    const auth = requirePermission('clients.delete')
+    if (auth) return auth
     try {
       const oldClient = getClientById(id)
       const success = deleteClient(id)
@@ -148,6 +166,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:generateCode', async () => {
+    const auth = requirePermission('clients.create')
+    if (auth) return auth
     try {
       const code = generateUniqueAccessCode()
       return { success: true, data: code }
@@ -158,6 +178,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getDebt', async (_, clientId) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const debts = getClientDebt(clientId)
       return { success: true, data: debts }
@@ -167,6 +189,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getDebtors', async () => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       const debtors = getDebtors()
       return { success: true, data: debtors }
@@ -176,6 +200,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getFreezeHistory', async (_, clientId) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       return { success: true, data: getClientFreezeHistory(clientId) }
     } catch (error: any) {
@@ -185,6 +211,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getAttendanceStats', async (_, clientId) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       return { success: true, data: getClientAttendanceStats(clientId) }
     } catch (error: any) {
@@ -194,6 +222,8 @@ export function registerClientHandlers(): void {
   })
 
   ipcMain.handle('client:getInactive', async (_, daysThreshold) => {
+    const auth = requirePermission('clients.view')
+    if (auth) return auth
     try {
       return { success: true, data: getInactiveClients(daysThreshold) }
     } catch (error: any) {

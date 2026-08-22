@@ -2,104 +2,13 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { UserRole } from '@shared/types'
+import {
+  PERMISSION_GROUPS,
+  ROLE_DEFAULT_PERMISSIONS,
+  ALL_PERMISSIONS,
+  type PermissionGroup,
+} from '@shared/permissions'
 import { FormWindowShell } from '@/components/FormWindowShell'
-
-interface PermissionDef {
-  id: string
-  label: string
-}
-
-interface PermissionGroup {
-  label: string
-  permissions: PermissionDef[]
-}
-
-const PERMISSION_GROUPS: PermissionGroup[] = [
-  { label: 'Panel Principal', permissions: [{ id: 'dashboard.view', label: 'Ver dashboard' }] },
-  {
-    label: 'Clientes',
-    permissions: [
-      { id: 'clients.view', label: 'Ver clientes' },
-      { id: 'clients.create', label: 'Crear clientes' },
-      { id: 'clients.edit', label: 'Editar clientes' },
-      { id: 'clients.delete', label: 'Eliminar clientes' }
-    ]
-  },
-  {
-    label: 'Pagos',
-    permissions: [
-      { id: 'payments.view', label: 'Ver pagos' },
-      { id: 'payments.create', label: 'Registrar pagos' }
-    ]
-  },
-  {
-    label: 'Membresías',
-    permissions: [
-      { id: 'memberships.view', label: 'Ver membresías' },
-      { id: 'memberships.create', label: 'Crear membresías' },
-      { id: 'memberships.freeze', label: 'Congelar/Descongelar' }
-    ]
-  },
-  {
-    label: 'Inventario',
-    permissions: [
-      { id: 'inventory.view', label: 'Ver inventario' },
-      { id: 'inventory.create', label: 'Agregar productos' },
-      { id: 'inventory.edit', label: 'Editar productos' },
-      { id: 'inventory.delete', label: 'Eliminar productos' }
-    ]
-  },
-  {
-    label: 'Seguimiento',
-    permissions: [
-      { id: 'tracking.view', label: 'Ver seguimiento' },
-      { id: 'tracking.edit', label: 'Editar medidas/objetivos' }
-    ]
-  },
-  {
-    label: 'Reportes',
-    permissions: [
-      { id: 'reports.view', label: 'Ver reportes' },
-      { id: 'reports.export', label: 'Exportar datos' }
-    ]
-  },
-  {
-    label: 'Notificaciones',
-    permissions: [
-      { id: 'messages.view', label: 'Ver mensajes' },
-      { id: 'messages.send', label: 'Enviar mensajes' },
-      { id: 'whatsapp.view', label: 'Ver historial WhatsApp' }
-    ]
-  },
-  { label: 'Historial de Accesos', permissions: [{ id: 'logs.view', label: 'Ver historial' }] },
-  {
-    label: 'Configuración',
-    permissions: [
-      { id: 'settings.view', label: 'Ver configuración' },
-      { id: 'settings.edit', label: 'Editar configuración' }
-    ]
-  },
-  {
-    label: 'Usuarios',
-    permissions: [
-      { id: 'users.view', label: 'Ver usuarios' },
-      { id: 'users.create', label: 'Crear usuarios' },
-      { id: 'users.edit', label: 'Editar usuarios' },
-      { id: 'users.delete', label: 'Eliminar usuarios' }
-    ]
-  },
-  {
-    label: 'Puerta',
-    permissions: [
-      { id: 'door.open', label: 'Abrir puerta' },
-      { id: 'door.configure', label: 'Configurar puerta' }
-    ]
-  }
-]
-
-function getAllPermissionIds(): string[] {
-  return PERMISSION_GROUPS.flatMap((g) => g.permissions.map((p) => p.id))
-}
 
 export function UserFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -161,7 +70,7 @@ export function UserFormPage(): JSX.Element {
   }
 
   const selectAll = () => {
-    setForm((prev) => ({ ...prev, permissions: getAllPermissionIds() }))
+    setForm((prev) => ({ ...prev, permissions: [...ALL_PERMISSIONS] }))
   }
 
   const deselectAll = () => {
@@ -284,7 +193,16 @@ export function UserFormPage(): JSX.Element {
             <select
               className="form-select"
               value={form.role}
-              onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as UserRole }))}
+              onChange={(e) => {
+                const role = e.target.value as UserRole
+                setForm((p) => ({
+                  ...p,
+                  role,
+                  // En creación, al cambiar de rol se sugieren los permisos
+                  // típicos de ese rol (editables). En edición no se tocan.
+                  permissions: isEditing ? p.permissions : [...ROLE_DEFAULT_PERMISSIONS[role]]
+                }))
+              }}
             >
               <option value="admin">Administrador</option>
               <option value="reception">Recepción</option>
@@ -313,7 +231,9 @@ export function UserFormPage(): JSX.Element {
                 Permisos
               </label>
               <p style={{ fontSize: 12, color: 'var(--color-secondary)', margin: '4px 0 0' }}>
-                Seleccione los permisos que tendrá este usuario
+                {form.role === 'admin'
+                  ? 'El administrador tiene acceso total a todas las secciones.'
+                  : 'Seleccione los permisos que tendrá este usuario'}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>

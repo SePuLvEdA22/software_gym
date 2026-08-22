@@ -3,7 +3,7 @@ import log from 'electron-log'
 import { openDoor, getDoorStatus, testDoorConnection } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, persistDoorConfig } from '../door/config'
 import { sanitizeError } from '../helpers'
-import { requireRole } from './helpers'
+import { requirePermission } from './helpers'
 
 export function registerDoorHandlers(): void {
   ipcMain.handle('door:open', async () => {
@@ -27,6 +27,10 @@ export function registerDoorHandlers(): void {
   })
 
   ipcMain.handle('door:getConfig', async () => {
+    // La config incluye URL/headers del relé: solo quien puede configurar.
+    // door:open y door:getStatus quedan públicos: el kiosco los usa sin sesión.
+    const auth = requirePermission('door.configure')
+    if (auth) return auth
     try {
       const config = getDoorConfig()
       return { success: true, data: config }
@@ -37,7 +41,7 @@ export function registerDoorHandlers(): void {
   })
 
   ipcMain.handle('door:saveConfig', async (_, config) => {
-    const auth = requireRole('admin')
+    const auth = requirePermission('door.configure')
     if (auth) return auth
     try {
       updateDoorConfig(config)
@@ -51,6 +55,8 @@ export function registerDoorHandlers(): void {
   })
 
   ipcMain.handle('door:testConnection', async () => {
+    const auth = requirePermission('door.configure')
+    if (auth) return auth
     try {
       const result = await testDoorConnection()
       return { success: true, data: result }

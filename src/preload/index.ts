@@ -221,6 +221,29 @@ const electronAPI = {
       ipcRenderer.invoke('membership:getEffectivePrice', planId)
   },
 
+  kiosk: {
+    // Canales públicos del kiosco (sin sesión): solo auto-renovación.
+    getRenewalInfo: (clientId: string): Promise<IpcResult<{
+      client: Client
+      memberships: Membership[]
+      activeMembership: Membership | null
+      plans: MembershipPlan[]
+    }>> =>
+      ipcRenderer.invoke('kiosk:getRenewalInfo', clientId),
+    getEffectivePrice: (planId: string): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
+      ipcRenderer.invoke('kiosk:getEffectivePrice', planId),
+    createRenewal: (
+      clientId: string,
+      planId: string,
+      amount: number,
+      method: string,
+      startDateIso?: string,
+      notes?: string,
+      discount?: number
+    ): Promise<IpcResult<{ membership?: { planName: string; endDate: string } }>> =>
+      ipcRenderer.invoke('kiosk:createRenewal', clientId, planId, amount, method, startDateIso, notes, discount)
+  },
+
   backup: {
     getConfig: (): Promise<IpcResult<BackupConfig>> =>
       ipcRenderer.invoke('backup:getConfig'),

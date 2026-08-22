@@ -26,10 +26,12 @@ import {
   sendPaymentConfirmation
 } from '../whatsapp/index'
 import { sanitizeError } from '../helpers'
-import { validateOrThrow } from './helpers'
+import { requirePermission, requireRole, validateOrThrow } from './helpers'
 
 export function registerMembershipHandlers(): void {
   ipcMain.handle('plans:getAll', async (_, activeOnly = true) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       const plans = getAllPlans(activeOnly)
       return { success: true, data: plans }
@@ -40,6 +42,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('plans:getById', async (_, id) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       const plan = getPlanById(id)
       return { success: true, data: plan }
@@ -50,6 +54,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:create', async (_, clientId, planId, startDate) => {
+    const auth = requirePermission('memberships.create')
+    if (auth) return auth
     try {
       const membership = createMembership(clientId, planId, startDate)
       return { success: !!membership, data: membership }
@@ -60,6 +66,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:createWithPayment', async (_, clientId, planId, amount, method, startDate, notes, discount) => {
+    const auth = requirePermission('memberships.create')
+    if (auth) return auth
     try {
       const result = createMembershipWithPayment(clientId, planId, amount, method, startDate, notes, discount)
       
@@ -78,6 +86,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:getActive', async (_, clientId) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       const membership = getActiveMembership(clientId)
       return { success: true, data: membership }
@@ -88,6 +98,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:getByClient', async (_, clientId) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       const memberships = getClientMemberships(clientId)
       return { success: true, data: memberships }
@@ -98,6 +110,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:freeze', async (_, membershipId, reason, plannedDays) => {
+    const auth = requirePermission('memberships.freeze')
+    if (auth) return auth
     try {
       const membership = freezeMembership(membershipId, reason, plannedDays)
       return { success: !!membership, data: membership }
@@ -108,6 +122,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:unfreeze', async (_, membershipId) => {
+    const auth = requirePermission('memberships.freeze')
+    if (auth) return auth
     try {
       const membership = unfreezeMembership(membershipId)
       return { success: !!membership, data: membership }
@@ -118,6 +134,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes, discount) => {
+    const auth = requirePermission('payments.create')
+    if (auth) return auth
     try {
       validateOrThrow(RecordPaymentSchema, { clientId, amount, method, description, membershipId, notes, discount })
       const payment = recordPayment(clientId, amount, method, description, membershipId, notes, discount)
@@ -139,6 +157,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('payment:getByClient', async (_, clientId, options?: { page?: number; pageSize?: number }) => {
+    const auth = requirePermission('payments.view')
+    if (auth) return auth
     try {
       const payments = getClientPayments(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: payments }
@@ -149,6 +169,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate, options?: { page?: number; pageSize?: number; method?: string }) => {
+    const auth = requirePermission('payments.view')
+    if (auth) return auth
     try {
       const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.method)
       return { success: true, data: payments }
@@ -159,6 +181,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('payment:getByMembership', async (_, membershipId: string) => {
+    const auth = requirePermission('payments.view')
+    if (auth) return auth
     try {
       return { success: true, data: getMembershipPayments(membershipId) }
     } catch (error: any) {
@@ -168,6 +192,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:getEffectivePrice', async (_, planId) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       const plan = getPlanById(planId)
       if (!plan) return { success: false, error: 'Plan no encontrado' }
@@ -178,6 +204,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('membership:getFreezeHistory', async (_, membershipId) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
     try {
       return { success: true, data: getFreezeHistory(membershipId) }
     } catch (error: any) {
@@ -187,6 +215,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('plans:create', async (_, data) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       return { success: true, data: createPlan(data) }
     } catch (error: any) {
@@ -196,6 +226,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('plans:update', async (_, id, data) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       const result = updatePlan(id, data)
       return { success: !!result, data: result }
@@ -206,6 +238,8 @@ export function registerMembershipHandlers(): void {
   })
 
   ipcMain.handle('plans:delete', async (_, id) => {
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       const result = deletePlan(id)
       return result.success ? { success: true } : { success: false, error: result.error }

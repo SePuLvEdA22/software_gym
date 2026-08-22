@@ -8,6 +8,7 @@ import {
   getClientAccessLogs
 } from '../database/memberships'
 import { sanitizeError } from '../helpers'
+import { requirePermission } from './helpers'
 
 export function registerAccessHandlers(): void {
   ipcMain.handle('access:validate', async (_, accessCode: string): Promise<{ success: boolean; data: AccessValidation }> => {
@@ -21,6 +22,8 @@ export function registerAccessHandlers(): void {
   })
 
   ipcMain.handle('access:getLogs', async (_, options?: { page?: number; pageSize?: number; result?: string }) => {
+    const auth = requirePermission('logs.view')
+    if (auth) return auth
     try {
       const logs = getAccessLogs(options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }
@@ -31,6 +34,8 @@ export function registerAccessHandlers(): void {
   })
 
   ipcMain.handle('access:getLogsByClient', async (_, clientId, options?: { page?: number; pageSize?: number }) => {
+    const auth = requirePermission('logs.view')
+    if (auth) return auth
     try {
       const logs = getClientAccessLogs(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: logs }
@@ -41,6 +46,8 @@ export function registerAccessHandlers(): void {
   })
 
   ipcMain.handle('access:getLogsByDate', async (_, startDate, endDate, options?: { page?: number; pageSize?: number; result?: string }) => {
+    const auth = requirePermission('logs.view')
+    if (auth) return auth
     try {
       const logs = getAccessLogsByDate(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }

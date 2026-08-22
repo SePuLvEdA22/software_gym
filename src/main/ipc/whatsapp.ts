@@ -13,10 +13,13 @@ import {
 } from '../whatsapp/index'
 import { getDatabase } from '../database'
 import { sanitizeError } from '../helpers'
-import { requireRole } from './helpers'
+import { requirePermission, requireRole } from './helpers'
 
 export function registerWhatsappHandlers(): void {
   ipcMain.handle('whatsapp:getConfig', async () => {
+    // La config incluye la apiKey: solo admin.
+    const auth = requireRole('admin')
+    if (auth) return auth
     try {
       return { success: true, data: getWhatsappConfig() }
     } catch (error: any) {
@@ -64,6 +67,8 @@ export function registerWhatsappHandlers(): void {
   })
 
   ipcMain.handle('whatsapp:getHistory', async (_, options?: { clientId?: string; page?: number; pageSize?: number }) => {
+    const auth = requirePermission('whatsapp.view')
+    if (auth) return auth
     try {
       return { success: true, data: getMessageHistory(options) }
     } catch (error: any) {
@@ -72,6 +77,8 @@ export function registerWhatsappHandlers(): void {
   })
 
   ipcMain.handle('whatsapp:checkReminders', async () => {
+    const auth = requirePermission('whatsapp.view')
+    if (auth) return auth
     try {
       const result = await checkAndSendExpiryReminders()
       return { success: true, data: result }
@@ -81,6 +88,8 @@ export function registerWhatsappHandlers(): void {
   })
 
   ipcMain.handle('whatsapp:sendExpiryReminderToClient', async (_, clientId: string) => {
+    const auth = requirePermission('whatsapp.view')
+    if (auth) return auth
     try {
       const result = await sendExpiryReminderToClient(clientId)
       return { success: result.success, data: result }

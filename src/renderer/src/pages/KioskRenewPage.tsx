@@ -17,26 +17,18 @@ export function KioskRenewPage(): JSX.Element {
 
   const loadData = async (id: string) => {
     try {
-      const [clientResult, plansResult, membershipsResult] = await Promise.all([
-        window.electronAPI.client.getById(id),
-        window.electronAPI.plans.getAll(),
-        window.electronAPI.membership.getByClient(id)
-      ])
+      // Canal público del kiosco: esta ventana no tiene sesión de usuario.
+      const result = await window.electronAPI.kiosk.getRenewalInfo(id)
 
-      if (!clientResult.success || !clientResult.data) {
-        setError('Cliente no encontrado')
+      if (!result.success || !result.data) {
+        setError(result.error || 'Cliente no encontrado')
         setLoading(false)
         return
       }
 
-      setClient(clientResult.data as Client)
-      setPlans((plansResult.data || []) as MembershipPlan[])
-
-      const memberships = (membershipsResult.data || []) as Membership[]
-      const active = memberships.find(
-        (m: Membership) => m.status === 'active' || m.status === 'frozen'
-      )
-      setActiveMembership(active || null)
+      setClient(result.data.client as Client)
+      setPlans((result.data.plans || []) as MembershipPlan[])
+      setActiveMembership((result.data.activeMembership || null) as Membership | null)
       setLoading(false)
     } catch (e) {
       setError('Error al cargar datos del cliente')
@@ -94,6 +86,7 @@ export function KioskRenewPage(): JSX.Element {
             client={client}
             activeMembership={activeMembership}
             plans={plans}
+            useKioskApi
             onClose={handleClose}
             onSuccess={handleSuccess}
           />
