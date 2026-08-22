@@ -565,7 +565,7 @@ export function freezeMembership(membershipId: string, reason?: string, plannedD
   return updatedMembership ? mapDbMembership(updatedMembership) : null
 }
 
-export function unfreezeMembership(membershipId: string): Membership | null {
+export function unfreezeMembership(membershipId: string, opts?: { automatic?: boolean }): Membership | null {
   const db = getDatabase()
   const now = new Date()
   const nowIso = formatISO(now)
@@ -620,9 +620,9 @@ export function unfreezeMembership(membershipId: string): Membership | null {
 
     db.prepare(`
       UPDATE freeze_history 
-      SET unfrozen_at = ?, actual_days = ?
+      SET unfrozen_at = ?, actual_days = ?, unfrozen_by = ?
       WHERE membership_id = ? AND unfrozen_at IS NULL
-    `).run(nowIso, frozenDays, membershipId)
+    `).run(nowIso, frozenDays, opts?.automatic ? 'auto' : 'manual', membershipId)
   })
   
   unfreezeOp()
@@ -640,6 +640,44 @@ export function unfreezeMembership(membershipId: string): Membership | null {
   clearQueryCache()
   
   return null
+}
+
+/**
+ * Descongela automáticamente las membresías cuyo periodo planeado de
+ * congelamiento (freeze_days) ya venció. Reutiliza unfreezeMembership: la
+ * fecha de fin se extiende por los días transcurridos, de modo que los días
+ * de la membresía vuelven a contar desde donde se quedaron.
+ *
+ * Evaluación perezosa: se invoca al cargar el dashboard y en system:updateExpired,
+ * por lo que funciona incluso si la app estuvo cerrada durante el vencimiento.
+ */
+export function autoUnfreezeDueMemberships(): number {
+  const db = getDatabase()
+  const now = Date.now()
+
+  const frozen = db.prepare(`
+    SELECT id, frozen_at, freeze_days FROM memberships
+    WHERE status = 'frozen' AND freeze_days IS NOT NULL AND frozen_at IS NOT NULL
+  `).all() as Array<{ id: string; frozen_at: string; freeze_days: number | null }>
+
+  let count = 0
+  for (const row of frozen) {
+    const plannedDays = Number(row.freeze_days)
+    if (!Number.isFinite(plannedDays) || plannedDays <= 0) continue
+
+    const frozenAt = parseISO(row.frozen_at)
+    if (Number.isNaN(frozenAt.getTime())) continue
+
+    if (now >= addDays(frozenAt, plannedDays).getTime()) {
+      const result = unfreezeMembership(row.id, { automatic: true })
+      if (result) count++
+    }
+  }
+
+  if (count > 0) {
+    log.info(`Auto-unfroze ${count} membership(s): planned freeze period ended`)
+  }
+  return count
 }
 
 export function getActiveMembership(clientId: string): Membership | null {
@@ -725,6 +763,7 @@ export interface DbFreezeHistory {
   reason: string | null
   planned_days: number | null
   actual_days: number | null
+  unfrozen_by: string | null
 }
 
 function mapDbFreezeHistory(h: DbFreezeHistory): FreezeHistory {
@@ -736,7 +775,8 @@ function mapDbFreezeHistory(h: DbFreezeHistory): FreezeHistory {
     unfrozenAt: h.unfrozen_at || null,
     reason: h.reason || null,
     plannedDays: h.planned_days || null,
-    actualDays: h.actual_days || null
+    actualDays: h.actual_days || null,
+    unfrozenBy: (h.unfrozen_by as FreezeHistory['unfrozenBy']) || null
   }
 }
 

@@ -79,6 +79,8 @@ export interface FreezeHistory {
   reason: string | null
   plannedDays: number | null
   actualDays: number | null
+  /** 'manual' | 'auto' (descongelado por días planeados). Legacy: null. */
+  unfrozenBy: 'manual' | 'auto' | null
 }
 
 export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen'

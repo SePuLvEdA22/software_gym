@@ -52,7 +52,12 @@ export function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModal
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <span style={{ fontWeight: 600 }}>Desde: {format(parseISO(h.frozenAt), 'dd/MM/yyyy')}</span>
                     {h.unfrozenAt && (
-                      <span style={{ fontWeight: 600 }}>Hasta: {format(parseISO(h.unfrozenAt), 'dd/MM/yyyy')}</span>
+                      <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        Hasta: {format(parseISO(h.unfrozenAt), 'dd/MM/yyyy')}
+                        {h.unfrozenBy === 'auto' && (
+                          <span className="badge badge-info" style={{ fontSize: 10 }}>Automático</span>
+                        )}
+                      </span>
                     )}
                   </div>
                   {h.reason && (

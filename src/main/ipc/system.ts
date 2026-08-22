@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
 import { backupDatabase, restoreDatabase, getDatabase } from '../database/index'
-import { updateExpiredMemberships } from '../database/memberships'
+import { autoUnfreezeDueMemberships, updateExpiredMemberships } from '../database/memberships'
 import {
   getSessionUser,
   updateUser,
@@ -14,7 +14,7 @@ import { requirePermission, requireRole } from './helpers'
 export function registerSystemHandlers(): void {
   ipcMain.handle('system:updateExpired', async () => {
     try {
-      const count = updateExpiredMemberships()
+      const count = autoUnfreezeDueMemberships() + updateExpiredMemberships()
       return { success: true, data: count }
     } catch (error: any) {
       log.error('Error updating expired memberships:', error)

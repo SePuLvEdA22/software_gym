@@ -9,7 +9,7 @@ import {
   getRevenueByYear,
   getRevenueByTimeOfDay
 } from '../database/dashboard'
-import { deactivateExpiredPromotions, updateExpiredMemberships } from '../database/memberships'
+import { autoUnfreezeDueMemberships, deactivateExpiredPromotions, updateExpiredMemberships } from '../database/memberships'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
 
@@ -19,6 +19,9 @@ export function registerDashboardHandlers(): void {
     if (auth) return auth
     try {
       deactivateExpiredPromotions()
+      // Orden importante: descongelar vencidos antes de marcar expiradas,
+      // para que la membresía recién activada no se marque como expirada.
+      autoUnfreezeDueMemberships()
       updateExpiredMemberships()
       const metrics = getDashboardMetrics(period)
       return { success: true, data: metrics }
