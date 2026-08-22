@@ -214,12 +214,13 @@ export function logChange(
   )
 }
 
-export function getChangeLogs(page = 1, pageSize = 50, tableName?: string): PageResponse<ChangeLog> {
+export function getChangeLogs(page = 1, pageSize = 50, tableName?: string, action?: string): PageResponse<ChangeLog> {
   const db = getDatabase()
   let countQuery = 'SELECT COUNT(*) as total FROM change_log WHERE 1=1'
   let query = `SELECT id, user_id AS userId, user_name AS userName, table_name AS tableName, record_id AS recordId, action, old_values AS oldValues, new_values AS newValues, timestamp FROM change_log WHERE 1=1`
   const params: (string | number)[] = []
   if (tableName) { countQuery += ' AND table_name = ?'; query += ' AND table_name = ?'; params.push(tableName) }
+  if (action) { countQuery += ' AND action = ?'; query += ' AND action = ?'; params.push(action) }
   const countRow = db.prepare(countQuery).all(...params)[0] as { total: number } | undefined
   const total = countRow?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

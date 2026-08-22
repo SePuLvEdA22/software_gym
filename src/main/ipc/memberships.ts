@@ -20,6 +20,7 @@ import {
   updatePlan,
   deletePlan
 } from '../database/memberships'
+import { logChange } from '../database/users'
 import {
   getWhatsappConfig,
   sendWelcomeMessage,
@@ -58,6 +59,15 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       const membership = createMembership(clientId, planId, startDate)
+      if (membership) {
+        logChange('memberships', membership.id, 'create', null, {
+          clientId,
+          planId,
+          planName: membership.planName,
+          startDate: membership.startDate,
+          endDate: membership.endDate
+        })
+      }
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error creating membership:', error)
@@ -70,6 +80,18 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       const result = createMembershipWithPayment(clientId, planId, amount, method, startDate, notes, discount)
+      
+      if (result.membership) {
+        logChange('memberships', result.membership.id, 'create', null, {
+          clientId,
+          planId,
+          planName: result.membership.planName,
+          startDate: result.membership.startDate,
+          endDate: result.membership.endDate,
+          amount,
+          method
+        })
+      }
       
       // Auto-enviar mensajes WhatsApp si está habilitado
       if (result.membership && getWhatsappConfig().enabled) {
@@ -114,6 +136,13 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       const membership = freezeMembership(membershipId, reason, plannedDays)
+      if (membership) {
+        logChange('memberships', membershipId, 'update', { status: 'active' }, {
+          status: 'frozen',
+          reason: reason || null,
+          plannedDays: plannedDays || null
+        })
+      }
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error freezing membership:', error)
@@ -126,6 +155,9 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       const membership = unfreezeMembership(membershipId)
+      if (membership) {
+        logChange('memberships', membershipId, 'update', { status: 'frozen' }, { status: 'active' })
+      }
       return { success: !!membership, data: membership }
     } catch (error: any) {
       log.error('Error unfreezing membership:', error)

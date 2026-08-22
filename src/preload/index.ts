@@ -170,7 +170,7 @@ const electronAPI = {
       ipcRenderer.invoke('user:update', id, data),
     delete: (id: string): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('user:delete', id),
-    getChangeLogs: (options?: { page?: number; pageSize?: number; tableName?: string }): Promise<IpcResult<PageResponse<ChangeLog>>> =>
+    getChangeLogs: (options?: { page?: number; pageSize?: number; tableName?: string; action?: string }): Promise<IpcResult<PageResponse<ChangeLog>>> =>
       ipcRenderer.invoke('user:getChangeLogs', options)
   },
 
