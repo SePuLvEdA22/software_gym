@@ -18,6 +18,12 @@ class SqlJsDatabase {
   private db: InstanceType<SqlJsDb>
   private filePath: string
   private batchSaving = false
+  private pendingSaveTimer: NodeJS.Timeout | null = null
+
+  // Ventana de coalescencia: escrituras rápidas consecutivas comparten un
+  // único volcado a disco. El estado en memoria SIEMPRE está actualizado;
+  // solo se difiere la serialización del archivo completo.
+  private static readonly SAVE_DEBOUNCE_MS = 300
 
   constructor(data: ArrayLike<number> | Buffer | null, filePath: string, Sql: Awaited<ReturnType<typeof initSqlJs>>) {
     this.db = new Sql.Database(data)
@@ -34,7 +40,7 @@ class SqlJsDatabase {
         stmt.step()
         stmt.free()
         const changes = self.db.getRowsModified()
-        self.save()
+        self.scheduleSave()
         return { changes }
       },
 
@@ -65,7 +71,7 @@ class SqlJsDatabase {
 
   exec(sql: string): void {
     this.db.exec(sql)
-    this.save()
+    this.scheduleSave()
   }
 
   run(sql: string, params?: unknown[]): void {
@@ -77,11 +83,11 @@ class SqlJsDatabase {
     } else {
       this.db.run(sql)
     }
-    this.save()
+    this.scheduleSave()
   }
 
   close(): void {
-    this.save()
+    this.flushWrites()
     this.db.close()
   }
 
@@ -94,12 +100,14 @@ class SqlJsDatabase {
         const result = fn(...args)
         self.run('COMMIT')
         this.batchSaving = false
-        self.save()
+        // Durabilidad: una transacción completada se persiste de inmediato,
+        // sin esperar la ventana de debounce.
+        self.saveNow()
         return result
       } catch (e) {
         self.run('ROLLBACK')
         this.batchSaving = false
-        self.save()
+        self.saveNow()
         throw e
       }
     }
@@ -109,8 +117,28 @@ class SqlJsDatabase {
     return Buffer.from(this.db.export())
   }
 
-  private save(): void {
+  private scheduleSave(): void {
     if (this.batchSaving) return
+    if (this.pendingSaveTimer) return
+    this.pendingSaveTimer = setTimeout(() => {
+      this.pendingSaveTimer = null
+      if (this.batchSaving) return
+      this.saveNow()
+    }, SqlJsDatabase.SAVE_DEBOUNCE_MS)
+    // Evita colgar el proceso (tests) por un timer pendiente.
+    this.pendingSaveTimer.unref?.()
+  }
+
+  /** Vuelca a disco de inmediato cualquier guardado pendiente. */
+  flushWrites(): void {
+    if (this.pendingSaveTimer) {
+      clearTimeout(this.pendingSaveTimer)
+      this.pendingSaveTimer = null
+    }
+    this.saveNow()
+  }
+
+  private saveNow(): void {
     try {
       const data = this.db.export()
       writeFileSync(this.filePath, Buffer.from(data))
