@@ -1,4 +1,5 @@
 import log from 'electron-log'
+import { getDatabase } from '../database'
 
 export type ConnectionType = 'mock' | 'http' | 'serial'
 
@@ -48,4 +49,11 @@ export function setDoorConfig(raw: string): void {
 
 export function getDoorConfigJson(): string {
   return JSON.stringify(config)
+}
+
+export function persistDoorConfig(): void {
+  const db = getDatabase()
+  db.prepare(`INSERT INTO settings (key, value) VALUES ('door_config', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
+    .run(getDoorConfigJson())
 }

@@ -5,6 +5,7 @@ import {
   updateDoorConfig,
   setDoorConfig,
   getDoorConfigJson,
+  persistDoorConfig,
   type DoorConfig,
 } from '../../main/door/config'
 
@@ -74,15 +75,10 @@ describe('Configuración de puerta (caracterización)', () => {
     expect(getDoorConfig().connectionType).toBe('mock')
   })
 
-  it('round-trip completo: persistir en settings y restaurar como hace main/index.ts al arrancar', () => {
-    // Reproduce exactamente lo que hace el handler ipc door:saveConfig
+  it('round-trip completo: persistDoorConfig en settings y restaurar como hace main/index.ts al arrancar', () => {
+    // Reproduce lo que hace el handler ipc door:saveConfig vía persistDoorConfig()
     updateDoorConfig({ connectionType: 'http', httpUrl: 'http://10.0.0.2/relay', openDuration: 3000 })
-    getDatabase()
-      .prepare(
-        `INSERT INTO settings (key, value) VALUES ('door_config', ?)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`
-      )
-      .run(getDoorConfigJson())
+    persistDoorConfig()
 
     // Simula reinicio de la app (main/index.ts líneas 756-758)
     updateDoorConfig(DEFAULTS)
@@ -97,5 +93,22 @@ describe('Configuración de puerta (caracterización)', () => {
     expect(restored.connectionType).toBe('http')
     expect(restored.httpUrl).toBe('http://10.0.0.2/relay')
     expect(restored.openDuration).toBe(3000)
+  })
+
+  it('persistDoorConfig actualiza el registro existente (upsert)', () => {
+    updateDoorConfig({ openDuration: 1000 })
+    persistDoorConfig()
+    updateDoorConfig({ openDuration: 2000 })
+    persistDoorConfig()
+
+    const count = getDatabase()
+      .prepare("SELECT COUNT(*) as n FROM settings WHERE key = 'door_config'")
+      .get() as { n: number }
+    expect(count.n).toBe(1)
+
+    const row = getDatabase()
+      .prepare("SELECT value FROM settings WHERE key = 'door_config'")
+      .get() as { value: string }
+    expect(JSON.parse(row.value).openDuration).toBe(2000)
   })
 })

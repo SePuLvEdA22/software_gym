@@ -7,6 +7,7 @@ import {
   manualOpen,
   initializeDoorController,
   registerDoorCallback,
+  testDoorConnection,
 } from '../../main/door/controller'
 import { getDoorConfig } from '../../main/door/config'
 
@@ -76,6 +77,11 @@ describe('Controlador de puerta (modo mock)', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('testDoorConnection en modo mock devuelve true sin abrir la puerta', async () => {
+    expect(await testDoorConnection()).toBe(true)
+    expect(getDoorStatus().status).toBe('closed')
   })
 
   it('notifica a los callbacks registrados', async () => {

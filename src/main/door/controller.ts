@@ -58,6 +58,17 @@ export function getDoorStatus(): { status: DoorStatus; mockMode: boolean } {
   }
 }
 
+export async function testDoorConnection(): Promise<boolean> {
+  const config = getDoorConfig()
+  if (config.connectionType === 'http') {
+    return sendHttpCommand()
+  }
+  if (config.connectionType === 'serial') {
+    return sendSerialCommand()
+  }
+  return true
+}
+
 export async function openDoor(trigger: DoorEventTrigger = 'access_code'): Promise<boolean> {
   if (doorStatus === 'open') {
     log.warn('Door is already open')

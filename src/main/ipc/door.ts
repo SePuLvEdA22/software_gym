@@ -1,10 +1,7 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import { openDoor, getDoorStatus } from '../door/controller'
-import { getDoorConfig, updateDoorConfig, getDoorConfigJson } from '../door/config'
-import { sendHttpCommand } from '../door/httpRelay'
-import { sendSerialCommand } from '../door/serialRelay'
-import { getDatabase } from '../database'
+import { openDoor, getDoorStatus, testDoorConnection } from '../door/controller'
+import { getDoorConfig, updateDoorConfig, persistDoorConfig } from '../door/config'
 import { sanitizeError } from '../helpers'
 import { requireRole } from './helpers'
 
@@ -44,10 +41,7 @@ export function registerDoorHandlers(): void {
     if (auth) return auth
     try {
       updateDoorConfig(config)
-      const db = getDatabase()
-      db.prepare(`INSERT INTO settings (key, value) VALUES ('door_config', ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`)
-        .run(getDoorConfigJson())
+      persistDoorConfig()
       log.info('Door config saved to database')
       return { success: true, data: null }
     } catch (error: any) {
@@ -58,15 +52,7 @@ export function registerDoorHandlers(): void {
 
   ipcMain.handle('door:testConnection', async () => {
     try {
-      const config = getDoorConfig()
-      let result = false
-      if (config.connectionType === 'http') {
-        result = await sendHttpCommand()
-      } else if (config.connectionType === 'serial') {
-        result = await sendSerialCommand()
-      } else {
-        result = true
-      }
+      const result = await testDoorConnection()
       return { success: true, data: result }
     } catch (error: any) {
       log.error('Error testing connection:', error)
