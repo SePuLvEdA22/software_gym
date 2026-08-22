@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     setupFiles: ['src/__tests__/setup.ts'],
     alias: {
       '@shared/*': path.resolve(__dirname, 'src/shared/*'),

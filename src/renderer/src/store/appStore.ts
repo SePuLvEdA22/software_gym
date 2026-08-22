@@ -7,7 +7,7 @@ export type { ToastType }
 export type { Toast }
 export type { ConfirmDialogOptions }
 
-type AppState = UISlice & DataSlice & DashboardSlice
+export type AppState = UISlice & DataSlice & DashboardSlice
 
 export const useAppStore = create<AppState>((set) => ({
   ...defaultUIState,
