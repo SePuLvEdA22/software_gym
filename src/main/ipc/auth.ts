@@ -1,0 +1,29 @@
+import { ipcMain } from 'electron'
+import log from 'electron-log'
+import { authenticateUser, getSessionUser, setSessionUser, logChange } from '../database/users'
+import { sanitizeError } from '../helpers'
+
+export function registerAuthHandlers(): void {
+  ipcMain.handle('auth:login', async (_, username: string, password: string) => {
+    try {
+      const result = authenticateUser(username, password)
+      if (result.success) {
+        logChange('users', result.user!.id, 'update', null, { lastLogin: new Date().toISOString() })
+      }
+      return result
+    } catch (error: any) {
+      log.error('Error during login:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('auth:logout', async () => {
+    setSessionUser(null)
+    return { success: true }
+  })
+
+  ipcMain.handle('auth:checkSession', async () => {
+    const user = getSessionUser()
+    return { success: true, data: user }
+  })
+}
