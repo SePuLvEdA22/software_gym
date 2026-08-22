@@ -257,7 +257,7 @@ export interface ChangeLog {
   userName: string
   tableName: string
   recordId: string
-  action: 'create' | 'update' | 'delete'
+  action: 'create' | 'update' | 'delete' | 'login'
   oldValues: string | null
   newValues: string | null
   timestamp: string

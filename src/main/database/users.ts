@@ -192,7 +192,7 @@ export function getNextClientNumber(): number {
 export function logChange(
   tableName: string,
   recordId: string,
-  action: 'create' | 'update' | 'delete',
+  action: 'create' | 'update' | 'delete' | 'login',
   oldValues?: Record<string, unknown> | null,
   newValues?: Record<string, unknown> | null
 ): void {

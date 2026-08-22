@@ -23,7 +23,8 @@ const roleColors: Record<UserRole, string> = {
 const actionLabels: Record<string, string> = {
   create: 'Creación',
   update: 'Actualización',
-  delete: 'Eliminación'
+  delete: 'Eliminación',
+  login: 'Inicio de sesión'
 }
 
 const tableLabels: Record<string, string> = {
@@ -266,6 +267,7 @@ export function UsersPage(): JSX.Element {
               <option value="create">Creación</option>
               <option value="update">Actualización</option>
               <option value="delete">Eliminación</option>
+              <option value="login">Inicio de sesión</option>
             </select>
             <div className="search-box" style={{ flex: 1, minWidth: 200 }}>
               <Icons.Search />
@@ -333,7 +335,7 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
     rows = [...new Set([...Object.keys(before), ...Object.keys(after)])]
       .filter(k => JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null))
       .map(k => ({ field: k, from: before[k], to: after[k] }))
-  } else if (log.action === 'create' && after) {
+  } else if ((log.action === 'create' || log.action === 'login') && after) {
     rows = Object.entries(after).map(([field, to]) => ({ field, to }))
   } else if (log.action === 'delete' && before) {
     rows = Object.entries(before).map(([field, from]) => ({ field, from }))
@@ -358,7 +360,7 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
         <td>{log.userName}</td>
         <td>{tableLabels[log.tableName] || log.tableName}</td>
         <td>
-          <span className={`badge ${log.action === 'create' ? 'badge-success' : log.action === 'delete' ? 'badge-error' : 'badge-default'}`}>
+          <span className={`badge ${log.action === 'create' ? 'badge-success' : log.action === 'delete' ? 'badge-error' : log.action === 'login' ? 'badge-info' : 'badge-default'}`}>
             {actionLabels[log.action] || log.action}
           </span>
         </td>
@@ -374,7 +376,10 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
             ) : (
               <div>
                 <p className="label-md" style={{ margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 11 }}>
-                  {log.action === 'create' ? 'Datos creados' : log.action === 'delete' ? 'Datos eliminados' : 'Cambios realizados'}
+                  {log.action === 'create' ? 'Datos creados'
+                    : log.action === 'delete' ? 'Datos eliminados'
+                    : log.action === 'login' ? 'Registro de acceso'
+                    : 'Cambios realizados'}
                 </p>
                 <table style={{ width: '100%', fontSize: 13 }}>
                   <thead>

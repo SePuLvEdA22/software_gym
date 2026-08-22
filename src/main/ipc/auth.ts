@@ -8,7 +8,8 @@ export function registerAuthHandlers(): void {
     try {
       const result = authenticateUser(username, password)
       if (result.success) {
-        logChange('users', result.user!.id, 'update', null, { lastLogin: new Date().toISOString() })
+        // Acción dedicada: un inicio de sesión no es un cambio de datos.
+        logChange('users', result.user!.id, 'login', null, { lastLogin: new Date().toISOString() })
       }
       return result
     } catch (error: any) {

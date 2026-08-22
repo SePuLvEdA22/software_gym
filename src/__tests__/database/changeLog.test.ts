@@ -82,4 +82,21 @@ describe('Historial de cambios (auditoría)', () => {
     const sorted = [...timestamps].sort().reverse()
     expect(timestamps).toEqual(sorted)
   })
+
+  it('los inicios de sesión usan acción dedicada y se filtran aparte', () => {
+    setSessionUser(trainer)
+    logChange('users', 'user_trainer_test', 'login', null, { lastLogin: '2026-08-21T10:00:00Z' })
+
+    const logins = getChangeLogs(1, 100, undefined, 'login')
+    expect(logins.total).toBeGreaterThanOrEqual(1)
+    expect(logins.data.every(l => l.action === 'login')).toBe(true)
+
+    const entry = logins.data.find(l => l.userId === 'user_trainer_test')
+    expect(entry).toBeDefined()
+    expect(entry!.userName).toBe('Entrenador Auditor')
+    // Un login no debe aparecer como Actualización
+    const asUpdate = getChangeLogs(1, 100, undefined, 'update')
+    expect(asUpdate.data.some(l => l.recordId === 'user_trainer_test' && l.newValues?.includes('lastLogin'))).toBe(false)
+    setSessionUser(null)
+  })
 })
