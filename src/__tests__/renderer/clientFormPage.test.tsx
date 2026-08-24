@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { fireEvent } from '@testing-library/react'
 import { ClientFormPage } from '../../renderer/src/pages/ClientFormPage'
 import { installElectronApiMock } from './mocks/electronAPI'
-import type { Client } from '../../../shared/types'
+import type { Client } from '../../shared/types'
 
 function existingClient(): Client {
   return {

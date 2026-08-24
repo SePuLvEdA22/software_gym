@@ -1,20 +1,46 @@
 import { vi } from 'vitest'
+import type { Mock } from 'vitest'
 import type { ElectronAPI } from '../../../preload/index'
-import type { IpcResult } from './types'
 
-type DeepPartialResult<T> = {
-  [K in keyof T]?: T[K] extends (...args: infer A) => Promise<IpcResult<infer D>>
-    ? (...args: A) => Promise<IpcResult<D>>
-    : T[K]
+/** Tipo mínimo del resultado IPC que expone el preload. */
+export interface IpcResult<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+type AnyIpcMethod = (...args: never[]) => Promise<IpcResult<unknown>>
+type MockableNamespace = Record<string, AnyIpcMethod>
+
+/** Cada método del namespace conserv su firma y además expone la API de Mock. */
+type MockedNamespace<N> = {
+  [K in keyof N]: N[K] extends AnyIpcMethod ? N[K] & Mock : N[K]
+}
+
+/** Overrides: namespaces parciales; cada método acepta un Mock genérico o la firma real. */
+type MockOverrides = {
+  [K in keyof ElectronAPI]?: ElectronAPI[K] extends MockableNamespace
+    ? {
+        [J in keyof ElectronAPI[K]]?: ElectronAPI[K][J] extends AnyIpcMethod
+          ? ElectronAPI[K][J] | Mock
+          : unknown
+      }
+    : unknown
+}
+
+type MockedApi = {
+  [K in keyof ElectronAPI]: ElectronAPI[K] extends MockableNamespace
+    ? MockedNamespace<ElectronAPI[K]>
+    : ElectronAPI[K]
 }
 
 /**
  * Construye un mock de window.electronAPI con defaults sensatos:
- * toda invocación IPC devuelve `{ success: false, error: 'no mock' }`
+ * toda invocación IPC devuelve `{ success: false, error: ... }`
  * salvo que el test sobrescriba el método concreto.
  */
-export function createElectronApiMock(overrides?: DeepPartialResult<ElectronAPI>): ElectronAPI {
-  const fail = <T,>(..._args: unknown[]): Promise<IpcResult<T>> =>
+export function installElectronApiMock(overrides?: MockOverrides): MockedApi & ElectronAPI {
+  const fail = (): Promise<IpcResult<never>> =>
     Promise.resolve({ success: false, error: 'electronAPI no mockeado para este test' })
 
   const base = {
@@ -24,17 +50,11 @@ export function createElectronApiMock(overrides?: DeepPartialResult<ElectronAPI>
       checkSession: vi.fn(() => Promise.resolve({ success: true, data: null }))
     },
     system: {
-      updateAdmin: vi.fn(fail<null>),
+      updateAdmin: vi.fn(fail),
       exportCsv: vi.fn(() => Promise.resolve({ success: true, data: 'C:\\export\\pagos.csv' }))
     },
     access: {
-      validate: vi.fn(() =>
-        Promise.resolve({
-          success: false,
-          error: 'no mock',
-          data: undefined
-        })
-      )
+      validate: vi.fn(() => Promise.resolve({ success: false, error: 'no mock' }))
     },
     door: {
       open: vi.fn(() => Promise.resolve({ success: true, data: true }))
@@ -50,9 +70,7 @@ export function createElectronApiMock(overrides?: DeepPartialResult<ElectronAPI>
     client: {
       create: vi.fn(fail),
       update: vi.fn(fail),
-      getById: vi.fn(() =>
-        Promise.resolve({ success: false, error: 'no mock', data: null as never })
-      )
+      getById: vi.fn(fail)
     },
     window: {
       notifyClientFormSaved: vi.fn(() => Promise.resolve({ success: true, data: null })),
@@ -61,12 +79,7 @@ export function createElectronApiMock(overrides?: DeepPartialResult<ElectronAPI>
     }
   }
 
-  return { ...base, ...overrides } as unknown as ElectronAPI
-}
-
-/** Instala el mock en window.electronAPI y lo devuelve tipado. */
-export function installElectronApiMock(overrides?: DeepPartialResult<ElectronAPI>): ElectronAPI {
-  const mock = createElectronApiMock(overrides)
-  ;(window as unknown as { electronAPI: ElectronAPI }).electronAPI = mock
-  return mock
+  const merged = { ...base, ...(overrides ?? {}) }
+  ;(window as unknown as { electronAPI: ElectronAPI }).electronAPI = merged as ElectronAPI
+  return merged as MockedApi & ElectronAPI
 }

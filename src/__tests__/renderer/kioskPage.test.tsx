@@ -5,7 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { KioskPage } from '../../renderer/src/pages/KioskPage'
 import { installElectronApiMock } from './mocks/electronAPI'
-import type { Client, Membership, AccessValidation } from '../../../shared/types'
+import type { Client, Membership, AccessValidation } from '../../shared/types'
 
 const CLIENT: Client = {
   id: 'c1',

@@ -7,7 +7,7 @@ import { RenewModal } from '../../renderer/src/components/modals/RenewModal'
 import { useAppStore } from '../../renderer/src/store/appStore'
 import { ToastContainer } from '../../renderer/src/components/ToastContainer'
 import { installElectronApiMock } from './mocks/electronAPI'
-import type { Client, MembershipPlan } from '../../../shared/types'
+import type { Client, MembershipPlan } from '../../shared/types'
 
 const CLIENT = { id: 'c1', fullName: 'Juan Pérez' } as Client
 

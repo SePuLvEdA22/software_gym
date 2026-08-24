@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { PaymentsPage } from '../../renderer/src/pages/PaymentsPage'
 import { installElectronApiMock } from './mocks/electronAPI'
 import { ToastContainer } from '../../renderer/src/components/ToastContainer'
-import type { Payment } from '../../../shared/types'
+import type { Payment } from '../../shared/types'
 
 function payment(overrides: Partial<Payment>): Payment {
   return {
