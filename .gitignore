@@ -39,5 +39,9 @@ Thumbs.db
 .env.*.local
 COM3
 
+# Tooling artifacts
+*.tsbuildinfo
+.opencode/
+
 # Database backups (too large for GitHub)
 software_actual/

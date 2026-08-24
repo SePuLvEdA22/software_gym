@@ -91,5 +91,5 @@ Crear un archivo `.env` en la raíz del proyecto (opcional):
 
 ## Diseño
 
-Sistema de diseño **Material You** con tema oscuro. Ver [`design/DESIGN.md`](design/DESIGN.md) para la especificación completa.
+Sistema de diseño **Material You** con tema oscuro. Ver [`design/DESIGN.md`](design/DESIGN.md) para la especificación completa y [`design/mockups/`](design/mockups) para los mockups de referencia por pantalla.
 

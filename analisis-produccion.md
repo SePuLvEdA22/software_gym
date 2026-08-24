@@ -1,5 +1,11 @@
 # Análisis de Preparación para Producción — BodyFitGym
 
+> ⚠️ **DOCUMENTO HISTÓRICO (Junio 2026).** Este análisis describía el estado del
+> proyecto antes de la iniciativa de producción-readiness. La mayoría de las
+> brechas aquí listadas ya están resueltas: ver `implementaciones-realizadas.md`
+> para el estado actual (tests, CI/CD, Sentry, auto-updates, paginación, etc.).
+> No usar como referencia del estado actual.
+
 > **Estado general:** 🟡 Cerca, pero con brechas críticas que resolver antes de producción abierta.
 >
 > Fecha del análisis: Junio 2026
