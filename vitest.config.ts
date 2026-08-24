@@ -7,8 +7,9 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     setupFiles: ['src/__tests__/setup.ts'],
-    alias: {
-      '@shared/*': path.resolve(__dirname, 'src/shared/*'),
-    },
+    alias: [
+      { find: '@shared', replacement: path.resolve(__dirname, 'src/shared') },
+      { find: /^@\/(.*)$/, replacement: path.resolve(__dirname, 'src/renderer/src') + '/$1' },
+    ],
   },
 })
