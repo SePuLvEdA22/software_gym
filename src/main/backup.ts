@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import log from 'electron-log'
 import { getDatabase, backupDatabase } from './database'
 import type { BackupConfig } from '../shared/types'
+import { toErrorMessage } from '../shared/errors'
 
 const DEFAULT_RETENTION = 7
 
@@ -97,8 +98,8 @@ export function performAutoBackup(): { success: boolean; filePath?: string; erro
     pruneOldBackups(config.retention)
     log.info(`Auto-backup created: ${filePath}`)
     return { success: true, filePath }
-  } catch (error: any) {
+  } catch (error) {
     log.error('Auto-backup error:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: toErrorMessage(error) }
   }
 }

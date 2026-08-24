@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { ClientRoutine, RoutineExercise, Client } from '@shared/types'
+import { toErrorMessage } from '../../../../shared/errors'
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -19,15 +20,6 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadRoutines()
-  }, [])
-
-  useEffect(() => {
-    const dayRoutine = routines.find(r => r.dayOfWeek === selectedDay)
-    setExercises(dayRoutine?.exercises || [])
-  }, [selectedDay, routines])
-
   const loadRoutines = async () => {
     setLoading(true)
     try {
@@ -41,6 +33,15 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadRoutines()
+  }, [])
+
+  useEffect(() => {
+    const dayRoutine = routines.find(r => r.dayOfWeek === selectedDay)
+    setExercises(dayRoutine?.exercises || [])
+  }, [selectedDay, routines])
 
   const addExercise = () => {
     setExercises(prev => [...prev, { name: '', sets: 3, reps: '12', notes: '' }])
@@ -71,8 +72,8 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
       } else {
         showToast('error', result.error || 'Error al guardar', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar'), 'Error')
     } finally {
       setSaving(false)
     }
@@ -85,8 +86,8 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
       await window.electronAPI.routine.delete(client.id, selectedDay)
       showToast('success', `Rutina de ${DAY_NAMES[selectedDay]} eliminada`, 'Eliminado')
       loadRoutines()
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al eliminar', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al eliminar'), 'Error')
     }
   }
 

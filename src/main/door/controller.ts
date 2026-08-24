@@ -138,7 +138,7 @@ async function performHttpOpen(trigger: DoorEventTrigger): Promise<boolean> {
     doorStatus = 'error'
     emitDoorEvent('denied', trigger, 'HTTP relay error')
     return false
-  } catch (error: any) {
+  } catch (error) {
     log.error('HTTP open error:', error)
     doorStatus = 'error'
     return false
@@ -168,7 +168,7 @@ async function performSerialOpen(trigger: DoorEventTrigger): Promise<boolean> {
     doorStatus = 'error'
     emitDoorEvent('denied', trigger, 'Serial relay error')
     return false
-  } catch (error: any) {
+  } catch (error) {
     log.error('Serial open error:', error)
     doorStatus = 'error'
     return false

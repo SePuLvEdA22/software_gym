@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { UpdateChecker } from '@/components/UpdateChecker'
 import { BackupConfig } from '../../../../shared/types'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function SystemSection(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -50,8 +51,8 @@ export function SystemSection(): JSX.Element {
           showToast('error', result.error || 'Error al guardar respaldo', 'Error')
         }
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar respaldo', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar respaldo'), 'Error')
     }
   }
 
@@ -220,15 +221,15 @@ export function SystemSection(): JSX.Element {
                     setMigrationStatus(summary)
                     showToast('success', `Migración completada: ${result.data.totalRecords} registros`, 'Migración Exitosa')
                   } else {
-                    setMigrationBackupPath((result.data as any)?.backupPath || null)
+                    setMigrationBackupPath((result.data as { backupPath?: string } | null)?.backupPath || null)
                     const errorMsg = result.error || 'Error desconocido'
                     setMigrationStatus(`❌ Error: ${errorMsg}`)
                     showToast('error', errorMsg, 'Error')
                   }
-                } catch (e: any) {
+                } catch (e) {
                   cleanup()
-                  setMigrationStatus(`❌ Error: ${e.message}`)
-                  showToast('error', e.message || 'Error en la migración', 'Error')
+                  setMigrationStatus(`❌ Error: ${toErrorMessage(e)}`)
+                  showToast('error', toErrorMessage(e, 'Error en la migración'), 'Error')
                 }
               }}>
                 <Icons.Refresh />

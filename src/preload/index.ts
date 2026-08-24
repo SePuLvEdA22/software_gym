@@ -1,4 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { IpcRendererEvent } from 'electron'
+import type { UpdateInfo, ProgressInfo } from 'electron-updater'
+import type { DoorConfig } from '../main/door/config'
+import type { WhatsappConfig } from '../main/whatsapp'
 import {
   Client,
   MembershipPlan,
@@ -179,18 +183,18 @@ const electronAPI = {
       ipcRenderer.invoke('door:open'),
     getStatus: (): Promise<IpcResult<{ status: string; mockMode: boolean }>> =>
       ipcRenderer.invoke('door:getStatus'),
-    getConfig: (): Promise<IpcResult<any>> =>
+    getConfig: (): Promise<IpcResult<DoorConfig>> =>
       ipcRenderer.invoke('door:getConfig'),
-    saveConfig: (config: any): Promise<IpcResult<null>> =>
+    saveConfig: (config: Partial<DoorConfig> | Partial<WhatsappConfig>): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('door:saveConfig', config),
     testConnection: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('door:testConnection')
   },
 
   whatsapp: {
-    getConfig: (): Promise<IpcResult<any>> =>
+    getConfig: (): Promise<IpcResult<WhatsappConfig>> =>
       ipcRenderer.invoke('whatsapp:getConfig'),
-    saveConfig: (config: any): Promise<IpcResult<null>> =>
+    saveConfig: (config: Partial<DoorConfig> | Partial<WhatsappConfig>): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('whatsapp:saveConfig', config),
     sendWelcome: (clientId: string): Promise<IpcResult<{ success: boolean }>> =>
       ipcRenderer.invoke('whatsapp:sendWelcome', clientId),
@@ -260,7 +264,7 @@ const electronAPI = {
       ipcRenderer.invoke('system:backupDb'),
     restoreDb: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('system:restoreDb'),
-    exportCsv: (type: string, filters?: any): Promise<IpcResult<string>> =>
+    exportCsv: (type: string, filters?: { from?: string; to?: string }): Promise<IpcResult<string>> =>
       ipcRenderer.invoke('system:exportCsv', type, filters),
     getAutoStart: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('system:get-auto-start'),
@@ -275,7 +279,7 @@ const electronAPI = {
     migrateLegacy: (): Promise<IpcResult<{ success: boolean; tablesImported: Record<string, number>; totalRecords: number; errors: string[]; photosExported: number; backupPath?: string }>> =>
       ipcRenderer.invoke('system:migrateLegacy'),
     onMigrationProgress: (callback: (progress: { phase: string; table?: string; current?: number; message: string }) => void): () => void => {
-      const handler = (_: any, progress: any) => callback(progress)
+      const handler = (_: IpcRendererEvent, progress: { phase: string; table?: string; current?: number; message: string }) => callback(progress)
       ipcRenderer.on('migration:progress', handler)
       return () => ipcRenderer.removeListener('migration:progress', handler)
     }
@@ -379,7 +383,7 @@ const electronAPI = {
     maximize: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('window:maximize-admin'),
     onNavigatePayments: (callback: (data: { clientId: string }) => void): () => void => {
-      const handler = (_: any, data: { clientId: string }) => callback(data)
+      const handler = (_: IpcRendererEvent, data: { clientId: string }) => callback(data)
       ipcRenderer.on('navigate:payments', handler)
       return () => ipcRenderer.removeListener('navigate:payments', handler)
     }
@@ -405,28 +409,28 @@ const electronAPI = {
       ipcRenderer.on('update:checking', handler)
       return () => ipcRenderer.removeListener('update:checking', handler)
     },
-    onAvailable: (callback: (info: any) => void): () => void => {
-      const handler = (_: any, info: any) => callback(info)
+    onAvailable: (callback: (info: UpdateInfo) => void): () => void => {
+      const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:available', handler)
       return () => ipcRenderer.removeListener('update:available', handler)
     },
-    onNotAvailable: (callback: (info: any) => void): () => void => {
-      const handler = (_: any, info: any) => callback(info)
+    onNotAvailable: (callback: (info: UpdateInfo) => void): () => void => {
+      const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:not-available', handler)
       return () => ipcRenderer.removeListener('update:not-available', handler)
     },
     onError: (callback: (error: string) => void): () => void => {
-      const handler = (_: any, error: string) => callback(error)
+      const handler = (_: IpcRendererEvent, error: string) => callback(error)
       ipcRenderer.on('update:error', handler)
       return () => ipcRenderer.removeListener('update:error', handler)
     },
-    onDownloadProgress: (callback: (progress: any) => void): () => void => {
-      const handler = (_: any, progress: any) => callback(progress)
+    onDownloadProgress: (callback: (progress: ProgressInfo) => void): () => void => {
+      const handler = (_: IpcRendererEvent, progress: ProgressInfo) => callback(progress)
       ipcRenderer.on('update:download-progress', handler)
       return () => ipcRenderer.removeListener('update:download-progress', handler)
     },
-    onDownloaded: (callback: (info: any) => void): () => void => {
-      const handler = (_: any, info: any) => callback(info)
+    onDownloaded: (callback: (info: UpdateInfo) => void): () => void => {
+      const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:downloaded', handler)
       return () => ipcRenderer.removeListener('update:downloaded', handler)
     }

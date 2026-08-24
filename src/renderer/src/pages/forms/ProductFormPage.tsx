@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Product } from '@shared/types'
 import { FormWindowShell } from '@/components/FormWindowShell'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function ProductFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -27,7 +28,7 @@ export function ProductFormPage(): JSX.Element {
     if (!productId) return
     window.electronAPI.inventory
       .getProductById(productId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const p = result.data
           setForm({
@@ -76,8 +77,8 @@ export function ProductFormPage(): JSX.Element {
       } else {
         showToast('error', r.error || 'Error al guardar el producto')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally {
       setSaving(false)
     }

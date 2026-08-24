@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icons } from './Icons'
+import { toErrorMessage } from '../../../shared/errors'
 
 interface CameraCaptureProps {
   onCapture: (base64: string) => void
@@ -13,11 +14,6 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
   const [error, setError] = useState<string | null>(null)
   const [captured, setCaptured] = useState<string | null>(null)
 
-  useEffect(() => {
-    startCamera()
-    return () => stopCamera()
-  }, [])
-
   const startCamera = async () => {
     try {
       const s = await navigator.mediaDevices.getUserMedia({
@@ -27,13 +23,14 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
       if (videoRef.current) {
         videoRef.current.srcObject = s
       }
-    } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
+    } catch (err) {
+      const name = err instanceof Error ? err.name : ''
+      if (name === 'NotAllowedError') {
         setError('Permiso de cámara denegado. Verifica que la cámara no esté siendo usada por otra aplicación y concede el permiso cuando el sistema lo solicite.')
-      } else if (err.name === 'NotFoundError') {
+      } else if (name === 'NotFoundError') {
         setError('No se detectó ninguna cámara en el equipo.')
       } else {
-        setError('Error al acceder a la cámara: ' + err.message)
+        setError('Error al acceder a la cámara: ' + toErrorMessage(err))
       }
     }
   }
@@ -44,6 +41,11 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
       setStream(null)
     }
   }
+
+  useEffect(() => {
+    startCamera()
+    return () => stopCamera()
+  }, [])
 
   const capture = () => {
     const video = videoRef.current

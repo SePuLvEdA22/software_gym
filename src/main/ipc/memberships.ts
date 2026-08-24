@@ -47,7 +47,7 @@ export function registerMembershipHandlers(): void {
     try {
       const plans = getAllPlans(activeOnly)
       return { success: true, data: plans }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting plans:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -59,7 +59,7 @@ export function registerMembershipHandlers(): void {
     try {
       const plan = getPlanById(id)
       return { success: true, data: plan }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting plan:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -81,7 +81,7 @@ export function registerMembershipHandlers(): void {
         })
       }
       return { success: !!membership, data: membership }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating membership:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -114,7 +114,7 @@ export function registerMembershipHandlers(): void {
       }
       
       return { success: !!result.membership, data: result, error: result.error }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating membership with payment:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -126,7 +126,7 @@ export function registerMembershipHandlers(): void {
     try {
       const membership = getActiveMembership(clientId)
       return { success: true, data: membership }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting active membership:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -138,7 +138,7 @@ export function registerMembershipHandlers(): void {
     try {
       const memberships = getClientMemberships(clientId)
       return { success: true, data: memberships }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client memberships:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -157,7 +157,7 @@ export function registerMembershipHandlers(): void {
         )
       }
       return { success: !!membership, data: membership }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error freezing membership:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -176,7 +176,7 @@ export function registerMembershipHandlers(): void {
         )
       }
       return { success: !!membership, data: membership }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error unfreezing membership:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -199,7 +199,7 @@ export function registerMembershipHandlers(): void {
       }
       
       return { success: true, data: payment }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error recording payment:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -211,7 +211,7 @@ export function registerMembershipHandlers(): void {
     try {
       const payments = getClientPayments(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: payments }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client payments:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -223,7 +223,7 @@ export function registerMembershipHandlers(): void {
     try {
       const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.method)
       return { success: true, data: payments }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting payments by date:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -234,7 +234,7 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getMembershipPayments(membershipId) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting membership payments:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -247,7 +247,7 @@ export function registerMembershipHandlers(): void {
       const plan = getPlanById(planId)
       if (!plan) return { success: false, error: 'Plan no encontrado' }
       return { success: true, data: getEffectivePrice(plan) }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -257,7 +257,7 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getFreezeHistory(membershipId) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting freeze history:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -268,7 +268,7 @@ export function registerMembershipHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: createPlan(data) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating plan:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -280,7 +280,7 @@ export function registerMembershipHandlers(): void {
     try {
       const result = updatePlan(id, data)
       return { success: !!result, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error updating plan:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -292,7 +292,7 @@ export function registerMembershipHandlers(): void {
     try {
       const result = deletePlan(id)
       return result.success ? { success: true } : { success: false, error: result.error }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error deleting plan:', error)
       return { success: false, error: sanitizeError(error) }
     }

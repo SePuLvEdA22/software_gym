@@ -4,8 +4,22 @@ import log from 'electron-log'
 import { getDatabase } from '../database'
 import { getClientById } from '../database/clients'
 import { WhatsappMessage, MessageType, MessageStatus, PageResponse } from '../../shared/types'
+import { toErrorMessage } from '../../shared/errors'
 
-interface WhatsappConfig {
+interface WhatsappMessageRow {
+  id: string
+  client_id: string
+  client_name: string | null
+  phone: string
+  message_type: string
+  message: string
+  status: string
+  scheduled_for: string | null
+  sent_at: string | null
+  created_at: string
+}
+
+export interface WhatsappConfig {
   enabled: boolean
   provider: 'mock' | 'twilio' | 'evolution_api' | 'custom' | 'whatsapp_cloud'
   phoneNumberId: string
@@ -165,7 +179,7 @@ export async function sendMessage(
     }
 
     return { success: result.success, messageId }
-  } catch (error: any) {
+  } catch (error) {
     log.error('Error sending WhatsApp message:', error)
     
     const updateStmt = db.prepare(`
@@ -215,7 +229,7 @@ async function sendViaWhatsAppCloud(phone: string, message: string, messageType?
     const url = `https://graph.facebook.com/v22.0/${config.phoneNumberId}/messages`
     const templateName = messageType ? templateNames[messageType] : undefined
 
-    let body: any
+    let body: Record<string, unknown>
 
     if (templateName) {
       body = {
@@ -255,8 +269,8 @@ async function sendViaWhatsAppCloud(phone: string, message: string, messageType?
     log.info(`[WhatsApp Cloud] Response: ${response.status}`, data)
 
     return { success: response.ok }
-  } catch (error: any) {
-    log.error('[WhatsApp Cloud] Error:', error.message)
+  } catch (error) {
+    log.error('[WhatsApp Cloud] Error:', toErrorMessage(error))
     return { success: false }
   }
 }
@@ -284,8 +298,8 @@ async function sendViaEvolutionApi(phone: string, message: string): Promise<{ su
     const data = await response.json()
     log.info(`[Evolution API] Response:`, data)
     return { success: data.status === 'success' }
-  } catch (error: any) {
-    log.error('[Evolution API] Error:', error.message)
+  } catch (error) {
+    log.error('[Evolution API] Error:', toErrorMessage(error))
     return { success: false }
   }
 }
@@ -523,9 +537,9 @@ export async function sendTestMessage(phone: string): Promise<{ success: boolean
       return { success: true, message: 'Mensaje de prueba enviado correctamente' }
     }
     return { success: false, message: `Error al enviar mensaje de prueba: ${result.error || 'error desconocido'}` }
-  } catch (error: any) {
+  } catch (error) {
     log.error('Error sending test message:', error)
-    return { success: false, message: error.message || 'Error desconocido' }
+    return { success: false, message: toErrorMessage(error, 'Error desconocido') }
   }
 }
 
@@ -554,7 +568,7 @@ export function getMessageHistory(options?: { clientId?: string; page?: number; 
   
   query += ' ORDER BY wm.created_at DESC LIMIT ? OFFSET ?'
   
-  const results = db.prepare(query).all(...params, pageSize, offset) as any[]
+  const results = db.prepare(query).all(...params, pageSize, offset) as unknown as WhatsappMessageRow[]
   
   return {
     data: results.map(r => ({

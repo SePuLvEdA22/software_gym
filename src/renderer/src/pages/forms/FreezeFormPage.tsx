@@ -19,7 +19,7 @@ export function FreezeFormPage(): JSX.Element {
     }
     window.electronAPI.membership
       .getByClient(clientId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const found = (result.data as Membership[]).find((m) => m.id === membershipId)
           if (found) setMembership(found)

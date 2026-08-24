@@ -4,6 +4,7 @@ import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, PaymentMethod } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
 import { format, parse, parseISO, addDays, isValid } from 'date-fns'
+import { toErrorMessage } from '../../../../shared/errors'
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
@@ -48,15 +49,6 @@ export function RenewModal({
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan)
 
-  useEffect(() => {
-    if (selectedPlanData) {
-      setAmount(selectedPlanData.price)
-      setDiscount(0)
-      setPromoInfo(null)
-      loadEffectivePrice(selectedPlanData.id)
-    }
-  }, [selectedPlanData])
-
   const loadEffectivePrice = async (planId: string) => {
     try {
       const result = useKioskApi
@@ -71,6 +63,15 @@ export function RenewModal({
       }
     } catch (e) { console.error('Error loading promo info:', e) }
   }
+  useEffect(() => {
+    if (selectedPlanData) {
+      setAmount(selectedPlanData.price)
+      setDiscount(0)
+      setPromoInfo(null)
+      loadEffectivePrice(selectedPlanData.id)
+    }
+  }, [selectedPlanData])
+
 
   const handleRenew = async () => {
     if (!selectedPlan) return
@@ -112,12 +113,12 @@ export function RenewModal({
       } else {
         showToast(
           'warning',
-          (result.data as any)?.error || result.error || 'No se pudo crear la membresía',
+          (result.data as { error?: string } | null)?.error || result.error || 'No se pudo crear la membresía',
           'Error'
         )
       }
-    } catch (error: any) {
-      showToast('error', error?.message || 'Error desconocido', 'Error')
+    } catch (error) {
+      showToast('error', toErrorMessage(error, 'Error desconocido'), 'Error')
     } finally {
       setLoading(false)
     }

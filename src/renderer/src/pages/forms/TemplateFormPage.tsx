@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { FormWindowShell } from '@/components/FormWindowShell'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function TemplateFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -23,7 +24,7 @@ export function TemplateFormPage(): JSX.Element {
     if (!templateId) return
     window.electronAPI.messageTemplates
       .getById(templateId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const t = result.data
           setForm({
@@ -65,8 +66,8 @@ export function TemplateFormPage(): JSX.Element {
       } else {
         showToast('error', r.error || 'Error al guardar la plantilla')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally {
       setSaving(false)
     }

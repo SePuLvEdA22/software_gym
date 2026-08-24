@@ -13,10 +13,6 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadPayments()
-  }, [])
-
   const loadPayments = async () => {
     const result = await window.electronAPI.payment.getByMembership(membershipId)
     if (result.success && result.data) {
@@ -24,6 +20,10 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadPayments()
+  }, [])
 
   if (!payments || payments.length === 0) {
     return (

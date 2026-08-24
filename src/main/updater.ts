@@ -1,6 +1,7 @@
 import pkg from "electron-updater";
 import { BrowserWindow, ipcMain } from 'electron'
 import log from 'electron-log'
+import { toErrorMessage } from '../shared/errors'
 
 const { autoUpdater } = pkg; //cambio realizado por Helger
 
@@ -22,7 +23,7 @@ export function initUpdater(mainWindow: BrowserWindow): void {
   })
 
   autoUpdater.on('error', (err) => {
-    mainWindow.webContents.send('update:error', err?.message ?? 'Error desconocido')
+    mainWindow.webContents.send('update:error', toErrorMessage(err) ?? 'Error desconocido')
   })
 
   autoUpdater.on('download-progress', (progress) => {
@@ -37,9 +38,9 @@ export function initUpdater(mainWindow: BrowserWindow): void {
     try {
       autoUpdater.checkForUpdates()
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Update check error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -47,9 +48,9 @@ export function initUpdater(mainWindow: BrowserWindow): void {
     try {
       autoUpdater.downloadUpdate()
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Update download error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -57,9 +58,9 @@ export function initUpdater(mainWindow: BrowserWindow): void {
     try {
       autoUpdater.quitAndInstall()
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Update install error:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 }

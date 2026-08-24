@@ -40,7 +40,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
       } else {
         setError(result.error || 'Credenciales incorrectas')
       }
-    } catch (err: any) {
+    } catch {
       setError('Error de conexión')
     } finally {
       setLoading(false)
@@ -71,7 +71,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
       } else {
         setChangeError(result.error || 'No se pudo cambiar la contraseña')
       }
-    } catch (err: any) {
+    } catch {
       setChangeError('Error de conexión')
     } finally {
       setChanging(false)

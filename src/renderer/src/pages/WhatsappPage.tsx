@@ -5,6 +5,7 @@ import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
 import { WhatsappMessage, MessageType, MessageStatus } from '../../../shared/types'
 import { format, parseISO } from 'date-fns'
+import { toErrorMessage } from '../../../shared/errors'
 
 const messageTypeLabels: Record<MessageType, string> = {
   welcome: 'Bienvenida',
@@ -70,8 +71,8 @@ export function WhatsappPage(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al enviar recordatorios', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error desconocido', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error desconocido'), 'Error')
     } finally {
       setSendingReminders(false)
     }

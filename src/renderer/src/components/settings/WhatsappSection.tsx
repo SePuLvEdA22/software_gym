@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function WhatsappSection(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -50,8 +51,8 @@ export function WhatsappSection(): JSX.Element {
       } else {
         showToast('success', 'Configuración de WhatsApp guardada (sin Electron)', 'Guardado')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar'), 'Error')
     }
   }
 
@@ -95,7 +96,7 @@ export function WhatsappSection(): JSX.Element {
                   value={whatsappConfig.provider}
                   onChange={(e) => setWhatsappConfig(prev => ({ 
                     ...prev, 
-                    provider: e.target.value as any
+                    provider: e.target.value as 'mock' | 'twilio' | 'evolution_api' | 'custom' | 'whatsapp_cloud'
                   }))}
                 >
                   <option value="mock">Modo Simulación</option>

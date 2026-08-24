@@ -48,12 +48,6 @@ export function ClientFormPage(): JSX.Element {
     }
   })
 
-  useEffect(() => {
-    if (clientId) {
-      loadClient(clientId)
-    }
-  }, [clientId])
-
   const loadClient = async (id: string) => {
     const result = await window.electronAPI.client.getById(id)
     if (result.success && result.data) {
@@ -81,6 +75,12 @@ export function ClientFormPage(): JSX.Element {
     }
     setLoading(false)
   }
+  useEffect(() => {
+    if (clientId) {
+      loadClient(clientId)
+    }
+  }, [clientId])
+
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [showCamera, setShowCamera] = useState(false)

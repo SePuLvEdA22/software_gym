@@ -683,7 +683,7 @@ export function KioskPage(): JSX.Element {
   const isValidating = useRef(false)
 
   useEffect(() => {
-    window.electronAPI.gym.getSettings().then((result: any) => {
+    window.electronAPI.gym.getSettings().then((result) => {
       if (result.success && result.data) {
         setGymSettings(result.data)
       }

@@ -14,7 +14,7 @@ export function registerPromotionHandlers(): void {
     try {
       const promotions = getAllPromotions(activeOnly)
       return { success: true, data: promotions }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting promotions:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -24,7 +24,7 @@ export function registerPromotionHandlers(): void {
     try {
       const promotion = getPromotionById(id)
       return { success: true, data: promotion }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting promotion:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -33,7 +33,7 @@ export function registerPromotionHandlers(): void {
   ipcMain.handle('promotion:create', async (_, data) => {
     try {
       return { success: true, data: createPromotion(data) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating promotion:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -43,7 +43,7 @@ export function registerPromotionHandlers(): void {
     try {
       const result = updatePromotion(id, data)
       return { success: !!result, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error updating promotion:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -52,7 +52,7 @@ export function registerPromotionHandlers(): void {
   ipcMain.handle('promotion:delete', async (_, id) => {
     try {
       return { success: deletePromotion(id) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error deleting promotion:', error)
       return { success: false, error: sanitizeError(error) }
     }

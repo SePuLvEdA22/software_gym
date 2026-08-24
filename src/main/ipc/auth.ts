@@ -12,7 +12,7 @@ export function registerAuthHandlers(): void {
         logChange('users', result.user!.id, 'login', null, { lastLogin: new Date().toISOString() })
       }
       return result
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error during login:', error)
       return { success: false, error: sanitizeError(error) }
     }

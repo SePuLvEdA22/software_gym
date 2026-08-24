@@ -22,7 +22,7 @@ export function registerWhatsappHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getWhatsappConfig() }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -42,7 +42,7 @@ export function registerWhatsappHandlers(): void {
       // recordatorios para que surta efecto sin necesidad de reiniciar la app.
       startReminderScheduler()
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error saving WhatsApp config:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -52,7 +52,7 @@ export function registerWhatsappHandlers(): void {
     try {
       const result = await sendWelcomeMessage(clientId)
       return result
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -61,7 +61,7 @@ export function registerWhatsappHandlers(): void {
     try {
       const result = await sendPaymentConfirmation(clientId, planName, endDate)
       return result
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -71,7 +71,7 @@ export function registerWhatsappHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getMessageHistory(options) }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -82,7 +82,7 @@ export function registerWhatsappHandlers(): void {
     try {
       const result = await checkAndSendExpiryReminders()
       return { success: true, data: result }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -93,7 +93,7 @@ export function registerWhatsappHandlers(): void {
     try {
       const result = await sendExpiryReminderToClient(clientId)
       return { success: result.success, data: result }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -104,7 +104,7 @@ export function registerWhatsappHandlers(): void {
     try {
       const result = await sendTestMessage(phone)
       return { success: result.success, data: result }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })

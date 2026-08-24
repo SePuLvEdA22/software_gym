@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/appStore'
 import { FitnessGoal } from '@shared/types'
 import { FormWindowShell } from '@/components/FormWindowShell'
 import { DatePicker, todayLocalKey } from '@/components/DatePicker'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function GoalFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -28,8 +29,8 @@ export function GoalFormPage(): JSX.Element {
       } else {
         showToast('error', r.error || 'Error al guardar el objetivo')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally {
       setSaving(false)
     }

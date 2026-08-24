@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Icons } from './Icons'
 import logoSrc from '../assets/logo.png'
 import { hasPermission } from '../../../shared/permissions'
-import type { UserRole } from '../../../shared/types'
+import type { User, UserRole } from '../../../shared/types'
 
 /** Mínimo que el sidebar/guards necesitan del usuario autenticado. */
 export type SessionUser = { role: UserRole; permissions?: string[] } | null
@@ -46,7 +46,7 @@ export function landingPathFor(currentUser: SessionUser): string {
   return item?.path ?? '/no-access'
 }
 
-export function Sidebar({ currentUser, collapsed, onToggle }: { currentUser: any; collapsed: boolean; onToggle: () => void }): JSX.Element {
+export function Sidebar({ currentUser, collapsed, onToggle }: { currentUser: User | null; collapsed: boolean; onToggle: () => void }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -113,7 +113,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps): JSX.Element {
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState<{ type: string; message: string; count: number }[]>([])
@@ -127,7 +127,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
       // Expiring memberships (next 3 days)
       const expiringResult = await window.electronAPI.dashboard.getExpiringSoon(3)
       if (expiringResult.success && expiringResult.data) {
-        const expiring = expiringResult.data as any[]
+        const expiring = expiringResult.data
         if (expiring.length > 0) {
           notifs.push({ type: 'warning', message: `Membresías por vencer (3 días)`, count: expiring.length })
         }
@@ -136,19 +136,19 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
       // Debtors
       const debtorsResult = await window.electronAPI.client.getDebtors()
       if (debtorsResult.success && debtorsResult.data) {
-        const debtors = debtorsResult.data as any[]
+        const debtors = debtorsResult.data
         if (debtors.length > 0) {
           notifs.push({ type: 'error', message: `Clientes con deuda pendiente`, count: debtors.length })
         }
       }
       
       setNotifications(notifs)
-    } catch (e) { /* silent fail */ }
+    } catch { /* fallo silencioso: las notificaciones se recargan en el próximo intervalo */ }
   }
 
   useEffect(() => {
-    window.electronAPI.auth.checkSession().then((r: any) => {
-      if (r.success) setCurrentUser(r.data)
+    window.electronAPI.auth.checkSession().then((r) => {
+      if (r.success) setCurrentUser(r.data ?? null)
     })
     loadNotifications()
     // Refresh every 5 minutes

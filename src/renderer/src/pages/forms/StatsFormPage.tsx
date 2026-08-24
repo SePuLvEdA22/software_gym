@@ -18,7 +18,7 @@ export function StatsFormPage(): JSX.Element {
     }
     window.electronAPI.client
       .getById(clientId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) setClient(result.data)
       })
       .catch(() => {})

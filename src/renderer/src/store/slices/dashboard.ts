@@ -1,3 +1,7 @@
+import type { AppState } from '../appStore'
+
+type SetAppState = (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void
+
 import { DashboardMetrics } from '../../../../shared/types'
 
 export interface DashboardSlice {
@@ -26,6 +30,6 @@ export const defaultDashboardState = {
   dashboardMetrics: initialMetrics
 }
 
-export const createDashboardActions = (set: any) => ({
+export const createDashboardActions = (set: SetAppState) => ({
   setDashboardMetrics: (metrics: DashboardMetrics) => set({ dashboardMetrics: metrics })
 })

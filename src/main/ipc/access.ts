@@ -9,15 +9,16 @@ import {
 } from '../database/memberships'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
+import { toErrorMessage } from '../../shared/errors'
 
 export function registerAccessHandlers(): void {
   ipcMain.handle('access:validate', async (_, accessCode: string): Promise<{ success: boolean; data: AccessValidation }> => {
     try {
       const data = validateAccess(accessCode)
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error validating access:', error)
-      return { success: false, data: { valid: false, message: error.message, code: 'denied_not_found' } }
+      return { success: false, data: { valid: false, message: toErrorMessage(error), code: 'denied_not_found' } }
     }
   })
 
@@ -27,7 +28,7 @@ export function registerAccessHandlers(): void {
     try {
       const logs = getAccessLogs(options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting access logs:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -39,7 +40,7 @@ export function registerAccessHandlers(): void {
     try {
       const logs = getClientAccessLogs(clientId, options?.page || 1, options?.pageSize || 50)
       return { success: true, data: logs }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client access logs:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -51,7 +52,7 @@ export function registerAccessHandlers(): void {
     try {
       const logs = getAccessLogsByDate(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.result)
       return { success: true, data: logs }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting logs by date:', error)
       return { success: false, error: sanitizeError(error) }
     }

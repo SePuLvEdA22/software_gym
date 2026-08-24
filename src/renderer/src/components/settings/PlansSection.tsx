@@ -3,6 +3,7 @@ import { useFormSaved } from '@/hooks/useFormSaved'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { MembershipPlan, Promotion } from '../../../../shared/types'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function PlansSection(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -21,8 +22,8 @@ export function PlansSection(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al eliminar plan', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al eliminar plan', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al eliminar plan'), 'Error')
     }
   }
 
@@ -31,8 +32,8 @@ export function PlansSection(): JSX.Element {
       try {
         await window.electronAPI.plans.update(plan.id, { isActive: true })
         loadPlans()
-      } catch (e: any) {
-        showToast('error', e.message || 'Error al cambiar estado', 'Error')
+      } catch (e) {
+        showToast('error', toErrorMessage(e, 'Error al cambiar estado'), 'Error')
       }
       return
     }
@@ -41,8 +42,8 @@ export function PlansSection(): JSX.Element {
     try {
       await window.electronAPI.plans.update(plan.id, { isActive: false })
       loadPlans()
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al cambiar estado', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al cambiar estado'), 'Error')
     }
   }
 
@@ -55,8 +56,8 @@ export function PlansSection(): JSX.Element {
         showToast('success', 'Promoción eliminada', 'Eliminado')
         loadPromotions()
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al eliminar promoción', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al eliminar promoción'), 'Error')
     }
   }
 
@@ -64,8 +65,8 @@ export function PlansSection(): JSX.Element {
     try {
       await window.electronAPI.promotion.update(promo.id, { isActive: !promo.isActive })
       loadPromotions()
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al cambiar estado', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al cambiar estado'), 'Error')
     }
   }
 

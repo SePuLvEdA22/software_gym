@@ -310,10 +310,10 @@ export function DashboardPage(): JSX.Element {
       setRevenueData(revenueResult.data)
     }
     if (expiringResult.success && expiringResult.data) {
-      setExpiringSoon(expiringResult.data as any[])
+      setExpiringSoon(expiringResult.data)
     }
     if (birthdayResult.success && birthdayResult.data) {
-      setBirthdays(birthdayResult.data as any[])
+      setBirthdays(birthdayResult.data)
     }
     if (inactiveResult.success && inactiveResult.data) {
       setInactiveClients(inactiveResult.data)

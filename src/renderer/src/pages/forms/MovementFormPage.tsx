@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Product } from '@shared/types'
 import { FormWindowShell } from '@/components/FormWindowShell'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function MovementFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -24,7 +25,7 @@ export function MovementFormPage(): JSX.Element {
     }
     window.electronAPI.inventory
       .getProductById(productId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           setProduct(result.data)
           setPrice(String(result.data.cost || result.data.price || ''))
@@ -64,8 +65,8 @@ export function MovementFormPage(): JSX.Element {
       } else {
         showToast('error', r.error || 'Error al registrar movimiento')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally {
       setSaving(false)
     }

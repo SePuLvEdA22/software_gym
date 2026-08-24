@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/appStore'
 import { MembershipType } from '@shared/types'
 import { FormWindowShell } from '@/components/FormWindowShell'
 import { Icons } from '@/components/Icons'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function PlanFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -25,7 +26,7 @@ export function PlanFormPage(): JSX.Element {
     if (!planId) return
     window.electronAPI.plans
       .getById(planId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const p = result.data
           setForm({
@@ -63,8 +64,8 @@ export function PlanFormPage(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al guardar plan', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar plan', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar plan'), 'Error')
     } finally {
       setSaving(false)
     }

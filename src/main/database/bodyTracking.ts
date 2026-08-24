@@ -3,15 +3,47 @@ import { BodyMeasurement, ClientGoal, FitnessGoal } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { formatISO } from 'date-fns'
 
+interface MeasurementRow {
+  id: string
+  client_id: string
+  date: string
+  weight: number | null
+  height: number | null
+  neck: number | null
+  shoulders: number | null
+  chest: number | null
+  left_arm: number | null
+  right_arm: number | null
+  waist: number | null
+  hips: number | null
+  left_thigh: number | null
+  right_thigh: number | null
+  left_calf: number | null
+  right_calf: number | null
+  body_fat: number | null
+  notes: string
+}
+
+interface GoalRow {
+  id: string
+  client_id: string
+  goal: FitnessGoal
+  start_date: string
+  target_date: string | null
+  notes: string
+  is_active: number
+  created_at: string
+}
+
 export function getMeasurements(clientId: string, limit = 50): BodyMeasurement[] {
   const db = getDatabase()
   const rows = db.prepare(`
     SELECT * FROM body_measurements WHERE client_id = ? ORDER BY date DESC LIMIT ?
-  `).all(clientId, limit) as any[]
+  `).all(clientId, limit) as unknown as MeasurementRow[]
   return rows.map(mapMeasurement)
 }
 
-function mapMeasurement(r: any): BodyMeasurement {
+function mapMeasurement(r: MeasurementRow): BodyMeasurement {
   return {
     id: r.id,
     clientId: r.client_id,
@@ -61,11 +93,11 @@ export function getGoals(clientId: string): ClientGoal[] {
   const db = getDatabase()
   const rows = db.prepare(`
     SELECT * FROM client_goals WHERE client_id = ? ORDER BY created_at DESC
-  `).all(clientId) as any[]
+  `).all(clientId) as unknown as GoalRow[]
   return rows.map(mapGoal)
 }
 
-function mapGoal(r: any): ClientGoal {
+function mapGoal(r: GoalRow): ClientGoal {
   return {
     id: r.id,
     clientId: r.client_id,

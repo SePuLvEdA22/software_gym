@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { FormWindowShell } from '@/components/FormWindowShell'
 import { DatePicker, todayLocalKey } from '@/components/DatePicker'
+import { toErrorMessage } from '../../../../shared/errors'
+import type { BodyMeasurement } from '../../../../shared/types'
 
-const MEASUREMENT_FIELDS: [string, string][] = [
+const MEASUREMENT_FIELDS: [keyof BodyMeasurement & string, string][] = [
   ['weight', 'Peso (kg)'],
   ['height', 'Altura (cm)'],
   ['neck', 'Cuello (cm)'],
@@ -48,10 +50,12 @@ export function MeasurementFormPage(): JSX.Element {
 
   const handleSave = async () => {
     setSaving(true)
-    const data: any = { date: form.date, notes: form.notes }
+    const data: { date: string; notes?: string } & Partial<BodyMeasurement> = { date: form.date, notes: form.notes }
     for (const [key] of MEASUREMENT_FIELDS) {
       const val = form[key]
-      if (val !== '') data[key] = Number(val)
+      if (val !== '') {
+        ;(data as Record<string, unknown>)[key] = Number(val)
+      }
     }
     try {
       const r = await window.electronAPI.bodyTracking.saveMeasurement(clientId, data)
@@ -61,8 +65,8 @@ export function MeasurementFormPage(): JSX.Element {
       } else {
         showToast('error', r.error || 'Error al guardar las medidas')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally {
       setSaving(false)
     }

@@ -8,7 +8,7 @@ export function registerBackupHandlers(): void {
   ipcMain.handle('backup:getConfig', async () => {
     try {
       return { success: true, data: getBackupConfig() }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting backup config:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -20,7 +20,7 @@ export function registerBackupHandlers(): void {
     try {
       setBackupConfig(config)
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error setting backup config:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -34,7 +34,7 @@ export function registerBackupHandlers(): void {
       return result.success
         ? { success: true, data: result.filePath }
         : { success: false, error: result.error }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error running backup:', error)
       return { success: false, error: sanitizeError(error) }
     }

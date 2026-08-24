@@ -18,10 +18,6 @@ export function AttendanceStatsModal({
   const [stats, setStats] = useState<ClientAttendanceStatsType | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadStats()
-  }, [])
-
   const loadStats = async () => {
     const result = await window.electronAPI.client.getAttendanceStats(client.id)
     if (result.success && result.data) {
@@ -29,6 +25,10 @@ export function AttendanceStatsModal({
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadStats()
+  }, [])
 
   const content = (
     <>

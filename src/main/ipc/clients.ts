@@ -24,6 +24,7 @@ import { getNextClientNumber, logChange } from '../database/users'
 import { scheduleThumbnail } from '../photos'
 import { sanitizeError } from '../helpers'
 import { requirePermission, validateOrThrow } from './helpers'
+import { errorMessageIncludes } from '../../shared/errors'
 
 export function registerClientHandlers(): void {
   ipcMain.handle('client:getNextNumber', async () => {
@@ -31,7 +32,7 @@ export function registerClientHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getNextClientNumber() }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -47,12 +48,12 @@ export function registerClientHandlers(): void {
       }
       logChange('clients', client.id, 'create', null, client as unknown as Record<string, unknown>)
       return { success: true, data: client }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating client:', error)
-      if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
+      if (errorMessageIncludes(error, 'UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe un cliente con ese número de documento' }
       }
-      if (error.message?.includes('UNIQUE constraint failed: clients.access_code')) {
+      if (errorMessageIncludes(error, 'UNIQUE constraint failed: clients.access_code')) {
         return { success: false, error: 'Ya existe otro cliente con ese código de acceso' }
       }
       return { success: false, error: sanitizeError(error) }
@@ -77,12 +78,12 @@ export function registerClientHandlers(): void {
         logChange('clients', id, 'update', oldClient as unknown as Record<string, unknown>, result as unknown as Record<string, unknown>)
       }
       return { success: !!result, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error updating client:', error)
-      if (error.message?.includes('UNIQUE constraint failed: clients.document_id')) {
+      if (errorMessageIncludes(error, 'UNIQUE constraint failed: clients.document_id')) {
         return { success: false, error: 'Ya existe otro cliente con ese número de documento' }
       }
-      if (error.message?.includes('UNIQUE constraint failed: clients.access_code')) {
+      if (errorMessageIncludes(error, 'UNIQUE constraint failed: clients.access_code')) {
         return { success: false, error: 'Ya existe otro cliente con ese código de acceso' }
       }
       return { success: false, error: sanitizeError(error) }
@@ -95,7 +96,7 @@ export function registerClientHandlers(): void {
     try {
       const client = getClientById(id)
       return { success: true, data: client }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -107,7 +108,7 @@ export function registerClientHandlers(): void {
     try {
       const client = getClientByAccessCode(code)
       return { success: true, data: client }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client by access code:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -119,7 +120,7 @@ export function registerClientHandlers(): void {
     try {
       const client = getClientByDocumentId(docId)
       return { success: true, data: client }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client by document:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -131,7 +132,7 @@ export function registerClientHandlers(): void {
     try {
       const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status, options?.sortBy)
       return { success: true, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting all clients:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -143,7 +144,7 @@ export function registerClientHandlers(): void {
     try {
       const clients = searchClients(query)
       return { success: true, data: clients }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error searching clients:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -159,7 +160,7 @@ export function registerClientHandlers(): void {
         logChange('clients', id, 'delete', oldClient as unknown as Record<string, unknown>, null)
       }
       return { success, data: null }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error deleting client:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -171,7 +172,7 @@ export function registerClientHandlers(): void {
     try {
       const code = generateUniqueAccessCode()
       return { success: true, data: code }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error generating access code:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -183,7 +184,7 @@ export function registerClientHandlers(): void {
     try {
       const debts = getClientDebt(clientId)
       return { success: true, data: debts }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -194,7 +195,7 @@ export function registerClientHandlers(): void {
     try {
       const debtors = getDebtors()
       return { success: true, data: debtors }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -204,7 +205,7 @@ export function registerClientHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getClientFreezeHistory(clientId) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting client freeze history:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -215,7 +216,7 @@ export function registerClientHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getClientAttendanceStats(clientId) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting attendance stats:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -226,7 +227,7 @@ export function registerClientHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getInactiveClients(daysThreshold) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting inactive clients:', error)
       return { success: false, error: sanitizeError(error) }
     }

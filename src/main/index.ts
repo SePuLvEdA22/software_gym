@@ -12,6 +12,7 @@ import { initUpdater } from './updater'
 import { getBackupConfig, performAutoBackup } from './backup'
 import { ensureThumbnails } from './photos'
 import * as Sentry from '@sentry/electron/main'
+import { toErrorMessage } from '../shared/errors'
 
 log.initialize({ preload: true })
 log.transports.file.level = 'info'
@@ -325,7 +326,7 @@ function createKioskWindowAuto(): BrowserWindow {
     log.info(`Display ${i}: ${d.bounds.width}x${d.bounds.height} at (${d.bounds.x},${d.bounds.y}) - primary: ${d.id === screen.getPrimaryDisplay().id}`)
   })
 
-  let displayIndex = 0
+  let displayIndex: number
   
   if (displays.length > 1) {
     const primaryDisplay = screen.getPrimaryDisplay()
@@ -454,9 +455,9 @@ function setupWindowControls(): void {
       
       log.info('Kiosk window created successfully')
       return { success: true, data: { isOpen: true, alreadyOpen: false } }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening kiosk window:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -471,9 +472,9 @@ function setupWindowControls(): void {
       }
       log.info('Kiosk window already closed or destroyed')
       return { success: true, data: { wasOpen: false } }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error closing kiosk window:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -490,9 +491,9 @@ function setupWindowControls(): void {
       }
       kioskRenewWindow = createKioskRenewWindow(clientId)
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening kiosk renew window:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -504,9 +505,9 @@ function setupWindowControls(): void {
       }
       clientFormWindow = createClientFormWindow(clientId)
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening client form window:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -518,9 +519,9 @@ function setupWindowControls(): void {
         adminWindow.webContents.send('navigate:payments', { clientId })
       }
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening client payments:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -548,9 +549,9 @@ function setupWindowControls(): void {
       }
 
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening client renew:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -565,9 +566,9 @@ function setupWindowControls(): void {
         clientFormWindow = null
       }
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error notifying client form saved:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -599,9 +600,9 @@ function setupFormWindowControls(): void {
       return win
         ? { success: true }
         : { success: false, error: `Tipo de formulario desconocido: ${type}` }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening form window:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -620,9 +621,9 @@ function setupFormWindowControls(): void {
         formWindows.delete(type)
       }
       return { success: true }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error notifying form saved:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: toErrorMessage(error) }
     }
   })
 
@@ -701,9 +702,9 @@ ipcMain.handle('system:set-auto-start', async (_, enabled: boolean) => {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
       .run(enabled ? '1' : '0')
     return { success: true }
-  } catch (error: any) {
+  } catch (error) {
     log.error('Error setting auto-start:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: toErrorMessage(error) }
   }
 })
 
@@ -711,16 +712,16 @@ ipcMain.handle('system:get-auto-start', async () => {
   try {
     const settings = app.getLoginItemSettings()
     return { success: true, data: settings.openAtLogin }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: toErrorMessage(error) }
   }
 })
 
 ipcMain.handle('system:get-app-version', async () => {
   try {
     return { success: true, data: app.getVersion() }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return { success: false, error: toErrorMessage(error) }
   }
 })
 
@@ -764,7 +765,7 @@ app.whenReady().then(async () => {
     try {
       updateWhatsappConfig(JSON.parse(savedWhatsappConfig.value))
       log.info('WhatsApp config loaded from database')
-    } catch (e) {
+    } catch {
       log.warn('Failed to parse saved WhatsApp config')
     }
   }
@@ -800,7 +801,7 @@ app.whenReady().then(async () => {
         log.info('Only one display detected, kiosk window not opened automatically')
         log.info('You can open it manually from Settings > Pantalla Kiosco')
       }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating kiosk window:', error)
     }
   }

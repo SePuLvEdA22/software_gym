@@ -21,7 +21,7 @@ export function registerUserHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getAllUsers(options?.page || 1, options?.pageSize || 50) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting users:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -32,7 +32,7 @@ export function registerUserHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getUserById(id) }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -47,13 +47,13 @@ export function registerUserHandlers(): void {
         logChange('users', result.user.id, 'create', null, result.user as unknown as Record<string, unknown>)
       }
       return result
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error creating user:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })
 
-  ipcMain.handle('user:update', async (_, id: string, data: any) => {
+  ipcMain.handle('user:update', async (_, id: string, data: Parameters<typeof updateUser>[1]) => {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
@@ -68,7 +68,7 @@ export function registerUserHandlers(): void {
         logChange('users', id, 'update', oldUser as unknown as Record<string, unknown>, { ...oldUser, ...data } as unknown as Record<string, unknown>)
       }
       return result
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error updating user:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -84,7 +84,7 @@ export function registerUserHandlers(): void {
         logChange('users', id, 'delete', { ...oldUser }, null)
       }
       return result
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error deleting user:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -95,7 +95,7 @@ export function registerUserHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getChangeLogs(options?.page || 1, options?.pageSize || 50, options?.tableName, options?.action) }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })

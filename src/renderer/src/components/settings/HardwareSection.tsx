@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function HardwareSection(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -41,8 +42,8 @@ export function HardwareSection(): JSX.Element {
       } else {
         showToast('success', 'Configuración de puerta guardada correctamente (sin Electron)', 'Guardado')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar'), 'Error')
     }
   }
 
@@ -56,8 +57,8 @@ export function HardwareSection(): JSX.Element {
           showToast('error', 'Error de conexión. Revisa la configuración.', 'Prueba Fallida')
         }
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al probar conexión', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al probar conexión'), 'Error')
     }
   }
 

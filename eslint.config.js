@@ -13,14 +13,15 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      // ── Reglas relajadas a warn para que el CI pase ──
-      'no-empty': 'warn',
-      'no-useless-assignment': 'warn',
-      '@typescript-eslint/no-this-alias': 'warn',
-      '@typescript-eslint/no-require-imports': 'warn',
-      'react-hooks/immutability': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      // ── Reglas promovidas a error (contador en 0 desde Fase 1) ──
+      'no-empty': 'error',
+      'no-useless-assignment': 'error',
+      '@typescript-eslint/no-this-alias': 'error',
+      '@typescript-eslint/no-require-imports': 'error',
+      'react-hooks/immutability': 'error',
+      // ── Deuda conocida: corregir gradualmente junto con tests de UI ──
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/static-components': 'warn',
     },

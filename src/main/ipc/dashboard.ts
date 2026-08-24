@@ -25,7 +25,7 @@ export function registerDashboardHandlers(): void {
       updateExpiredMemberships()
       const metrics = getDashboardMetrics(period)
       return { success: true, data: metrics }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting dashboard metrics:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -37,7 +37,7 @@ export function registerDashboardHandlers(): void {
     try {
       const data = getRevenueByMonth(months)
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting revenue by month:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -49,7 +49,7 @@ export function registerDashboardHandlers(): void {
     try {
       const data = getClientsByStatus()
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting clients by status:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -60,7 +60,7 @@ export function registerDashboardHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getRevenueByYear(year) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting revenue by year:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -71,7 +71,7 @@ export function registerDashboardHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getRevenueByTimeOfDay(startDate, endDate) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting revenue by time of day:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -82,7 +82,7 @@ export function registerDashboardHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getExpiringSoon(days) }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting expiring memberships:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -93,7 +93,7 @@ export function registerDashboardHandlers(): void {
     if (auth) return auth
     try {
       return { success: true, data: getBirthdaysThisMonth() }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting birthdays:', error)
       return { success: false, error: sanitizeError(error) }
     }

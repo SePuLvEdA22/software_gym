@@ -9,6 +9,7 @@ import {
   type PermissionGroup,
 } from '@shared/permissions'
 import { FormWindowShell } from '@/components/FormWindowShell'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function UserFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -32,7 +33,7 @@ export function UserFormPage(): JSX.Element {
     if (!userId) return
     window.electronAPI.user
       .getById(userId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const u = result.data
           setForm({
@@ -121,8 +122,8 @@ export function UserFormPage(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al guardar usuario')
       }
-    } catch (err: any) {
-      showToast('error', err.message || 'Error de conexión')
+    } catch (err) {
+      showToast('error', toErrorMessage(err, 'Error de conexión'))
     } finally {
       setSaving(false)
     }

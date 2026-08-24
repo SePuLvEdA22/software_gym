@@ -3,6 +3,7 @@ import {
   getMeasurements, saveMeasurement, getGoals, saveGoal
 } from '../database/bodyTracking'
 import { getClientRoutines, saveClientRoutine, deleteClientRoutine } from '../database/routines'
+import type { RoutineExercise } from '../../shared/types'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
 
@@ -11,28 +12,28 @@ export function registerBodyTrackingHandlers(): void {
     const auth = requirePermission('tracking.view')
     if (auth) return auth
     try { return { success: true, data: getMeasurements(clientId, limit) } }
-    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+    catch (error) { return { success: false, error: sanitizeError(error) } }
   })
 
-  ipcMain.handle('bodyTracking:saveMeasurement', async (_, clientId: string, data: any) => {
+  ipcMain.handle('bodyTracking:saveMeasurement', async (_, clientId: string, data: Parameters<typeof saveMeasurement>[1]) => {
     const auth = requirePermission('tracking.edit')
     if (auth) return auth
     try { return { success: true, data: saveMeasurement(clientId, data) } }
-    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+    catch (error) { return { success: false, error: sanitizeError(error) } }
   })
 
   ipcMain.handle('bodyTracking:getGoals', async (_, clientId: string) => {
     const auth = requirePermission('tracking.view')
     if (auth) return auth
     try { return { success: true, data: getGoals(clientId) } }
-    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+    catch (error) { return { success: false, error: sanitizeError(error) } }
   })
 
-  ipcMain.handle('bodyTracking:saveGoal', async (_, clientId: string, data: any) => {
+  ipcMain.handle('bodyTracking:saveGoal', async (_, clientId: string, data: Parameters<typeof saveGoal>[1]) => {
     const auth = requirePermission('tracking.edit')
     if (auth) return auth
     try { return { success: true, data: saveGoal(clientId, data) } }
-    catch (error: any) { return { success: false, error: sanitizeError(error) } }
+    catch (error) { return { success: false, error: sanitizeError(error) } }
   })
 
   ipcMain.handle('routine:getByClient', async (_, clientId: string) => {
@@ -41,18 +42,18 @@ export function registerBodyTrackingHandlers(): void {
     try {
       const routines = getClientRoutines(clientId)
       return { success: true, data: routines }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
 
-  ipcMain.handle('routine:save', async (_, clientId: string, dayOfWeek: number, exercises: any[]) => {
+  ipcMain.handle('routine:save', async (_, clientId: string, dayOfWeek: number, exercises: RoutineExercise[]) => {
     const auth = requirePermission('clients.edit')
     if (auth) return auth
     try {
       const routine = saveClientRoutine(clientId, dayOfWeek, exercises)
       return { success: true, data: routine }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -63,7 +64,7 @@ export function registerBodyTrackingHandlers(): void {
     try {
       const deleted = deleteClientRoutine(clientId, dayOfWeek)
       return { success: true, data: deleted }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })

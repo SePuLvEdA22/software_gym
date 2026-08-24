@@ -30,7 +30,7 @@ export function KioskRenewPage(): JSX.Element {
       setPlans((result.data.plans || []) as MembershipPlan[])
       setActiveMembership((result.data.activeMembership || null) as Membership | null)
       setLoading(false)
-    } catch (e) {
+    } catch {
       setError('Error al cargar datos del cliente')
       setLoading(false)
     }
@@ -43,7 +43,6 @@ export function KioskRenewPage(): JSX.Element {
       return
     }
     loadData(clientId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId])
 
   const handleClose = () => {

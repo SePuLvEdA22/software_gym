@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function GymSettingsForm(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [gymForm, setGymForm] = useState({ name: '', address: '', phone: '', welcomeMessage: '' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadGymSettings()
-  }, [])
 
   const loadGymSettings = async () => {
     try {
@@ -21,6 +18,10 @@ export function GymSettingsForm(): JSX.Element {
     } catch (e) { console.error('Error loading gym settings:', e) }
     finally { setLoading(false) }
   }
+
+  useEffect(() => {
+    loadGymSettings()
+  }, [])
 
   const handleSave = async () => {
     if (!gymForm.name.trim()) {
@@ -35,8 +36,8 @@ export function GymSettingsForm(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al guardar', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar'), 'Error')
     } finally { setSaving(false) }
   }
 

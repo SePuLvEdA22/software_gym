@@ -5,6 +5,7 @@ import { MembershipPlan } from '@shared/types'
 import { FormWindowShell } from '@/components/FormWindowShell'
 import { DatePicker } from '@/components/DatePicker'
 import { Icons } from '@/components/Icons'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function PromoFormPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -24,13 +25,13 @@ export function PromoFormPage(): JSX.Element {
   const [loading, setLoading] = useState(isEditing)
 
   useEffect(() => {
-    window.electronAPI.plans.getAll(false).then((result: any) => {
+    window.electronAPI.plans.getAll(false).then((result) => {
       if (result.success && result.data) setPlans(result.data)
     }).catch(() => {})
     if (!promoId) return
     window.electronAPI.promotion
       .getById(promoId)
-      .then((result: any) => {
+      .then((result) => {
         if (result.success && result.data) {
           const p = result.data
           setForm({
@@ -69,8 +70,8 @@ export function PromoFormPage(): JSX.Element {
       } else {
         showToast('error', result.error || 'Error al guardar promoción', 'Error')
       }
-    } catch (e: any) {
-      showToast('error', e.message || 'Error al guardar promoción', 'Error')
+    } catch (e) {
+      showToast('error', toErrorMessage(e, 'Error al guardar promoción'), 'Error')
     }
   }
 

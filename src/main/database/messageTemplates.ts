@@ -3,6 +3,7 @@ import { MessageTemplate } from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { formatISO } from 'date-fns'
 import { sendMessage } from '../whatsapp/index'
+import { toErrorMessage } from '../../shared/errors'
 
 interface DbMessageTemplate {
   id: string
@@ -122,8 +123,8 @@ export async function sendTemplateToClient(templateId: string, clientId: string)
     }
 
     return { sent: true }
-  } catch (err: any) {
-    return { sent: false, message: err.message }
+  } catch (err) {
+    return { sent: false, message: toErrorMessage(err) }
   }
 }
 

@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from 'uuid'
 import log from 'electron-log'
 import { getDatabase, backupDatabase, restoreDatabase } from '../database'
 import { fixMojibake } from '../../shared/encoding'
+import { toErrorMessage } from '../../shared/errors'
 
 // ============================================================
 // TIPOS
@@ -175,7 +176,6 @@ class MysqlInsertParser {
           this.currentRows.push(this.currentRow)
           this.currentRow = []
           this.currentValue = ''
-          i += rest.indexOf(',')
           const afterComma = rest.substring(rest.indexOf(',') + 1)
           if (afterComma.trim()) {
             this.parseValueChunk(afterComma)
@@ -382,8 +382,8 @@ function transformSocio(insert: ParsedInsert): void {
         accessCode,
         status
       )
-    } catch (e: any) {
-      if (e.message?.includes('clients.access_code')) {
+    } catch (e) {
+      if (toErrorMessage(e)?.includes('clients.access_code')) {
         // Código duplicado: reintentar con código único basado en oldId
         const uniqueCode = `A${String(oldId).padStart(4, '0')}`
         try {
@@ -402,11 +402,11 @@ function transformSocio(insert: ParsedInsert): void {
             status
           )
           log.info(`[Migracion] Cliente ${oldId} (${fullName}): código duplicado, se usó ${uniqueCode}`)
-        } catch (e2: any) {
-          log.warn(`[Migracion] Error insertando cliente ${oldId} (${fullName}): ${e2.message}`)
+        } catch (e2) {
+          log.warn(`[Migracion] Error insertando cliente ${oldId} (${fullName}): ${toErrorMessage(e2)}`)
         }
       } else {
-        log.warn(`[Migracion] Error insertando cliente ${oldId} (${fullName}): ${e.message}`)
+        log.warn(`[Migracion] Error insertando cliente ${oldId} (${fullName}): ${toErrorMessage(e)}`)
       }
     }
   }
@@ -469,8 +469,8 @@ function transformMembresia(insert: ParsedInsert): void {
 
     try {
       stmt.run(newUuid, name, membershipType, price, durationDays, desc)
-    } catch (e: any) {
-      log.warn(`[Migracion] Error insertando plan ${oldId} (${name}): ${e.message}`)
+    } catch (e) {
+      log.warn(`[Migracion] Error insertando plan ${oldId} (${name}): ${toErrorMessage(e)}`)
     }
   }
   }
@@ -544,8 +544,8 @@ function transformSociomembresia(insert: ParsedInsert): void {
 
     try {
       stmt.run(newUuid, newClientId, newPlanId, planName, startDate || null, endDate || null, status)
-    } catch (e: any) {
-      log.warn(`[Migracion] Error insertando membresia ${oldId}: ${e.message}`)
+    } catch (e) {
+      log.warn(`[Migracion] Error insertando membresia ${oldId}: ${toErrorMessage(e)}`)
     }
   }
   }
@@ -579,8 +579,8 @@ function transformSociomembresiaPago(insert: ParsedInsert): void {
 
     try {
       stmt.run(newUuid, clientId || null, newMembershipId, importe, fecha || null)
-    } catch (e: any) {
-      log.warn(`[Migracion] Error insertando pago: ${e.message}`)
+    } catch (e) {
+      log.warn(`[Migracion] Error insertando pago: ${toErrorMessage(e)}`)
     }
   }
   }
@@ -610,7 +610,7 @@ function transformAccessLogs(insert: ParsedInsert, message: string): void {
 
     try {
       stmt.run(newUuid, newClientId, message, fecha || null)
-    } catch (e: any) {
+    } catch {
       // Silenciar errores de access_logs (no críticos)
     }
   }
@@ -658,8 +658,8 @@ function transformProducto(insert: ParsedInsert): void {
 
     try {
       stmt.run(newUuid, name, descripcion, precio, costo, idEstado === 1 ? 1 : 0)
-    } catch (e: any) {
-      log.warn(`[Migracion] Error insertando producto ${oldId}: ${e.message}`)
+    } catch (e) {
+      log.warn(`[Migracion] Error insertando producto ${oldId}: ${toErrorMessage(e)}`)
     }
   }
   }
@@ -692,7 +692,7 @@ function transformConfiguracion(insert: ParsedInsert): void {
   }
 
   for (const [key, value] of Object.entries(settings)) {
-    try { stmt.run(key, value) } catch {}
+    try { stmt.run(key, value) } catch { /* setting duplicado o inválido: continuar migración */ }
   }
 
   // Logo
@@ -779,8 +779,8 @@ export async function runLegacyMigration(
     if (backupCreated) {
       log.info(`[Migracion] Backup creado: ${backupPath}`)
     }
-  } catch (e: any) {
-    log.warn('[Migracion] Error creando backup:', e.message)
+  } catch (e) {
+    log.warn('[Migracion] Error creando backup:', toErrorMessage(e))
   }
 
   // Limpiar datos actuales
@@ -798,8 +798,8 @@ export async function runLegacyMigration(
       DELETE FROM settings WHERE key LIKE 'gym_%' OR key LIKE 'ticket_%' OR key = 'backup_folder' OR key = 'gym_logo_path';
       PRAGMA foreign_keys = ON;
     `)
-  } catch (e: any) {
-    log.warn('[Migracion] Error limpiando datos previos:', e.message)
+  } catch (e) {
+    log.warn('[Migracion] Error limpiando datos previos:', toErrorMessage(e))
   }
 
   // Resetear mapeos
@@ -830,8 +830,8 @@ export async function runLegacyMigration(
         handler(insert)
         insertCounts[tableName] = (insertCounts[tableName] || 0) + insert.rows.length
         totalInserts += insert.rows.length
-      } catch (err: any) {
-        log.error(`[Migracion] Error en tabla ${tableName}:`, err.message)
+      } catch (err) {
+        log.error(`[Migracion] Error en tabla ${tableName}:`, toErrorMessage(err))
       }
     } else if (!ignoredTables.has(tableName)) {
       log.warn(`[Migracion] Tabla no mapeada (ignorada): ${tableName}`)
@@ -859,7 +859,7 @@ export async function runLegacyMigration(
       parser.processLine(line)
     }
     parser.finish()
-  } catch (err: any) {
+  } catch (err) {
     log.error('[Migracion] Error durante el parseo:', err)
 
     // Restaurar backup automáticamente
@@ -868,7 +868,7 @@ export async function runLegacyMigration(
       try {
         await restoreDatabase(backupPath)
         log.info('[Migracion] Backup restaurado automáticamente tras error')
-      } catch (restoreErr: any) {
+      } catch (restoreErr) {
         log.error('[Migracion] Error restaurando backup:', restoreErr)
       }
     }
@@ -877,7 +877,7 @@ export async function runLegacyMigration(
       success: false,
       tablesImported: insertCounts,
       totalRecords: totalInserts,
-      errors: [`Error durante el parseo: ${err.message}`],
+      errors: [`Error durante el parseo: ${toErrorMessage(err)}`],
       photosExported,
       backupPath: backupCreated ? backupPath : undefined,
     }
@@ -886,12 +886,12 @@ export async function runLegacyMigration(
   // Seed para client_number_seq
   try {
     db.exec("INSERT OR IGNORE INTO client_number_seq (id, last_number) VALUES (1, 1000);")
-  } catch {}
+  } catch { /* secuencia ya existe: ignorar */ }
 
   // Recargar datos del dashboard (actualizar estado de membresías vencidas)
   try {
     db.exec("UPDATE memberships SET status = 'expired' WHERE end_date < datetime('now', 'start of day') AND status = 'active'")
-  } catch {}
+  } catch { /* sin membresías que expirar o tabla vacía: ignorar */ }
 
   // Sincronizar estado de clientes según su membresía más reciente
   try {
@@ -912,7 +912,7 @@ export async function runLegacyMigration(
           ELSE 'inactive'
         END
     `)
-  } catch {}
+  } catch { /* sincronización de estados no crítica si falla */ }
 
   log.info('[Migracion] Migración completada exitosamente')
   log.info(`[Migracion] Registros: ${totalInserts}, Fotos: ${photosExported}`)

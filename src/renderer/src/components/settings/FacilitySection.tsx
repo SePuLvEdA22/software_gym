@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { GymSettingsForm } from './GymSettingsForm'
+import { toErrorMessage } from '../../../../shared/errors'
 
 export function FacilitySection(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
@@ -50,8 +51,8 @@ export function FacilitySection(): JSX.Element {
        } else {
          showToast('error', result.error || 'No se pudo abrir el kiosco. Mira la terminal para detalles.', 'Error')
        }
-    } catch (error: any) {
-      showToast('error', `Error inesperado: ${error?.message || 'desconocido'}. Asegúrate de estar en la ventana de Electron con npm run dev ejecutándose.`, 'Error')
+    } catch (error) {
+      showToast('error', `Error inesperado: ${toErrorMessage(error, 'desconocido')}. Asegúrate de estar en la ventana de Electron con npm run dev ejecutándose.`, 'Error')
     }
   }
 

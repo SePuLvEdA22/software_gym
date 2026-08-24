@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, PaymentMethod } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
+import { toErrorMessage } from '../../../../shared/errors'
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
@@ -58,8 +59,8 @@ export function AbonoModal({
       } else {
         showToast('error', result.error || 'No se pudo registrar el abono', 'Error')
       }
-    } catch (error: any) {
-      showToast('error', error?.message || 'Error desconocido', 'Error')
+    } catch (error) {
+      showToast('error', toErrorMessage(error, 'Error desconocido'), 'Error')
     } finally {
       setLoading(false)
     }

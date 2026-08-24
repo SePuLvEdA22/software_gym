@@ -1,3 +1,7 @@
+import type { AppState } from '../appStore'
+
+type SetAppState = (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void
+
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
 export type ThemeMode = 'dark' | 'light'
 
@@ -45,7 +49,7 @@ function getInitialTheme(): ThemeMode {
   try {
     const stored = localStorage.getItem('bodyfitgym-theme')
     if (stored === 'dark' || stored === 'light') return stored
-  } catch {}
+  } catch { /* preferencia inválida o storage no disponible: usar tema por defecto */ }
   if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light'
   return 'dark'
 }
@@ -61,13 +65,13 @@ export const defaultUIState = {
   confirmResolve: null as ((value: boolean) => void) | null
 }
 
-export const createUIActions = (set: any) => ({
+export const createUIActions = (set: SetAppState) => ({
   setLoading: (loading: boolean) => set({ loading }),
   setSearchQuery: (query: string) => set({ searchQuery: query }),
-  toggleSidebar: () => set((state: any) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () => set((state: AppState) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setTriggerNewClientModal: (value: boolean) => set({ triggerNewClientModal: value }),
   setTheme: (theme: ThemeMode) => {
-    try { localStorage.setItem('bodyfitgym-theme', theme) } catch {}
+    try { localStorage.setItem('bodyfitgym-theme', theme) } catch { /* almacenamiento no disponible: ignorar */ }
     document.documentElement.setAttribute('data-theme', theme)
     set({ theme })
   },
@@ -75,15 +79,15 @@ export const createUIActions = (set: any) => ({
   showToast: (type: ToastType, message: string, title?: string) => {
     const id = generateToastId()
     const toast: Toast = { id, type, message, title }
-    set((state: any) => ({ toasts: [...state.toasts, toast] }))
+    set((state: AppState) => ({ toasts: [...state.toasts, toast] }))
     setTimeout(() => {
-      set((state: any) => ({
+      set((state: AppState) => ({
         toasts: state.toasts.filter((t: Toast) => t.id !== id)
       }))
     }, 5000)
   },
 
-  removeToast: (id: string) => set((state: any) => ({
+  removeToast: (id: string) => set((state: AppState) => ({
     toasts: state.toasts.filter((t: Toast) => t.id !== id)
   })),
 
@@ -91,7 +95,7 @@ export const createUIActions = (set: any) => ({
     set({ confirmDialog: options, confirmResolve: resolve })
   }),
 
-  resolveConfirm: (value: boolean) => set((state: any) => {
+  resolveConfirm: (value: boolean) => set((state: AppState) => {
     state.confirmResolve?.(value)
     return { confirmDialog: null, confirmResolve: null }
   })

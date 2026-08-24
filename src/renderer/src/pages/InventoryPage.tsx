@@ -6,6 +6,7 @@ import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
+import { toErrorMessage } from '../../../shared/errors'
 
 const categoryLabels: Record<string, string> = {
   supplement: 'Suplementos',
@@ -92,8 +93,8 @@ function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Elemen
         else showToast('error', r.error || 'Error al crear el producto')
       }
       if (!loading) onSave()
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally { setLoading(false) }
   }
 
@@ -213,8 +214,8 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
       } else {
         showToast('error', r.error || 'Error al registrar movimiento')
       }
-    } catch (err: any) {
-      showToast('error', err.message)
+    } catch (err) {
+      showToast('error', toErrorMessage(err))
     } finally { setLoading(false) }
   }
 

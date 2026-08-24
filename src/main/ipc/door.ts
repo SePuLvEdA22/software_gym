@@ -10,7 +10,7 @@ export function registerDoorHandlers(): void {
     try {
       const result = await openDoor()
       return { success: true, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error opening door:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -20,7 +20,7 @@ export function registerDoorHandlers(): void {
     try {
       const status = getDoorStatus()
       return { success: true, data: status }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting door status:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -34,7 +34,7 @@ export function registerDoorHandlers(): void {
     try {
       const config = getDoorConfig()
       return { success: true, data: config }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error getting door config:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -48,7 +48,7 @@ export function registerDoorHandlers(): void {
       persistDoorConfig()
       log.info('Door config saved to database')
       return { success: true, data: null }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error saving door config:', error)
       return { success: false, error: sanitizeError(error) }
     }
@@ -60,7 +60,7 @@ export function registerDoorHandlers(): void {
     try {
       const result = await testDoorConnection()
       return { success: true, data: result }
-    } catch (error: any) {
+    } catch (error) {
       log.error('Error testing connection:', error)
       return { success: false, error: sanitizeError(error) }
     }

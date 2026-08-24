@@ -1,3 +1,7 @@
+import type { AppState } from '../appStore'
+
+type SetAppState = (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void
+
 import { Client, MembershipPlan, AccessLog } from '../../../../shared/types'
 
 export interface DataSlice {
@@ -19,15 +23,15 @@ export const defaultDataState = {
   accessLogs: [] as AccessLog[]
 }
 
-export const createDataActions = (set: any) => ({
+export const createDataActions = (set: SetAppState) => ({
   setClients: (clients: Client[]) => set({ clients }),
   setPlans: (plans: MembershipPlan[]) => set({ plans }),
   setAccessLogs: (logs: AccessLog[]) => set({ accessLogs: logs }),
-  addClient: (client: Client) => set((state: any) => ({ clients: [...state.clients, client] })),
-  updateClientInState: (client: Client) => set((state: any) => ({
+  addClient: (client: Client) => set((state: AppState) => ({ clients: [...state.clients, client] })),
+  updateClientInState: (client: Client) => set((state: AppState) => ({
     clients: state.clients.map((c: Client) => c.id === client.id ? client : c)
   })),
-  removeClient: (id: string) => set((state: any) => ({
+  removeClient: (id: string) => set((state: AppState) => ({
     clients: state.clients.filter((c: Client) => c.id !== id)
   }))
 })

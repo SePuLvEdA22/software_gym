@@ -19,7 +19,7 @@ export function UpdateChecker(): JSX.Element {
 
   useEffect(() => {
     // Cargar versión actual desde la app
-    window.electronAPI?.system?.getAppVersion().then((r: any) => {
+    window.electronAPI?.system?.getAppVersion().then((r) => {
       if (r.success && r.data) setCurrentVersion(r.data)
     })
   }, [])
@@ -33,7 +33,7 @@ export function UpdateChecker(): JSX.Element {
         setErrorMsg('')
       }))
 
-      cleanups.push(window.electronAPI.update.onAvailable((info: any) => {
+      cleanups.push(window.electronAPI.update.onAvailable((info) => {
         setStatus('available')
         setVersion(info?.version ?? '')
       }))
@@ -43,12 +43,12 @@ export function UpdateChecker(): JSX.Element {
         setTimeout(() => setStatus('idle'), 4000)
       }))
 
-      cleanups.push(window.electronAPI.update.onError((error: any) => {
+      cleanups.push(window.electronAPI.update.onError((error) => {
         setStatus('error')
         setErrorMsg(error)
       }))
 
-      cleanups.push(window.electronAPI.update.onDownloadProgress((p: any) => {
+      cleanups.push(window.electronAPI.update.onDownloadProgress((p) => {
         setStatus('downloading')
         setProgress(p.percent ?? 0)
       }))

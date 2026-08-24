@@ -33,21 +33,19 @@ class SqlJsDatabase {
   }
 
   prepare(sql: string): StatementWrapper {
-    const self = this
-
     return {
-      run(...params: unknown[]): { changes: number } {
-        const stmt = self.db.prepare(sql)
+      run: (...params: unknown[]): { changes: number } => {
+        const stmt = this.db.prepare(sql)
         stmt.bind(params)
         stmt.step()
         stmt.free()
-        const changes = self.db.getRowsModified()
-        self.scheduleSave()
+        const changes = this.db.getRowsModified()
+        this.scheduleSave()
         return { changes }
       },
 
-      get(...params: unknown[]): Record<string, unknown> | undefined {
-        const stmt = self.db.prepare(sql)
+      get: (...params: unknown[]): Record<string, unknown> | undefined => {
+        const stmt = this.db.prepare(sql)
         stmt.bind(params)
         if (stmt.step()) {
           const row = stmt.getAsObject() as Record<string, unknown>
@@ -58,8 +56,8 @@ class SqlJsDatabase {
         return undefined
       },
 
-      all(...params: unknown[]): Record<string, unknown>[] {
-        const stmt = self.db.prepare(sql)
+      all: (...params: unknown[]): Record<string, unknown>[] => {
+        const stmt = this.db.prepare(sql)
         stmt.bind(params)
         const rows: Record<string, unknown>[] = []
         while (stmt.step()) {
@@ -94,22 +92,21 @@ class SqlJsDatabase {
   }
 
   transaction<T>(fn: (...args: unknown[]) => T): (...args: unknown[]) => T {
-    const self = this
     return (...args: unknown[]) => {
       this.batchSaving = true
-      self.run('BEGIN')
+      this.run('BEGIN')
       try {
         const result = fn(...args)
-        self.run('COMMIT')
+        this.run('COMMIT')
         this.batchSaving = false
         // Durabilidad: una transacción completada se persiste de inmediato,
         // sin esperar la ventana de debounce.
-        self.saveNow()
+        this.saveNow()
         return result
       } catch (e) {
-        self.run('ROLLBACK')
+        this.run('ROLLBACK')
         this.batchSaving = false
-        self.saveNow()
+        this.saveNow()
         throw e
       }
     }
@@ -186,7 +183,7 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
     }
     db = new SqlJsDatabase(buffer, dbPath, Sql)
     db.run('PRAGMA foreign_keys = ON')
-  } catch (err: any) {
+  } catch (err) {
     log.warn('Database error, attempting recovery by recreating...', err)
 
     if (db) {
@@ -197,8 +194,8 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
     const walPath = dbPath + '-wal'
     const shmPath = dbPath + '-shm'
     try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
-    try { unlinkSync(walPath) } catch {}
-    try { unlinkSync(shmPath) } catch {}
+    try { unlinkSync(walPath) } catch { /* best-effort: puede no existir */ }
+    try { unlinkSync(shmPath) } catch { /* best-effort: puede no existir */ }
 
     if (existsSync(dbPath)) {
       log.warn('Db file still exists after deletion attempt, renaming...')
@@ -657,7 +654,7 @@ export function backupDatabase(destPath: string): boolean {
     writeFileSync(destPath, data)
     log.info(`Database backed up to: ${destPath}`)
     return true
-  } catch (error: any) {
+  } catch (error) {
     log.error('Backup error:', error)
     return false
   }
@@ -681,15 +678,15 @@ export async function restoreDatabase(srcPath: string): Promise<boolean> {
       copyFileSync(destPath, backupPath)
       const walPath = destPath + '-wal'
       const shmPath = destPath + '-shm'
-      try { copyFileSync(walPath, backupPath + '-wal') } catch {}
-      try { copyFileSync(shmPath, backupPath + '-shm') } catch {}
+      try { copyFileSync(walPath, backupPath + '-wal') } catch { /* best-effort: WAL puede no existir */ }
+      try { copyFileSync(shmPath, backupPath + '-shm') } catch { /* best-effort: SHM puede no existir */ }
       log.info(`Existing database backed up to: ${backupPath}`)
     }
 
     const walPath = destPath + '-wal'
     const shmPath = destPath + '-shm'
-    try { unlinkSync(walPath) } catch {}
-    try { unlinkSync(shmPath) } catch {}
+    try { unlinkSync(walPath) } catch { /* best-effort: puede no existir */ }
+    try { unlinkSync(shmPath) } catch { /* best-effort: puede no existir */ }
 
     const srcData = readFileSync(srcPath)
     const Sql = await getSqlJs()
@@ -699,7 +696,7 @@ export async function restoreDatabase(srcPath: string): Promise<boolean> {
     runMigrations(db)
     log.info('Database restored successfully')
     return true
-  } catch (error: any) {
+  } catch (error) {
     log.error('Restore error:', error)
     if (!db) {
       try {

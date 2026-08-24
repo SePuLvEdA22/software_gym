@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Membership } from '@shared/types'
 import { format, parseISO } from 'date-fns'
+import { toErrorMessage } from '../../../../shared/errors'
 
 interface FreezeModalProps {
   membership: Membership
@@ -38,8 +39,8 @@ export function FreezeModal({
       } else {
         showToast('error', result.error || 'No se pudo congelar la membresía', 'Error')
       }
-    } catch (error: any) {
-      showToast('error', error?.message || 'Error desconocido', 'Error')
+    } catch (error) {
+      showToast('error', toErrorMessage(error, 'Error desconocido'), 'Error')
     } finally {
       setLoading(false)
     }

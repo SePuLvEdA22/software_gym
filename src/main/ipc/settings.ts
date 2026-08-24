@@ -7,17 +7,17 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('gym:getSettings', async () => {
     try {
       return { success: true, data: getGymSettings() }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })
 
-  ipcMain.handle('gym:saveSettings', async (_, settings: any) => {
+  ipcMain.handle('gym:saveSettings', async (_, settings: Parameters<typeof saveGymSettings>[0]) => {
     try {
       const auth = requireRole('admin')
       if (auth) return auth
       return { success: true, data: saveGymSettings(settings) }
-    } catch (error: any) {
+    } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }
   })

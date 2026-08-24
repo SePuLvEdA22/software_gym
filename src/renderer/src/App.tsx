@@ -5,6 +5,7 @@ import { ToastContainer } from '@/components/ToastContainer'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useAppStore } from '@/store/appStore'
 import { hasPermission } from '@shared/permissions'
+import type { User } from '@shared/types'
 import { ClientsPage } from '@/pages/ClientsPage'
 import { PaymentsPage } from '@/pages/PaymentsPage'
 import { LogsPage } from '@/pages/LogsPage'
@@ -82,7 +83,7 @@ function HomeRoute({ currentUser }: { currentUser: SessionUser }): JSX.Element {
   return <DashboardPage />
 }
 
-function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
+function AdminLayout({ currentUser }: { currentUser: User | null }): JSX.Element {
   const location = useLocation()
   const navigate = useNavigate()
   const title = getPageTitle(location.pathname)
@@ -195,7 +196,7 @@ function AdminLayout({ currentUser }: { currentUser: any }): JSX.Element {
 
 export function App(): JSX.Element {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const theme = useAppStore((s) => s.theme)
 
   useEffect(() => {
@@ -208,7 +209,7 @@ export function App(): JSX.Element {
       try {
         const result = await window.electronAPI.auth.checkSession()
         setAuthenticated(result.success && !!result.data)
-        if (result.success) setCurrentUser(result.data)
+        if (result.success) setCurrentUser(result.data ?? null)
       } catch {
         setAuthenticated(false)
       }
@@ -239,7 +240,7 @@ export function App(): JSX.Element {
             <LoginPage onLoginSuccess={async () => {
                 const r = await window.electronAPI.auth.checkSession()
                 if (r.success) {
-                  setCurrentUser(r.data)
+                  setCurrentUser(r.data ?? null)
                   setAuthenticated(true)
                 }
               }} />

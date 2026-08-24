@@ -12,10 +12,6 @@ export function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModal
   const [history, setHistory] = useState<FreezeHistory[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadHistory()
-  }, [])
-
   const loadHistory = async () => {
     const result = await window.electronAPI.membership.getFreezeHistory(membershipId)
     if (result.success && result.data) {
@@ -23,6 +19,10 @@ export function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModal
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    loadHistory()
+  }, [])
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
