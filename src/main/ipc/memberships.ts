@@ -1,25 +1,23 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
 import { RecordPaymentSchema } from '../../shared/schemas'
+import { getAllPlans, getPlanById, createPlan, updatePlan, deletePlan } from '../database/plans'
 import {
-  getAllPlans,
-  getPlanById,
   createMembership,
   getActiveMembership,
   getClientMemberships,
   freezeMembership,
   unfreezeMembership,
+  getFreezeHistory
+} from '../database/memberships'
+import {
   recordPayment,
   getClientPayments,
   getPaymentsByDateRange,
-  getEffectivePrice,
-  getFreezeHistory,
   createMembershipWithPayment,
-  getMembershipPayments,
-  createPlan,
-  updatePlan,
-  deletePlan
-} from '../database/memberships'
+  getMembershipPayments
+} from '../database/payments'
+import { getEffectivePrice } from '../database/promotions'
 import { getClientById } from '../database/clients'
 import { logChange } from '../database/users'
 import {

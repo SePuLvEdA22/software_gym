@@ -9,7 +9,8 @@ import {
   getRevenueByYear,
   getRevenueByTimeOfDay
 } from '../database/dashboard'
-import { autoUnfreezeDueMemberships, deactivateExpiredPromotions, updateExpiredMemberships } from '../database/memberships'
+import { autoUnfreezeDueMemberships, updateExpiredMemberships } from '../database/memberships'
+import { deactivateExpiredPromotions } from '../database/promotions'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
 

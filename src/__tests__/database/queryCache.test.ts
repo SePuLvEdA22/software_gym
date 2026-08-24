@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { initDatabase, closeDatabase } from '../../main/database/index'
 import { cached, clearQueryCache } from '../../main/database/queryCache'
-import { getInactiveClients, logAccess, createMembership } from '../../main/database/memberships'
+import { getInactiveClients, createMembership } from '../../main/database/memberships'
+import { logAccess } from '../../main/database/accessLogs'
 import { createClient } from '../../main/database/clients'
-import { createPlan } from '../../main/database/memberships'
+import { createPlan } from '../../main/database/plans'
 import type { Client } from '../../shared/types'
 
 const sampleClient: Omit<Client, 'id' | 'registrationDate'> = {

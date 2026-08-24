@@ -6,7 +6,7 @@ import {
   getAccessLogsByDate,
   getClientAccessLogs,
   getTodayAccessCount,
-} from '../../main/database/memberships'
+} from '../../main/database/accessLogs'
 describe('Access Logs', () => {
   beforeAll(async () => {
     await initDatabase()

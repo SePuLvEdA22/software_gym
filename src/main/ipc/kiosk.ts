@@ -1,13 +1,10 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
 import { getClientById } from '../database/clients'
-import {
-  getAllPlans,
-  getClientMemberships,
-  getPlanById,
-  getEffectivePrice,
-  createMembershipWithPayment
-} from '../database/memberships'
+import { getAllPlans, getPlanById } from '../database/plans'
+import { getClientMemberships } from '../database/memberships'
+import { getEffectivePrice } from '../database/promotions'
+import { createMembershipWithPayment } from '../database/payments'
 import { getWhatsappConfig, sendWelcomeMessage, sendPaymentConfirmation } from '../whatsapp/index'
 import { sanitizeError } from '../helpers'
 

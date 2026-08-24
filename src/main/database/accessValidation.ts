@@ -1,6 +1,7 @@
 import { AccessValidation } from '../../shared/types'
 import { getClientByAccessCode, updateClientStatus } from './clients'
-import { getActiveOrFrozenMembership, getClientDebt, logAccess } from './memberships'
+import { getActiveOrFrozenMembership, getClientDebt } from './memberships'
+import { logAccess } from './accessLogs'
 import { getClientRoutines } from './routines'
 
 /**

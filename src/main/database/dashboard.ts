@@ -1,7 +1,8 @@
 import { getDatabase } from './index'
 import { cached } from './queryCache'
 import { DashboardMetrics, PeakHour, PlanStat, RevenueByPeriod } from '../../shared/types'
-import { getTodayAccessCount, getAccessLogsByDate, getInactiveClients } from './memberships'
+import { getInactiveClients } from './memberships'
+import { getTodayAccessCount, getAccessLogsByDate } from './accessLogs'
 import {
   formatISO,
   startOfDay,

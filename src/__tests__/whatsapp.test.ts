@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { formatISO, addDays } from 'date-fns'
 import { initDatabase, closeDatabase, getDatabase } from '../main/database/index'
 import { createClient } from '../main/database/clients'
-import { createPlan, createMembership } from '../main/database/memberships'
+import { createPlan } from '../main/database/plans'
+import { createMembership } from '../main/database/memberships'
 import {
   generatePaymentConfirmationMessage,
   generateExpiryReminderMessage,

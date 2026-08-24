@@ -7,7 +7,9 @@ import {
   getPlanById,
   createPlan,
   updatePlan,
-  deletePlan,
+  deletePlan
+} from '../../main/database/plans'
+import {
   createMembership,
   getActiveMembership,
   getActiveOrFrozenMembership,
@@ -15,20 +17,19 @@ import {
   unfreezeMembership,
   getClientMemberships,
   updateExpiredMemberships,
-  createMembershipWithPayment,
-  recordPayment,
-  getClientPayments,
-  getPaymentsByDateRange,
-  getEffectivePrice,
-  createPromotion,
-  getActivePromotionForPlan,
-  getAllPromotions,
   getInactiveClients,
   getClientDebt,
   getDebtors,
-  getTodayAccessCount,
-  getFreezeHistory,
+  getFreezeHistory
 } from '../../main/database/memberships'
+import {
+  createMembershipWithPayment,
+  recordPayment,
+  getClientPayments,
+  getPaymentsByDateRange
+} from '../../main/database/payments'
+import { getEffectivePrice, createPromotion, getActivePromotionForPlan, getAllPromotions } from '../../main/database/promotions'
+import { getTodayAccessCount } from '../../main/database/accessLogs'
 import type { Client } from '../../shared/types'
 
 const sampleClientRaw: Omit<Client, 'id' | 'registrationDate'> = {

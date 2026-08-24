@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { addDays, subMinutes } from 'date-fns'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import { createClient } from '../../main/database/clients'
+import { createPlan } from '../../main/database/plans'
 import {
-  createPlan,
   createMembership,
   freezeMembership,
   unfreezeMembership,

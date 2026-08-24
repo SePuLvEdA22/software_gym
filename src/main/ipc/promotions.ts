@@ -6,7 +6,7 @@ import {
   createPromotion,
   updatePromotion,
   deletePromotion
-} from '../database/memberships'
+} from '../database/promotions'
 import { sanitizeError } from '../helpers'
 
 export function registerPromotionHandlers(): void {

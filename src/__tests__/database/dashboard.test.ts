@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { initDatabase, closeDatabase } from '../../main/database/index'
 import { createClient } from '../../main/database/clients'
-import {
-  createPlan,
-  createMembership,
-  recordPayment,
-  logAccess,
-} from '../../main/database/memberships'
+import { createPlan } from '../../main/database/plans'
+import { createMembership } from '../../main/database/memberships'
+import { recordPayment } from '../../main/database/payments'
+import { logAccess } from '../../main/database/accessLogs'
 import { createProduct, registerMovement } from '../../main/database/inventory'
 import {
   getDashboardMetrics,

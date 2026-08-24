@@ -6,7 +6,7 @@ import {
   getAccessLogs,
   getAccessLogsByDate,
   getClientAccessLogs
-} from '../database/memberships'
+} from '../database/accessLogs'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
 import { toErrorMessage } from '../../shared/errors'

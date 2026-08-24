@@ -2,13 +2,13 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
 import { createClient, getClientById, updateClientStatus } from '../../main/database/clients'
 import { formatISO } from 'date-fns'
+import { createPlan } from '../../main/database/plans'
 import {
-  createPlan,
   createMembership,
-  createMembershipWithPayment,
-  freezeMembership,
-  getAccessLogs,
+  freezeMembership
 } from '../../main/database/memberships'
+import { createMembershipWithPayment } from '../../main/database/payments'
+import { getAccessLogs } from '../../main/database/accessLogs'
 import { saveClientRoutine } from '../../main/database/routines'
 import { validateAccess } from '../../main/database/accessValidation'
 import type { Client } from '../../shared/types'
