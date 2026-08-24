@@ -1,159 +1,104 @@
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, copyFileSync, unlinkSync, writeFileSync, readFileSync } from 'fs'
+import { existsSync, mkdirSync, copyFileSync, unlinkSync, writeFileSync } from 'fs'
 import log from 'electron-log'
-// @ts-expect-error sql.js has no type declarations
-import initSqlJs from 'sql.js'
+import Database from 'better-sqlite3'
 import { MIGRATIONS } from './migrations'
 
-type SqlJsDb = Awaited<ReturnType<typeof initSqlJs>> extends { Database: infer D } ? D : never
-
-interface StatementWrapper {
+export interface StatementWrapper {
   run(...params: unknown[]): { changes: number }
   get(...params: unknown[]): Record<string, unknown> | undefined
   all(...params: unknown[]): Record<string, unknown>[]
 }
 
-export class SqlJsDatabase {
-  private db: InstanceType<SqlJsDb>
-  private filePath: string
-  private batchSaving = false
-  private pendingSaveTimer: NodeJS.Timeout | null = null
+/**
+ * Motor SQLite nativo (better-sqlite3). Misma interfaz pública que la antigua
+ * fachada de sql.js (prepare/run/exec/transaction/export/close) para que los
+ * repositorios no cambien.
+ *
+ * Diferencia clave: las escrituras son DIRECTAS a disco (journal rollback por
+ * defecto). Ya no existe el debounce de persistencia ni los volcados diferidos:
+ * cada statement completado y cada transacción confirmada están durables en el
+ * momento en que la llamada regresa.
+ */
+export class NativeDatabase {
+  private db: Database.Database
+  readonly filePath: string
 
-  // Ventana de coalescencia: escrituras rápidas consecutivas comparten un
-  // único volcado a disco. El estado en memoria SIEMPRE está actualizado;
-  // solo se difiere la serialización del archivo completo.
-  private static readonly SAVE_DEBOUNCE_MS = 300
-
-  constructor(data: ArrayLike<number> | Buffer | null, filePath: string, Sql: Awaited<ReturnType<typeof initSqlJs>>) {
-    this.db = new Sql.Database(data)
+  constructor(filePath: string) {
     this.filePath = filePath
+    this.db = new Database(filePath)
+    this.db.pragma('foreign_keys = ON')
   }
 
   prepare(sql: string): StatementWrapper {
+    const stmt = this.db.prepare(sql)
     return {
       run: (...params: unknown[]): { changes: number } => {
-        const stmt = this.db.prepare(sql)
-        stmt.bind(params)
-        stmt.step()
-        stmt.free()
-        const changes = this.db.getRowsModified()
-        this.scheduleSave()
-        return { changes }
+        const info = stmt.run(...normalizeParams(params))
+        return { changes: Number(info.changes) }
       },
 
-      get: (...params: unknown[]): Record<string, unknown> | undefined => {
-        const stmt = this.db.prepare(sql)
-        stmt.bind(params)
-        if (stmt.step()) {
-          const row = stmt.getAsObject() as Record<string, unknown>
-          stmt.free()
-          return row
-        }
-        stmt.free()
-        return undefined
-      },
+      get: (...params: unknown[]): Record<string, unknown> | undefined =>
+        stmt.get(...normalizeParams(params)) as Record<string, unknown> | undefined,
 
-      all: (...params: unknown[]): Record<string, unknown>[] => {
-        const stmt = this.db.prepare(sql)
-        stmt.bind(params)
-        const rows: Record<string, unknown>[] = []
-        while (stmt.step()) {
-          rows.push(stmt.getAsObject() as Record<string, unknown>)
-        }
-        stmt.free()
-        return rows
-      }
+      all: (...params: unknown[]): Record<string, unknown>[] =>
+        stmt.all(...normalizeParams(params)) as Record<string, unknown>[]
     }
   }
 
   exec(sql: string): void {
     this.db.exec(sql)
-    this.scheduleSave()
   }
 
   run(sql: string, params?: unknown[]): void {
-    if (params) {
-      const stmt = this.db.prepare(sql)
-      stmt.bind(params)
-      stmt.step()
-      stmt.free()
+    if (params && params.length > 0) {
+      this.db.prepare(sql).run(...normalizeParams(params))
     } else {
-      this.db.run(sql)
+      // Sin parámetros puede haber varias sentencias separadas por ';'.
+      this.db.exec(sql)
     }
-    this.scheduleSave()
-  }
-
-  close(): void {
-    this.flushWrites()
-    this.db.close()
   }
 
   transaction<T>(fn: (...args: unknown[]) => T): (...args: unknown[]) => T {
     return (...args: unknown[]) => {
-      this.batchSaving = true
-      this.run('BEGIN')
+      this.db.exec('BEGIN')
       try {
         const result = fn(...args)
-        this.run('COMMIT')
-        this.batchSaving = false
-        // Durabilidad: una transacción completada se persiste de inmediato,
-        // sin esperar la ventana de debounce.
-        this.saveNow()
+        this.db.exec('COMMIT')
         return result
       } catch (e) {
-        this.run('ROLLBACK')
-        this.batchSaving = false
-        this.saveNow()
+        try {
+          this.db.exec('ROLLBACK')
+        } catch {
+          // La transacción ya no está activa (p. ej. COMMIT fallido); nada que revertir.
+        }
         throw e
       }
     }
   }
 
+  /** Snapshot completo de la base como Buffer (respaldos y herramientas legadas). */
   export(): Buffer {
-    return Buffer.from(this.db.export())
+    return Buffer.from(this.db.serialize())
   }
 
-  private scheduleSave(): void {
-    if (this.batchSaving) return
-    if (this.pendingSaveTimer) return
-    this.pendingSaveTimer = setTimeout(() => {
-      this.pendingSaveTimer = null
-      if (this.batchSaving) return
-      this.saveNow()
-    }, SqlJsDatabase.SAVE_DEBOUNCE_MS)
-    // Evita colgar el proceso (tests) por un timer pendiente.
-    this.pendingSaveTimer.unref?.()
-  }
-
-  /** Vuelca a disco de inmediato cualquier guardado pendiente. */
-  flushWrites(): void {
-    if (this.pendingSaveTimer) {
-      clearTimeout(this.pendingSaveTimer)
-      this.pendingSaveTimer = null
-    }
-    this.saveNow()
-  }
-
-  private saveNow(): void {
-    try {
-      const data = this.db.export()
-      writeFileSync(this.filePath, Buffer.from(data))
-    } catch (err) {
-      log.error('Failed to save database:', err)
-    }
+  close(): void {
+    this.db.close()
   }
 }
 
-let db: SqlJsDatabase | null = null
-let sqlInitPromise: Promise<Awaited<ReturnType<typeof initSqlJs>>> | null = null
-
-function getSqlJs(): Promise<Awaited<ReturnType<typeof initSqlJs>>> {
-  if (!sqlInitPromise) {
-    sqlInitPromise = initSqlJs()
-  }
-  return sqlInitPromise!
+/**
+ * better-sqlite3 solo acepta primitivos/buffer/null: undefined se convierte en
+ * NULL y los booleanos en 1/0 (sql.js era más permisivo).
+ */
+function normalizeParams(params: unknown[]): unknown[] {
+  return params.map(p =>
+    p === undefined ? null : typeof p === 'boolean' ? (p ? 1 : 0) : p
+  )
 }
+
+let db: NativeDatabase | null = null
 
 export function getDatabasePath(): string {
   const userDataPath = app.getPath('userData')
@@ -162,7 +107,7 @@ export function getDatabasePath(): string {
   return dbPath
 }
 
-export async function initDatabase(): Promise<SqlJsDatabase> {
+export async function initDatabase(): Promise<NativeDatabase> {
   if (db) return db
 
   const dbPath = getDatabasePath()
@@ -172,64 +117,72 @@ export async function initDatabase(): Promise<SqlJsDatabase> {
     mkdirSync(dbDir, { recursive: true })
   }
 
-  const Sql = await getSqlJs()
+  openAndMigrate(dbPath)
 
-  try {
-    let buffer: Buffer | null = null
-    if (existsSync(dbPath)) {
-      buffer = readFileSync(dbPath)
-    }
-    db = new SqlJsDatabase(buffer, dbPath, Sql)
-    db.run('PRAGMA foreign_keys = ON')
-  } catch (err) {
-    log.warn('Database error, attempting recovery by recreating...', err)
-
-    if (db) {
-      try { db.close() } catch { log.error('Error closing corrupted database') }
-      db = null
-    }
-
-    const walPath = dbPath + '-wal'
-    const shmPath = dbPath + '-shm'
-    try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
-    try { unlinkSync(walPath) } catch { /* best-effort: puede no existir */ }
-    try { unlinkSync(shmPath) } catch { /* best-effort: puede no existir */ }
-
-    if (existsSync(dbPath)) {
-      log.warn('Db file still exists after deletion attempt, renaming...')
-      try {
-        const renamedPath = dbPath + '.old.' + Date.now()
-        copyFileSync(dbPath, renamedPath)
-        unlinkSync(dbPath)
-      } catch (e) {
-        log.error('Could not remove corrupted database file:', e)
-      }
-    }
-
-    db = new SqlJsDatabase(null, dbPath, Sql)
-    db.run('PRAGMA foreign_keys = ON')
+  if (!db) {
+    throw new Error('Database could not be opened')
   }
-
-  runMigrations(db)
-
   return db
 }
 
-function runMigrations(db: SqlJsDatabase): void {
-  db.exec(`CREATE TABLE IF NOT EXISTS _migrations (
+/**
+ * Abre la base en `dbPath` y aplica migraciones. Si el archivo está corrupto
+ * lo elimina (o lo renombra si no se puede borrar) y arranca una base nueva,
+ * igual que hacía la versión sql.js.
+ */
+function openAndMigrate(dbPath: string): void {
+  try {
+    db = new NativeDatabase(dbPath)
+    runMigrations(db)
+    log.info('Database initialized at', dbPath)
+    return
+  } catch (err) {
+    log.error('Failed to open database, attempting recovery:', err)
+    try {
+      db?.close()
+    } catch {
+      /* la conexión pudo no abrirse */
+    }
+    db = null
+  }
+
+  const walPath = dbPath + '-wal'
+  const shmPath = dbPath + '-shm'
+  try { unlinkSync(dbPath) } catch { log.error('Failed to delete corrupted db file') }
+  try { unlinkSync(walPath) } catch { /* best-effort: puede no existir */ }
+  try { unlinkSync(shmPath) } catch { /* best-effort: puede no existir */ }
+
+  if (existsSync(dbPath)) {
+    log.warn('Db file still exists after deletion attempt, renaming...')
+    try {
+      const renamedPath = dbPath + '.old.' + Date.now()
+      copyFileSync(dbPath, renamedPath)
+      unlinkSync(dbPath)
+    } catch (e) {
+      log.error('Could not remove corrupted database file:', e)
+    }
+  }
+
+  db = new NativeDatabase(dbPath)
+  runMigrations(db)
+  log.info('Fresh database created after recovery')
+}
+
+export function runMigrations(database: NativeDatabase): void {
+  database.exec(`CREATE TABLE IF NOT EXISTS _migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`)
 
-  const appliedRows = db.prepare('SELECT name FROM _migrations').all() as { name: string }[]
+  const appliedRows = database.prepare('SELECT name FROM _migrations').all() as { name: string }[]
   const appliedSet = new Set(appliedRows.map(r => r.name))
 
-  const runAll = db.transaction(() => {
+  const runAll = database.transaction(() => {
     for (const migration of MIGRATIONS) {
       if (!appliedSet.has(migration.name)) {
-        migration.run(db)
-        db.prepare('INSERT INTO _migrations (name) VALUES (?)').run(migration.name)
+        migration.run(database)
+        database.prepare('INSERT INTO _migrations (name) VALUES (?)').run(migration.name)
         log.info(`Migration applied: ${migration.name}`)
       }
     }
@@ -239,7 +192,7 @@ function runMigrations(db: SqlJsDatabase): void {
   log.info('Database migrations completed')
 }
 
-export function getDatabase(): SqlJsDatabase {
+export function getDatabase(): NativeDatabase {
   if (!db) {
     throw new Error('Database not initialized')
   }
@@ -252,6 +205,8 @@ export function backupDatabase(destPath: string): boolean {
       log.error('Database not initialized for backup')
       return false
     }
+    // serialize() produce un snapshot consistente del estado actual sin
+    // depender de archivos -wal (no usamos WAL: journal rollback por defecto).
     const data = db.export()
     writeFileSync(destPath, data)
     log.info(`Database backed up to: ${destPath}`)
@@ -271,7 +226,7 @@ export async function restoreDatabase(srcPath: string): Promise<boolean> {
     }
 
     if (db) {
-      db.close()
+      try { db.close() } catch { /* puede estar corrupta */ }
       db = null
     }
 
@@ -290,26 +245,15 @@ export async function restoreDatabase(srcPath: string): Promise<boolean> {
     try { unlinkSync(walPath) } catch { /* best-effort: puede no existir */ }
     try { unlinkSync(shmPath) } catch { /* best-effort: puede no existir */ }
 
-    const srcData = readFileSync(srcPath)
-    const Sql = await getSqlJs()
     copyFileSync(srcPath, destPath)
-    db = new SqlJsDatabase(srcData, destPath, Sql)
-    db.run('PRAGMA foreign_keys = ON')
-    runMigrations(db)
+    openAndMigrate(destPath)
     log.info('Database restored successfully')
     return true
   } catch (error) {
     log.error('Restore error:', error)
     if (!db) {
       try {
-        const Sql = await getSqlJs()
-        const destPath = getDatabasePath()
-        let buffer: Buffer | null = null
-        if (existsSync(destPath)) {
-          buffer = readFileSync(destPath)
-        }
-        db = new SqlJsDatabase(buffer, destPath, Sql)
-        db.run('PRAGMA foreign_keys = ON')
+        openAndMigrate(getDatabasePath())
       } catch (e) {
         log.error('Failed to reopen database after restore error:', e)
       }
@@ -320,7 +264,7 @@ export async function restoreDatabase(srcPath: string): Promise<boolean> {
 
 export function closeDatabase(): void {
   if (db) {
-    db.close()
+    try { db.close() } catch { /* idempotente */ }
     db = null
     log.info('Database closed')
   }

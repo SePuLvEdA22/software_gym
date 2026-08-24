@@ -80,7 +80,7 @@ Crear un archivo `.env` en la raíz del proyecto (opcional):
 | **Runtime** | Electron 31 |
 | **Frontend** | React 18, React Router 6, Zustand, Recharts |
 | **Lenguaje** | TypeScript 5 (strict) |
-| **Base de Datos** | SQLite vía sql.js (WASM, 0 dependencias nativas) |
+| **Base de Datos** | SQLite nativo (better-sqlite3, escritura síncrona duradera) |
 | **Build** | electron-vite, electron-builder |
 | **Validación** | Zod |
 | **Tests** | Vitest |

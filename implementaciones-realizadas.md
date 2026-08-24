@@ -768,3 +768,38 @@ El documento de identidad era **obligatorio** en el formulario de cliente (valid
 | `src/renderer/src/pages/ClientFormPage.tsx` | Sin validación obligatoria, duplicado condicional |
 | `src/__tests__/schemas/validation.test.ts` | 2 tests invertidos |
 | `src/__tests__/database/clients.test.ts` | +2 tests |
+---
+
+## 27. Motor de base de datos: sql.js (WASM) -> better-sqlite3 nativo (agosto 2026)
+
+### Por que?
+- La BD real (~375 MB) se cargaba completa en memoria WASM en cada arranque y se serializaba a disco con debounce de 300 ms: alto consumo de RAM y ventana de perdida ante crash entre flushes.
+- better-sqlite3 escribe cada statement/transaccion directamente a disco: durabilidad inmediata, sin debounce ni volcados diferidos.
+
+### Que se hizo
+- **Nueva clase NativeDatabase** en src/main/database/index.ts con la MISMA interfaz publica que la fachada de sql.js (prepare/run/exec/transaction/export/close): los 123 puntos de llamada en repositorios no cambiaron.
+- Normalizacion de parametros al binding nativo (undefined pasa a NULL; booleanos a 1/0).
+- initDatabase: apertura sincrona + migraciones existentes (_migrations, 001-014 intactas); recuperacion por corrupcion identica (borrar/renombrar + base nueva). El archivo bodyfitgym.db es SQLite estandar: se abre directo, SIN migracion de datos.
+- backupDatabase usa db.serialize() (snapshot consistente; no usamos WAL para que la copia del .db nunca quede desactualizada).
+- Se eliminaron flushWrites() y el mecanismo de coalescencia; persistence.test.ts reescrito con las garantias nuevas (escritura inmediata, re-apertura, durabilidad de transaccion, ROLLBACK).
+- Dependencias: better-sqlite3 (+types) en runtime; sql.js movido a devDependencies SOLO para scripts legados (fix-mojibake-db, import-migrated-data, bench-save).
+- Smoke verificado bajo Node 22 (prebuilt) y Electron 43 (scripts/smoke-native.cjs).
+
+### Impacto
+| Metrica | sql.js | better-sqlite3 |
+|---|---|---|
+| Persistencia | debounce 300 ms + saveNow en transacciones | directa e inmediata |
+| Ventana de perdida ante crash | hasta 300 ms de escrituras | 0 (cada COMMIT es durable) |
+| RAM en arranque | BD completa en WASM | pagina a pagina |
+
+### Empaquetado
+electron-builder reconstruye el modulo nativo para Electron durante build:win; los runners de GitHub ya incluyen el toolchain de VS. Los tests corren bajo Node con los prebuilt oficiales.
+
+### Archivos modificados
+| Archivo | Accion |
+|---------|--------|
+| src/main/database/index.ts | Fachada reescrita sobre better-sqlite3 |
+| src/main/database/migrations/types.ts | Tipo SqlJsDatabase -> NativeDatabase |
+| src/__tests__/database/persistence.test.ts | Suite reescrita (4 garantias nuevas) |
+| scripts/smoke-native.cjs | Nuevo: smoke del modulo nativo en Electron |
+| package.json | +better-sqlite3; sql.js a devDeps |

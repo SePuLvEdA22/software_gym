@@ -1,4 +1,4 @@
-import type { SqlJsDatabase } from '../index'
+import type { NativeDatabase } from '../index'
 
 /**
  * Contrato de una migración de esquema. Cada archivo en esta carpeta exporta
@@ -7,5 +7,5 @@ import type { SqlJsDatabase } from '../index'
  */
 export interface Migration {
   name: string
-  run: (db: SqlJsDatabase) => void
+  run: (db: NativeDatabase) => void
 }
