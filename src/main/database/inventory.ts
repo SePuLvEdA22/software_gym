@@ -1,5 +1,11 @@
 import { getDatabase } from './index'
-import { Product, InventoryMovement, PageResponse, SalesPeriod, SalesSummary } from '../../shared/types'
+import {
+  Product,
+  InventoryMovement,
+  PageResponse,
+  SalesPeriod,
+  SalesSummary,
+} from '../../shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { formatISO, startOfDay, startOfWeek, startOfMonth } from 'date-fns'
 import { getSessionUser } from './users'
@@ -32,7 +38,7 @@ function mapDbProduct(p: DbProduct): Product {
     barcode: p.barcode,
     isActive: p.is_active === 1,
     createdAt: p.created_at,
-    updatedAt: p.updated_at
+    updatedAt: p.updated_at,
   }
 }
 
@@ -62,11 +68,17 @@ function mapDbMovement(m: DbMovement): InventoryMovement {
     description: m.description,
     userId: m.user_id,
     userName: m.user_name || '',
-    timestamp: m.timestamp
+    timestamp: m.timestamp,
   }
 }
 
-export function getAllProducts(activeOnly = true, page = 1, pageSize = 50, search?: string, category?: string): PageResponse<Product> {
+export function getAllProducts(
+  activeOnly = true,
+  page = 1,
+  pageSize = 50,
+  search?: string,
+  category?: string,
+): PageResponse<Product> {
   const db = getDatabase()
   let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1'
   let query = 'SELECT * FROM products WHERE 1=1'
@@ -106,14 +118,30 @@ export function getProductById(id: string): Product | null {
   return row ? mapDbProduct(row) : null
 }
 
-export function createProduct(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Product {
+export function createProduct(
+  data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>,
+): Product {
   const db = getDatabase()
   const id = uuidv4()
   const now = formatISO(new Date())
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO products (id, name, category, description, price, cost, stock, min_stock, barcode, is_active, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `).run(id, data.name, data.category, data.description, data.price, data.cost, data.stock, data.minStock, data.barcode, now, now)
+  `,
+  ).run(
+    id,
+    data.name,
+    data.category,
+    data.description,
+    data.price,
+    data.cost,
+    data.stock,
+    data.minStock,
+    data.barcode,
+    now,
+    now,
+  )
   return getProductById(id)!
 }
 
@@ -123,15 +151,42 @@ export function updateProduct(id: string, data: Partial<Product>): Product | nul
   if (!existing) return null
   const fields: string[] = []
   const params: (string | number)[] = []
-  if (data.name !== undefined) { fields.push('name = ?'); params.push(data.name) }
-  if (data.category !== undefined) { fields.push('category = ?'); params.push(data.category) }
-  if (data.description !== undefined) { fields.push('description = ?'); params.push(data.description) }
-  if (data.price !== undefined) { fields.push('price = ?'); params.push(data.price) }
-  if (data.cost !== undefined) { fields.push('cost = ?'); params.push(data.cost) }
-  if (data.stock !== undefined) { fields.push('stock = ?'); params.push(data.stock) }
-  if (data.minStock !== undefined) { fields.push('min_stock = ?'); params.push(data.minStock) }
-  if (data.barcode !== undefined) { fields.push('barcode = ?'); params.push(data.barcode) }
-  if (data.isActive !== undefined) { fields.push('is_active = ?'); params.push(data.isActive ? 1 : 0) }
+  if (data.name !== undefined) {
+    fields.push('name = ?')
+    params.push(data.name)
+  }
+  if (data.category !== undefined) {
+    fields.push('category = ?')
+    params.push(data.category)
+  }
+  if (data.description !== undefined) {
+    fields.push('description = ?')
+    params.push(data.description)
+  }
+  if (data.price !== undefined) {
+    fields.push('price = ?')
+    params.push(data.price)
+  }
+  if (data.cost !== undefined) {
+    fields.push('cost = ?')
+    params.push(data.cost)
+  }
+  if (data.stock !== undefined) {
+    fields.push('stock = ?')
+    params.push(data.stock)
+  }
+  if (data.minStock !== undefined) {
+    fields.push('min_stock = ?')
+    params.push(data.minStock)
+  }
+  if (data.barcode !== undefined) {
+    fields.push('barcode = ?')
+    params.push(data.barcode)
+  }
+  if (data.isActive !== undefined) {
+    fields.push('is_active = ?')
+    params.push(data.isActive ? 1 : 0)
+  }
   if (fields.length === 0) return existing
   fields.push('updated_at = ?')
   params.push(formatISO(new Date()))
@@ -150,7 +205,7 @@ export function registerMovement(
   type: 'in' | 'out',
   quantity: number,
   price: number,
-  description: string
+  description: string,
 ): InventoryMovement | null {
   const db = getDatabase()
   const product = getProductById(productId)
@@ -165,23 +220,50 @@ export function registerMovement(
   const user = getSessionUser()
   const id = uuidv4()
   const now = formatISO(new Date())
-  const total = price * quantity
+  // H1: Entrada solo incrementa stock, sin valor monetario. El precio/total
+  // de una entrada se fuerza a 0 para no confundir con ventas; el historial
+  // mostrará "—" y getSalesSummary ya ignora type='in'.
+  const effectivePrice = type === 'in' ? 0 : price
+  const total = type === 'in' ? 0 : price * quantity
 
   db.transaction(() => {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO inventory_movements (id, product_id, product_name, type, quantity, price, total, description, user_id, user_name, timestamp)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, productId, product.name, type, quantity, price, total, description, user?.id || null, user?.fullName || 'Sistema', now)
+    `,
+    ).run(
+      id,
+      productId,
+      product.name,
+      type,
+      quantity,
+      effectivePrice,
+      total,
+      description,
+      user?.id || null,
+      user?.fullName || 'Sistema',
+      now,
+    )
 
     const change = type === 'in' ? quantity : -quantity
-    db.prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?').run(change, now, productId)
+    db.prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?').run(
+      change,
+      now,
+      productId,
+    )
   })()
 
-  const row = db.prepare('SELECT * FROM inventory_movements WHERE id = ?').get(id) as DbMovement | undefined
+  const row = db.prepare('SELECT * FROM inventory_movements WHERE id = ?').get(id) as
+    DbMovement | undefined
   return row ? mapDbMovement(row) : null
 }
 
-export function getMovements(productId?: string, page = 1, pageSize = 50): PageResponse<InventoryMovement> {
+export function getMovements(
+  productId?: string,
+  page = 1,
+  pageSize = 50,
+): PageResponse<InventoryMovement> {
   const db = getDatabase()
   let countQuery = 'SELECT COUNT(*) as total FROM inventory_movements WHERE 1=1'
   let query = 'SELECT * FROM inventory_movements WHERE 1=1'
@@ -204,7 +286,7 @@ export function getMovements(productId?: string, page = 1, pageSize = 50): PageR
 
 export function getLowStockProducts(threshold?: number): Product[] {
   const result = getAllProducts(true, 1, 10000)
-  return result.data.filter(p => p.stock <= (threshold || p.minStock))
+  return result.data.filter((p) => p.stock <= (threshold || p.minStock))
 }
 
 export function getSalesSummary(period: SalesPeriod = 'month'): SalesSummary {

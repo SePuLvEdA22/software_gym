@@ -67,12 +67,16 @@ describe('Inventory', () => {
     })
 
     it('should list only active products by default', () => {
-      const inactive = createProduct({ ...sampleProduct, name: 'Inactive Product', barcode: 'INACTIVE001' })
+      const inactive = createProduct({
+        ...sampleProduct,
+        name: 'Inactive Product',
+        barcode: 'INACTIVE001',
+      })
       updateProduct(inactive.id, { isActive: false })
       const activeProducts = getAllProducts()
-      expect(activeProducts.data.every(p => p.isActive)).toBe(true)
+      expect(activeProducts.data.every((p) => p.isActive)).toBe(true)
       const allProducts = getAllProducts(false)
-      expect(allProducts.data.some(p => !p.isActive)).toBe(true)
+      expect(allProducts.data.some((p) => !p.isActive)).toBe(true)
     })
 
     it('should update a product', () => {
@@ -105,19 +109,44 @@ describe('Inventory', () => {
 
   describe('Inventory Movements', () => {
     it('should register an entry movement', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Movement Test In', barcode: 'MOVIN001' })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Movement Test In',
+        barcode: 'MOVIN001',
+      })
       const movement = registerMovement(product.id, 'in', 10, 75000, 'Compra a proveedor')
       expect(movement).not.toBeNull()
       expect(movement!.type).toBe('in')
       expect(movement!.quantity).toBe(10)
-      expect(movement!.price).toBe(75000)
-      expect(movement!.total).toBe(750000)
+      // H1: Entrada no genera valor monetario — price/total forzados a 0
+      expect(movement!.price).toBe(0)
+      expect(movement!.total).toBe(0)
       expect(movement!.productId).toBe(product.id)
       expect(movement!.productName).toBe('Movement Test In')
     })
 
+    it('should force zero price/total for entry even when price is provided', () => {
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Entry Zero Price',
+        barcode: 'ENTZERO001',
+      })
+      const movement = registerMovement(product.id, 'in', 10, 1000, 'Entrada con precio')
+      expect(movement).not.toBeNull()
+      expect(movement!.price).toBe(0)
+      expect(movement!.total).toBe(0)
+      // Solo 'out' debe monetizar
+      const out = registerMovement(product.id, 'out', 2, 5000, 'Venta')
+      expect(out!.price).toBe(5000)
+      expect(out!.total).toBe(10000)
+    })
+
     it('should register an exit movement', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Movement Test Out', barcode: 'MOVOUT001' })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Movement Test Out',
+        barcode: 'MOVOUT001',
+      })
       registerMovement(product.id, 'in', 20, 50000, 'Stock inicial')
       const movement = registerMovement(product.id, 'out', 5, 90000, 'Venta')
       expect(movement).not.toBeNull()
@@ -126,7 +155,12 @@ describe('Inventory', () => {
     })
 
     it('should update stock on movement', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Stock Test', barcode: 'STK001', stock: 0 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Stock Test',
+        barcode: 'STK001',
+        stock: 0,
+      })
       registerMovement(product.id, 'in', 100, 10000, 'Entrada masiva')
       const updated = getProductById(product.id)
       expect(updated!.stock).toBe(100)
@@ -141,7 +175,11 @@ describe('Inventory', () => {
     })
 
     it('should get movements with pagination', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Movement Pagination', barcode: 'MVPG001' })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Movement Pagination',
+        barcode: 'MVPG001',
+      })
       for (let i = 0; i < 5; i++) {
         registerMovement(product.id, 'in', 1, 1000, `Mov ${i}`)
       }
@@ -157,21 +195,31 @@ describe('Inventory', () => {
       registerMovement(p1.id, 'in', 1, 100, 'A only')
       registerMovement(p2.id, 'in', 1, 100, 'B only')
       const p1Movements = getMovements(p1.id)
-      expect(p1Movements.data.every(m => m.productId === p1.id)).toBe(true)
+      expect(p1Movements.data.every((m) => m.productId === p1.id)).toBe(true)
       expect(p1Movements.data.length).toBe(1)
     })
   })
 
   describe('Integridad de stock (movimientos inválidos)', () => {
     it('NO permite movimientos con cantidad 0', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Cero Qty', barcode: 'ZERO001', stock: 10 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Cero Qty',
+        barcode: 'ZERO001',
+        stock: 10,
+      })
       const m = registerMovement(product.id, 'in', 0, 1000, 'Cero')
       expect(m).toBeNull()
       expect(getProductById(product.id)!.stock).toBe(10)
     })
 
     it('NO permite cantidades negativas (antes una salida negativa INCREMENTABA el stock)', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Neg Qty', barcode: 'NEG001', stock: 10 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Neg Qty',
+        barcode: 'NEG001',
+        stock: 10,
+      })
       const m = registerMovement(product.id, 'out', -5, 1000, 'Negativa')
       expect(m).toBeNull()
       expect(getProductById(product.id)!.stock).toBe(10)
@@ -180,14 +228,24 @@ describe('Inventory', () => {
     })
 
     it('NO permite salidas mayores al stock disponible (el stock nunca queda negativo)', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Oversell', barcode: 'OVR001', stock: 3 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Oversell',
+        barcode: 'OVR001',
+        stock: 3,
+      })
       const m = registerMovement(product.id, 'out', 10, 1000, 'Sobreventa')
       expect(m).toBeNull()
       expect(getProductById(product.id)!.stock).toBe(3)
     })
 
     it('permite salida exacta al stock disponible (stock llega a 0)', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Exact Out', barcode: 'EXCT001', stock: 5 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Exact Out',
+        barcode: 'EXCT001',
+        stock: 5,
+      })
       const m = registerMovement(product.id, 'out', 5, 1000, 'Últimas unidades')
       expect(m).not.toBeNull()
       expect(getProductById(product.id)!.stock).toBe(0)
@@ -196,19 +254,37 @@ describe('Inventory', () => {
 
   describe('Low Stock', () => {
     it('should return products below minimum stock', () => {
-      createProduct({ ...sampleProduct, name: 'Low Stock Product', barcode: 'LOW001', stock: 5, minStock: 10 })
-      createProduct({ ...sampleProduct, name: 'Well Stocked', barcode: 'HIGH001', stock: 100, minStock: 10 })
+      createProduct({
+        ...sampleProduct,
+        name: 'Low Stock Product',
+        barcode: 'LOW001',
+        stock: 5,
+        minStock: 10,
+      })
+      createProduct({
+        ...sampleProduct,
+        name: 'Well Stocked',
+        barcode: 'HIGH001',
+        stock: 100,
+        minStock: 10,
+      })
       const low = getLowStockProducts()
-      expect(low.some(p => p.name === 'Low Stock Product')).toBe(true)
-      expect(low.every(p => p.stock <= p.minStock)).toBe(true)
+      expect(low.some((p) => p.name === 'Low Stock Product')).toBe(true)
+      expect(low.every((p) => p.stock <= p.minStock)).toBe(true)
     })
 
     it('should respect custom threshold', () => {
-      const product = createProduct({ ...sampleProduct, name: 'Custom Threshold', barcode: 'CTH001', stock: 15, minStock: 10 })
+      const product = createProduct({
+        ...sampleProduct,
+        name: 'Custom Threshold',
+        barcode: 'CTH001',
+        stock: 15,
+        minStock: 10,
+      })
       const lowDefault = getLowStockProducts()
-      expect(lowDefault.some(p => p.id === product.id)).toBe(false)
+      expect(lowDefault.some((p) => p.id === product.id)).toBe(false)
       const lowCustom = getLowStockProducts(20)
-      expect(lowCustom.some(p => p.id === product.id)).toBe(true)
+      expect(lowCustom.some((p) => p.id === product.id)).toBe(true)
     })
   })
 })

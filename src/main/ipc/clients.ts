@@ -21,6 +21,7 @@ import {
   getInactiveClients
 } from '../database/memberships'
 import { getNextClientNumber, logChange } from '../database/users'
+import { isDatabaseCorruptedError } from '../database'
 import { scheduleThumbnail } from '../photos'
 import { sanitizeError } from '../helpers'
 import { requirePermission, validateOrThrow } from './helpers'
@@ -162,6 +163,14 @@ export function registerClientHandlers(): void {
       return { success, data: null }
     } catch (error) {
       log.error('Error deleting client:', error)
+      if (isDatabaseCorruptedError(error)) {
+        log.error('Database corruption detected during deleteClient — advise restore from backup')
+        return {
+          success: false,
+          error:
+            'Base de datos corrupta (disk image is malformed). Cierra la app y restaura el último respaldo en Configuración → Sistema → Restaurar. Se conserva copia .corrupt para análisis. Si no tienes respaldo, contacta soporte.'
+        }
+      }
       return { success: false, error: sanitizeError(error) }
     }
   })

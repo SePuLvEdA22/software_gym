@@ -13,6 +13,7 @@ import { m011ForcePasswordChange } from './011-force-password-change'
 import { m012AddIndexesAndThumbnails } from './012-add-indexes-and-thumbnails'
 import { m013BackfillUserPermissions } from './013-backfill-user-permissions'
 import { m014FreezeHistoryUnfrozenBy } from './014-freeze-history-unfrozen-by'
+import { m015CleanOrphanClientData } from './015-clean-orphan-client-data'
 
 /**
  * Registro central de migraciones. El orden del array define el orden de
@@ -33,5 +34,6 @@ export const MIGRATIONS: Migration[] = [
   m011ForcePasswordChange,
   m012AddIndexesAndThumbnails,
   m013BackfillUserPermissions,
-  m014FreezeHistoryUnfrozenBy
+  m014FreezeHistoryUnfrozenBy,
+  m015CleanOrphanClientData
 ]

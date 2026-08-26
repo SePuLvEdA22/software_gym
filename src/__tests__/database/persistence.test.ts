@@ -22,6 +22,15 @@ describe('Persistencia nativa (escritura inmediata)', () => {
 
     db.prepare("INSERT INTO settings (key, value) VALUES ('persist_native_1', 'v1')").run()
 
+    // Con WAL, el COMMIT escribe al archivo -wal; el archivo principal
+    // solo se actualiza tras checkpoint. Forzamos checkpoint para que
+    // la lectura cruda del archivo principal sea determinista en el test.
+    try {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+    } catch {
+      /* best-effort */
+    }
+
     const raw = readFileSync(dbFilePath()).toString('binary')
     expect(raw.includes('persist_native_1')).toBe(true)
   })
@@ -43,6 +52,12 @@ describe('Persistencia nativa (escritura inmediata)', () => {
       db.run("INSERT INTO settings (key, value) VALUES ('persist_native_tx', 'vt')")
     })
     runTx()
+
+    try {
+      db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+    } catch {
+      /* best-effort */
+    }
 
     const raw = readFileSync(dbFilePath()).toString('binary')
     expect(raw.includes('persist_native_tx')).toBe(true)

@@ -16,10 +16,10 @@ export interface StatementWrapper {
  * fachada de sql.js (prepare/run/exec/transaction/export/close) para que los
  * repositorios no cambien.
  *
- * Diferencia clave: las escrituras son DIRECTAS a disco (journal rollback por
- * defecto). Ya no existe el debounce de persistencia ni los volcados diferidos:
- * cada statement completado y cada transacción confirmada están durables en el
- * momento en que la llamada regresa.
+ * Diferencia clave: las escrituras son DIRECTAS a disco con WAL+NORMAL
+ * (durable) y transacción nativa con SAVEPOINT. Ya no existe el debounce de
+ * persistencia ni los volcados diferidos: cada statement completado y cada
+ * transacción confirmada están durables en el momento en que la llamada regresa.
  */
 export class NativeDatabase {
   private db: Database.Database
@@ -29,6 +29,24 @@ export class NativeDatabase {
     this.filePath = filePath
     this.db = new Database(filePath)
     this.db.pragma('foreign_keys = ON')
+    // WAL + NORMAL es el modo recomendado por better-sqlite3 para durabilidad
+    // ante cortes abruptos: WAL evita que un COMMIT a medias corrompa el
+    // archivo principal. busy_timeout evita SQLITE_BUSY en respaldos concurrentes.
+    try {
+      this.db.pragma('journal_mode = WAL')
+    } catch {
+      // best-effort: algunos filesystems no soportan WAL
+    }
+    try {
+      this.db.pragma('synchronous = NORMAL')
+    } catch {
+      /* best-effort */
+    }
+    try {
+      this.db.pragma('busy_timeout = 5000')
+    } catch {
+      /* best-effort */
+    }
   }
 
   prepare(sql: string): StatementWrapper {
@@ -61,20 +79,23 @@ export class NativeDatabase {
   }
 
   transaction<T>(fn: (...args: unknown[]) => T): (...args: unknown[]) => T {
-    return (...args: unknown[]) => {
-      this.db.exec('BEGIN')
-      try {
-        const result = fn(...args)
-        this.db.exec('COMMIT')
-        return result
-      } catch (e) {
-        try {
-          this.db.exec('ROLLBACK')
-        } catch {
-          // La transacción ya no está activa (p. ej. COMMIT fallido); nada que revertir.
-        }
-        throw e
-      }
+    // Delegar a better-sqlite3 transaction nativa: usa SAVEPOINT, soporta
+    // anidamiento y es atómica ante ROLLBACK. El wrapper manual con
+    // BEGIN/COMMIT fallaba con transacciones anidadas y dejaba el archivo
+    // en estado intermedio si el COMMIT era interrumpido.
+    const wrapped = this.db.transaction(fn as (...args: unknown[]) => T)
+    return (...args: unknown[]) => (wrapped as (...a: unknown[]) => T)(...args)
+  }
+
+  /** Ejecuta PRAGMA integrity_check; retorna {ok, error} sin lanzar. */
+  checkIntegrity(): { ok: boolean; error?: string } {
+    try {
+      const row = this.db.prepare('PRAGMA integrity_check').get() as { integrity_check?: string } | undefined
+      const value = (row as Record<string, unknown>)?.['integrity_check'] as string | undefined
+      if (value === 'ok' || value === undefined) return { ok: true }
+      return { ok: false, error: String(value) }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }
   }
 
@@ -96,6 +117,23 @@ function normalizeParams(params: unknown[]): unknown[] {
   return params.map(p =>
     p === undefined ? null : typeof p === 'boolean' ? (p ? 1 : 0) : p
   )
+}
+
+export function isDatabaseCorruptedError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  const msg = error.message.toLowerCase()
+  return (
+    msg.includes('malformed') ||
+    msg.includes('disk image is malformed') ||
+    msg.includes('file is not a database') ||
+    msg.includes('database disk image') ||
+    msg.includes('not a database')
+  )
+}
+
+export function checkDatabaseIntegrity(): { ok: boolean; error?: string } {
+  if (!db) return { ok: false, error: 'Database not initialized' }
+  return db.checkIntegrity()
 }
 
 let db: NativeDatabase | null = null
@@ -129,10 +167,16 @@ export async function initDatabase(): Promise<NativeDatabase> {
  * Abre la base en `dbPath` y aplica migraciones. Si el archivo está corrupto
  * lo elimina (o lo renombra si no se puede borrar) y arranca una base nueva,
  * igual que hacía la versión sql.js.
+ * También ejecuta PRAGMA integrity_check tras abrir para detectar corrupción
+ * silenciosa que no lanza excepción en la apertura (caso del bug reportado).
  */
 function openAndMigrate(dbPath: string): void {
   try {
     db = new NativeDatabase(dbPath)
+    const integrity = db.checkIntegrity()
+    if (!integrity.ok) {
+      throw new Error(`integrity_check failed: ${integrity.error}`)
+    }
     runMigrations(db)
     log.info('Database initialized at', dbPath)
     return
@@ -205,8 +249,8 @@ export function backupDatabase(destPath: string): boolean {
       log.error('Database not initialized for backup')
       return false
     }
-    // serialize() produce un snapshot consistente del estado actual sin
-    // depender de archivos -wal (no usamos WAL: journal rollback por defecto).
+    // serialize() produce un snapshot consistente del estado actual,
+    // incluyendo WAL si existe (WAL+NORMAL activo desde hardening).
     const data = db.export()
     writeFileSync(destPath, data)
     log.info(`Database backed up to: ${destPath}`)

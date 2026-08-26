@@ -278,8 +278,15 @@ export function searchClients(query: string): Client[] {
 
 export function deleteClient(id: string): boolean {
   const db = getDatabase()
-  
+
   const op = db.transaction(() => {
+    // Tablas hijas sin ON DELETE CASCADE: deben borrarse antes del cliente
+    // para no dejar huérfanos ni provocar FOREIGN KEY constraint failed
+    // con foreign_keys=ON. El bug reportado (malformed) se agravaba por
+    // huérfanos de body_measurements/client_goals/client_routines.
+    db.prepare('DELETE FROM body_measurements WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM client_goals WHERE client_id = ?').run(id)
+    db.prepare('DELETE FROM client_routines WHERE client_id = ?').run(id)
     db.prepare('DELETE FROM access_logs WHERE client_id = ?').run(id)
     db.prepare('DELETE FROM payments WHERE client_id = ?').run(id)
     db.prepare('DELETE FROM freeze_history WHERE client_id = ?').run(id)
@@ -288,7 +295,7 @@ export function deleteClient(id: string): boolean {
     const result = db.prepare('DELETE FROM clients WHERE id = ?').run(id)
     return result.changes > 0
   })
-  
+
   const deleted = op()
   clearQueryCache()
   return deleted
