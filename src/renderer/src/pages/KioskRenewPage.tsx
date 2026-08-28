@@ -4,6 +4,8 @@ import { RenewModal } from '@/components/modals/RenewModal'
 import { ToastContainer } from '@/components/ToastContainer'
 import { Icons } from '@/components/Icons'
 import type { Client, Membership, MembershipPlan } from '@shared/types'
+import kioskBg from '@/assets/kiosk-bg.png'
+import { useAppStore } from '@/store/appStore'
 
 export function KioskRenewPage(): JSX.Element {
   const [searchParams] = useSearchParams()
@@ -45,6 +47,38 @@ export function KioskRenewPage(): JSX.Element {
     loadData(clientId)
   }, [clientId])
 
+  // Sincroniza tema con admin (mismo store persistido en localStorage)
+  const kioskTheme = useAppStore((s) => s.theme)
+  const setKioskTheme = useAppStore((s) => s.setTheme)
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', kioskTheme)
+    document.documentElement.setAttribute('data-kiosk', 'true')
+  }, [kioskTheme])
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'bodyfitgym-theme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+        const cur = useAppStore.getState().theme
+        if (e.newValue !== cur) setKioskTheme(e.newValue as 'dark' | 'light')
+        else {
+          document.documentElement.setAttribute('data-theme', e.newValue)
+          document.documentElement.setAttribute('data-kiosk', 'true')
+        }
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    const poll = setInterval(() => {
+      try {
+        const stored = localStorage.getItem('bodyfitgym-theme')
+        if ((stored === 'dark' || stored === 'light') && stored !== useAppStore.getState().theme) setKioskTheme(stored as 'dark' | 'light')
+      } catch { /* ignore */ }
+    }, 1500)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      clearInterval(poll)
+      document.documentElement.removeAttribute('data-kiosk')
+    }
+  }, [setKioskTheme])
+
   const handleClose = () => {
     window.close()
   }
@@ -55,8 +89,9 @@ export function KioskRenewPage(): JSX.Element {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
-        <div style={{ textAlign: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)', position: 'relative', overflow: 'hidden' }}>
+        <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
+        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div className="spinner" />
           <p style={{ marginTop: 16, color: 'var(--color-secondary)' }}>Cargando...</p>
         </div>
@@ -66,8 +101,9 @@ export function KioskRenewPage(): JSX.Element {
 
   if (error || !client) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)' }}>
-        <div style={{ textAlign: 'center', padding: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--color-bg)', position: 'relative', overflow: 'hidden' }}>
+        <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
+        <div style={{ textAlign: 'center', padding: 32, position: 'relative', zIndex: 1 }}>
           <Icons.Bell style={{ width: 48, height: 48, color: 'var(--color-error)', marginBottom: 16 }} />
           <h2 style={{ marginBottom: 8 }}>Error</h2>
           <p style={{ color: 'var(--color-on-surface-variant)', marginBottom: 24 }}>{error || 'Cliente no encontrado'}</p>
@@ -79,8 +115,9 @@ export function KioskRenewPage(): JSX.Element {
 
   return (
     <>
-      <div style={{ background: 'var(--color-bg)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: '100%', maxWidth: 720 }}>
+      <div style={{ background: 'var(--color-bg)', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative', overflow: 'hidden' }}>
+        <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
+        <div style={{ width: '100%', maxWidth: 720, position: 'relative', zIndex: 1 }}>
           <RenewModal
             client={client}
             activeMembership={activeMembership}
@@ -95,3 +132,4 @@ export function KioskRenewPage(): JSX.Element {
     </>
   )
 }
+

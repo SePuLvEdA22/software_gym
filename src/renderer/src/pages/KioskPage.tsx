@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { parseISO, differenceInDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Client, Membership, ClientDebt, ClientRoutine, GymSettings } from '../../../shared/types'
+import kioskBg from '@/assets/kiosk-bg.png'
+import { useAppStore } from '@/store/appStore'
 
 type AccessState = 'idle' | 'result' | 'checking'
 
@@ -51,8 +53,8 @@ function ClockWidget(): JSX.Element {
   }, [])
 
   return (
-    <div style={{ ...glass, borderRadius: 12, padding: '12px 24px', textAlign: 'right' }}>
-      <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-on-surface)', fontFamily: 'monospace', margin: 0, letterSpacing: '-0.02em' }}>
+    <div className="kiosk-clock-glass">
+      <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-on-surface)', fontFamily: 'monospace', margin: 0, letterSpacing: '-0.02em', position: 'relative', zIndex: 1 }}>
         {format(clock, 'HH:mm:ss')}
       </p>
     </div>
@@ -84,6 +86,9 @@ function IdleScreen({
       position: 'relative', fontFamily: "'Montserrat', 'Inter', sans-serif",
       overflow: 'hidden', userSelect: 'none'
     }}>
+      {/* Icon background — <img> para drop-shadow con forma */}
+      <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
+      <img src={kioskBg} className="kiosk-bg-corner" alt="" aria-hidden draggable={false} />
       {/* Background Glows */}
       <div style={{
         position: 'absolute', top: '15%', left: '-10%',
@@ -110,21 +115,17 @@ function IdleScreen({
         </button>
       )}
 
-      {/* Header: Gym Name + Clock */}
+      {/* Header: Logo + Gym Name + Reloj a la derecha (icono esquina quitado) */}
       <div style={{
         width: '100%', display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', padding: '28px 32px 16px',
-        borderBottom: '1px solid var(--color-surface-container-highest)'
+        alignItems: 'center', padding: '18px 32px 16px',
+        borderBottom: '1px solid var(--color-surface-container-highest)',
+        gap: 16
       }}>
-        {settings?.name && (
-          <h1 style={{
-            fontSize: 28, fontWeight: 800, color: 'var(--color-primary)', margin: 0,
-            fontStyle: 'italic', textTransform: 'uppercase',
-            letterSpacing: '-0.02em', fontFamily: "'Montserrat', sans-serif"
-          }}>
-            {settings.name}
-          </h1>
-        )}
+        <div className="kiosk-header-brand" style={{ visibility: settings?.name ? 'visible' : 'hidden' }}>
+          <img src={kioskBg} className="kiosk-logo-header" alt="" aria-hidden draggable={false} />
+          <h1 className="kiosk-gym-name" title={settings?.name || ''}>{settings?.name || 'Gym'}</h1>
+        </div>
         <ClockWidget />
       </div>
 
@@ -137,8 +138,8 @@ function IdleScreen({
       }}>
         {/* Welcome Section */}
         <div style={{ textAlign: 'center', width: '100%', maxWidth: 420 }}>
-          <h2 style={{
-            fontSize: 'clamp(16px, 2.8vw, 26px)', fontWeight: 800,
+          <h2 className="kiosk-welcome-title" style={{
+            fontSize: 'clamp(16px, 2.8vw, 26px)',
             color: 'var(--color-on-surface)', margin: 0,
             letterSpacing: '-0.02em', lineHeight: 1.3,
             fontFamily: "'Montserrat', sans-serif",
@@ -147,28 +148,20 @@ function IdleScreen({
           }}>
             {settings?.welcomeMessage || 'Bienvenido, nos complace que seas parte de nuestro equipo.'}
           </h2>
-          <p style={{
-            fontSize: 17, fontWeight: 500, color: 'var(--color-on-surface-variant)', marginTop: 8,
+          <p className="kiosk-welcome-sub" style={{
+            fontSize: 17, marginTop: 8,
             fontFamily: "'Inter', sans-serif"
           }}>
             Ingresa tu código de acceso
           </p>
         </div>
 
-        {/* Code Dots Display */}
-        <div style={{
-          width: '100%', maxWidth: 360, height: 76,
-          backgroundColor: 'var(--color-surface-container-low)',
-          border: '2px solid var(--color-outline-variant)',
-          borderRadius: 16,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 12, padding: '0 20px',
-          transition: 'border-color 0.2s ease'
-        }}>
+        {/* Code Dots Display — liquid glass */}
+        <div className="kiosk-code-display">
           {Array.from({ length: maxDots }).map((_, i) => (
             <span key={i} style={{
               width: 14, height: 14, borderRadius: '50%',
-              backgroundColor: i < filled ? 'var(--color-primary)' : 'var(--color-outline-variant)',
+              backgroundColor: i < filled ? 'var(--color-primary)' : 'var(--color-outline)',
               transition: 'all 0.2s ease', flexShrink: 0
             }} />
           ))}
@@ -180,55 +173,20 @@ function IdleScreen({
           gap: 12, width: '100%', maxWidth: 360
         }}>
           {numpadKeys.map(d => (
-            <button key={d} onClick={() => onDigit(d)}
-              className="kiosk-numpad-btn"
-              style={{
-                height: 70, backgroundColor: 'var(--color-surface-container)',
-                border: '1px solid var(--color-outline-variant)', borderRadius: 16,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 26, fontWeight: 800, color: 'var(--color-on-surface)',
-                fontFamily: "'Montserrat', sans-serif",
-                cursor: 'pointer', transition: 'background 0.15s ease'
-              }}>
+            <button key={d} onClick={() => onDigit(d)} className="kiosk-numpad-btn">
               {d}
             </button>
           ))}
-          <button onClick={onBackspace}
-            className="kiosk-numpad-btn kiosk-backspace-btn"
-            style={{
-              height: 70, backgroundColor: 'var(--color-surface-container)',
-              border: '1px solid var(--color-outline-variant)', borderRadius: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', transition: 'background 0.15s ease',
-              color: 'var(--color-on-surface)'
-            }}>
+          <button onClick={onBackspace} className="kiosk-numpad-btn kiosk-backspace-btn" aria-label="Borrar">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
               <line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/>
             </svg>
           </button>
-          <button onClick={() => onDigit('0')}
-            className="kiosk-numpad-btn"
-            style={{
-              height: 70, backgroundColor: 'var(--color-surface-container)',
-              border: '1px solid var(--color-outline-variant)', borderRadius: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 26, fontWeight: 800, color: 'var(--color-on-surface)',
-              fontFamily: "'Montserrat', sans-serif",
-              cursor: 'pointer', transition: 'background 0.15s ease'
-            }}>
+          <button onClick={() => onDigit('0')} className="kiosk-numpad-btn">
             0
           </button>
-          <button onClick={onCheckIn} style={{
-            height: 70, backgroundColor: 'var(--color-primary)', color: 'var(--color-on-primary)',
-            border: 'none', borderRadius: 16,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 14, fontWeight: 700, fontFamily: "'Inter', sans-serif",
-            textTransform: 'uppercase', letterSpacing: '0.05em',
-            cursor: 'pointer', gap: 6,
-            boxShadow: 'var(--shadow-glow)',
-            transition: 'all 0.15s ease'
-          }}>
+          <button onClick={onCheckIn} className="kiosk-primary-glass">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -250,33 +208,10 @@ function IdleScreen({
             animation: 'kiosk-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, kiosk-fade-in 0.35s ease-out both',
             position: 'relative'
           }}>
-            {/* Red glow behind */}
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%',
-              width: '90%', height: '200%',
-              transform: 'translate(-50%, -50%)',
-              borderRadius: '50%',
-              background: 'color-mix(in srgb, var(--color-error) 18%, transparent)',
-              filter: 'blur(28px)', pointerEvents: 'none'
-            }} />
-            <div style={{
-              position: 'relative', zIndex: 1, pointerEvents: 'auto',
-              display: 'flex', alignItems: 'center', gap: 12,
-              width: '100%',
-              background: 'color-mix(in srgb, var(--color-error) 12%, var(--color-surface-container) 88%)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid color-mix(in srgb, var(--color-error) 45%, transparent)',
-              borderRadius: 14,
-              padding: '16px 20px',
-              boxShadow: '0 8px 32px color-mix(in srgb, var(--color-error) 25%, transparent), inset 0 1px 0 rgba(255,255,255,0.05)'
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: '50%',
-                backgroundColor: 'color-mix(in srgb, var(--color-error) 20%, transparent)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0
-              }}>
+            {/* Red glow behind — glass */}
+            <div className="kiosk-error-glow" />
+            <div className="kiosk-error-glass">
+              <div className="kiosk-error-icon">
                 <MaterialIcon name="block" style={{ fontSize: 22, color: 'var(--color-error)' }} />
               </div>
               <div style={{ flex: 1 }}>
@@ -298,9 +233,6 @@ function IdleScreen({
       )}
 
       <style>{`
-        .kiosk-numpad-btn:active { transform: scale(0.94); }
-        .kiosk-numpad-btn:hover { background-color: var(--color-surface-container-high) !important; }
-        .kiosk-backspace-btn:hover { background-color: color-mix(in srgb, var(--color-error-container) 40%, var(--color-surface-container)) !important; }
         @keyframes kiosk-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
         .kiosk-pulse { animation: kiosk-pulse 2s ease-in-out infinite; }
         @keyframes kiosk-shake {
@@ -386,21 +318,37 @@ function IdleScreen({
     : '—'
 
   // Paleta activa "verde + blanco": se neutralizan los tonos cálidos (durazno)
-  // del tema kiosco para que los textos no aporten el cast rojizo que chocaba
-  // con el verde del estado activo. Solo aplica cuando el acceso está permitido.
-  const activeNeutralPalette = {
-    '--color-on-surface-variant': '#dedede',
-    '--color-outline': '#9e9e9e'
-  } as React.CSSProperties
+  // del tema kiosco oscuro para que los textos no aporten el cast rojizo que
+  // chocaba con el verde del estado activo. Solo aplica cuando el acceso está
+  // permitido Y el tema base es oscuro (en claro no hace falta y empeora contraste).
+  const kioskTheme = useAppStore((s) => s.theme)
+  const isLightKiosk = kioskTheme === 'light'
+  const activeNeutralPalette = kioskTheme === 'dark'
+    ? ({ '--color-on-surface-variant': '#dedede', '--color-outline': '#9e9e9e' } as React.CSSProperties)
+    : ({} as React.CSSProperties)
+  // Glass para rutina: en claro usamos vidrio blanco luminoso (igual que kiosk-code-display light)
+  // para que no se vea gris apagado; en oscuro se mantiene el glass oscuro original.
+  const routineGlass: React.CSSProperties = isLightKiosk
+    ? {
+        background: 'rgba(255,255,255,0.62)',
+        backdropFilter: 'blur(18px) saturate(1.35)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.35)',
+        border: '1px solid rgba(26,28,30,0.10)',
+        boxShadow: '0 8px 28px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.92)',
+      }
+    : glass
 
   return (
     <div style={{
-      height: '100vh', backgroundColor: 'var(--color-background)',
+      height: '100vh', backgroundColor: 'var(--color-bg)',
       fontFamily: "'Montserrat', 'Inter', sans-serif",
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
       position: 'relative',
       ...(isExpired ? {} : activeNeutralPalette)
     }}>
+      {/* Icon background — <img> para drop-shadow con forma */}
+      <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
+      <img src={kioskBg} className="kiosk-bg-corner" alt="" aria-hidden draggable={false} />
       {/* Ambient glow */}
       <div style={{
         position: 'absolute', top: '5%', right: '-5%',
@@ -408,11 +356,11 @@ function IdleScreen({
         background: `color-mix(in srgb, ${statusColor} 6%, transparent)`,
         filter: 'blur(140px)', pointerEvents: 'none', zIndex: 0
       }} />
-      <main style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <main style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative', zIndex: 1 }}>
         <header style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexShrink: 0
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexShrink: 0, gap: 16
         }}>
-          <div>
+          <div style={{ flex: '0 1 auto', minWidth: 0 }}>
             <h2 style={{ fontSize: 32, lineHeight: '38px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0, letterSpacing: '-0.02em' }}>
               Registro de Ingreso
             </h2>
@@ -439,7 +387,7 @@ function IdleScreen({
           {/* LEFT COLUMN: Photo + Renew button */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
             <div style={{
-              ...glass, borderRadius: 16, padding: 24,
+              ...routineGlass, borderRadius: 16, padding: 24,
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               position: 'relative', flexShrink: 0
             }}>
@@ -489,8 +437,8 @@ function IdleScreen({
               </p>
               <div style={{ width: '100%' }}>
                 <div style={{
-                  backgroundColor: 'var(--color-surface-container)', borderRadius: 12, padding: 16,
-                  border: '1px solid rgba(139,144,160,0.2)',
+                  backgroundColor: isLightKiosk ? 'rgba(255,255,255,0.58)' : 'var(--color-surface-container)', borderRadius: 12, padding: 16,
+                  border: isLightKiosk ? '1px solid rgba(26,28,30,0.10)' : '1px solid rgba(139,144,160,0.2)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>ID (Clave)</span>
@@ -523,7 +471,7 @@ function IdleScreen({
             <div style={{ flexShrink: 0 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                 <div style={{
-                  ...glass, borderRadius: 12, padding: 20,
+                  ...routineGlass, borderRadius: 12, padding: 20,
                   display: 'flex', flexDirection: 'column',
                   borderLeft: `4px solid ${statusColor}`
                 }}>
@@ -537,7 +485,7 @@ function IdleScreen({
                   <p style={{ fontSize: 12, color: statusColor, fontWeight: 600, marginTop: 4 }}>{statusSubtext}</p>
                 </div>
                 <div style={{
-                  ...glass, borderRadius: 12, padding: 20,
+                  ...routineGlass, borderRadius: 12, padding: 20,
                   display: 'flex', flexDirection: 'column',
                   borderLeft: `4px solid ${debtColor}`
                 }}>
@@ -551,7 +499,7 @@ function IdleScreen({
                   <p style={{ fontSize: 12, color: debtColor, fontWeight: 600, marginTop: 4 }}>{debtText}</p>
                 </div>
                 <div style={{
-                  ...glass, borderRadius: 12, padding: 20,
+                  ...routineGlass, borderRadius: 12, padding: 20,
                   display: 'flex', flexDirection: 'column',
                   borderLeft: `4px solid ${statusColor}`
                 }}>
@@ -566,16 +514,16 @@ function IdleScreen({
               </div>
             </div>
 
-            {/* Routine panel */}
+            {/* Routine panel — en claro vidrio blanco, no gris oscuro */}
             <div style={{
               flex: 1, overflowY: 'auto', minHeight: 0,
-              ...glass, borderRadius: 16,
+              ...routineGlass, borderRadius: 16,
               display: 'flex', flexDirection: 'column'
             }}>
               <div style={{
                 padding: '14px 24px 12px',
-                borderBottom: '1px solid rgba(139,144,160,0.2)',
-                backgroundColor: 'rgba(32,31,31,0.5)',
+                borderBottom: isLightKiosk ? '1px solid rgba(26,28,30,0.10)' : '1px solid rgba(139,144,160,0.2)',
+                backgroundColor: isLightKiosk ? 'rgba(255,255,255,0.48)' : 'rgba(32,31,31,0.5)',
                 flexShrink: 0,
                 display: 'flex', alignItems: 'center', gap: 8
               }}>
@@ -611,9 +559,9 @@ function IdleScreen({
                       </div>
                       {exercises.length > 0 ? (
                         <div style={{
-                          backgroundColor: 'var(--color-surface-container)',
+                          backgroundColor: isLightKiosk ? 'rgba(255,255,255,0.72)' : 'var(--color-surface-container)',
                           borderRadius: 10, padding: '10px 14px',
-                          border: '1px solid rgba(139,144,160,0.15)',
+                          border: isLightKiosk ? '1px solid rgba(26,28,30,0.10)' : '1px solid rgba(139,144,160,0.15)',
                           display: 'flex', flexDirection: 'column', gap: 6
                         }}>
                           {exercises.map((ex, i) => (
@@ -623,7 +571,8 @@ function IdleScreen({
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{
                                   width: 20, height: 20, borderRadius: '50%',
-                                  backgroundColor: 'var(--color-surface-container-high)',
+                                  backgroundColor: isLightKiosk ? 'rgba(255,255,255,0.90)' : 'var(--color-surface-container-high)',
+                                  border: isLightKiosk ? '1px solid rgba(26,28,30,0.10)' : 'none',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   fontSize: 9, fontWeight: 700, color: statusColor
                                 }}>{i + 1}</span>
@@ -638,10 +587,10 @@ function IdleScreen({
                         </div>
                       ) : (
                         <div style={{
-                          backgroundColor: 'var(--color-surface-container)',
+                          backgroundColor: isLightKiosk ? 'rgba(255,255,255,0.58)' : 'var(--color-surface-container)',
                           borderRadius: 10, padding: '10px 14px',
-                          border: '1px dashed rgba(139,144,160,0.2)',
-                          opacity: 0.6
+                          border: isLightKiosk ? '1px dashed rgba(26,28,30,0.14)' : '1px dashed rgba(139,144,160,0.2)',
+                          opacity: isLightKiosk ? 1 : 0.6
                         }}>
                           <span style={{ fontSize: 12, color: 'var(--color-on-surface-variant)', fontStyle: 'italic' }}>
                             Sin ejercicios registrados
@@ -690,17 +639,46 @@ export function KioskPage(): JSX.Element {
     })
   }, [])
 
+  // Sincroniza con el tema global (Configuración > Marca y Apariencia).
+  // El kiosco ya no usa un data-theme propio 'kiosk': usa 'dark'/'light'
+  // heredado del store y añade data-kiosk="true" para overrides visuales.
+  const kioskTheme = useAppStore((s) => s.theme)
+  const setKioskTheme = useAppStore((s) => s.setTheme)
+
   useEffect(() => {
-    const prev = document.documentElement.getAttribute('data-theme')
-    document.documentElement.setAttribute('data-theme', 'kiosk')
-    return () => {
-      if (prev) {
-        document.documentElement.setAttribute('data-theme', prev)
-      } else {
-        document.documentElement.removeAttribute('data-theme')
+    document.documentElement.setAttribute('data-theme', kioskTheme)
+    document.documentElement.setAttribute('data-kiosk', 'true')
+  }, [kioskTheme])
+
+  useEffect(() => {
+    // El kiosco vive en una BrowserWindow separada con su propia memoria de
+    // Zustand. El admin persiste el tema en localStorage; el kiosco escucha
+    // storage + poll por si el evento no llega en file://.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'bodyfitgym-theme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+        const current = useAppStore.getState().theme
+        if (e.newValue !== current) setKioskTheme(e.newValue as 'dark' | 'light')
+        else {
+          document.documentElement.setAttribute('data-theme', e.newValue)
+          document.documentElement.setAttribute('data-kiosk', 'true')
+        }
       }
     }
-  }, [])
+    window.addEventListener('storage', onStorage)
+    const poll = setInterval(() => {
+      try {
+        const stored = localStorage.getItem('bodyfitgym-theme')
+        if ((stored === 'dark' || stored === 'light') && stored !== useAppStore.getState().theme) {
+          setKioskTheme(stored as 'dark' | 'light')
+        }
+      } catch { /* storage no disponible */ }
+    }, 1500)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      clearInterval(poll)
+      document.documentElement.removeAttribute('data-kiosk')
+    }
+  }, [setKioskTheme])
 
   const resetAll = useCallback(() => {
     setAccessCode('')
@@ -804,16 +782,19 @@ export function KioskPage(): JSX.Element {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100vh', backgroundColor: 'var(--color-bg)', gap: 24
+        minHeight: '100vh', backgroundColor: 'var(--color-bg)', gap: 24,
+        position: 'relative', overflow: 'hidden'
       }}>
+        <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
         <div style={{
           width: 44, height: 44,
           border: '4px solid var(--color-surface-container-highest)',
           borderTopColor: 'var(--color-primary)',
           borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
+          animation: 'spin 1s linear infinite',
+          position: 'relative', zIndex: 1
         }} />
-        <span style={{ color: 'var(--color-primary)', fontSize: 22, fontWeight: 700, fontFamily: "'Montserrat', sans-serif" }}>Validando...</span>
+        <span style={{ color: 'var(--color-primary)', fontSize: 22, fontWeight: 700, fontFamily: "'Montserrat', sans-serif", position: 'relative', zIndex: 1 }}>Validando...</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )

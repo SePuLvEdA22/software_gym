@@ -214,13 +214,24 @@ export function logChange(
   )
 }
 
-export function getChangeLogs(page = 1, pageSize = 50, tableName?: string, action?: string): PageResponse<ChangeLog> {
+export function getChangeLogs(
+  page = 1,
+  pageSize = 50,
+  tableName?: string,
+  action?: string,
+  from?: string,
+  to?: string
+): PageResponse<ChangeLog> {
   const db = getDatabase()
   let countQuery = 'SELECT COUNT(*) as total FROM change_log WHERE 1=1'
   let query = `SELECT id, user_id AS userId, user_name AS userName, table_name AS tableName, record_id AS recordId, action, old_values AS oldValues, new_values AS newValues, timestamp FROM change_log WHERE 1=1`
   const params: (string | number)[] = []
   if (tableName) { countQuery += ' AND table_name = ?'; query += ' AND table_name = ?'; params.push(tableName) }
   if (action) { countQuery += ' AND action = ?'; query += ' AND action = ?'; params.push(action) }
+  // Filtro por días: comparamos YYYY-MM-DD extraído vía substr (no date() que convierte a UTC
+  // y desplaza 23:47-05:00 a 04:47Z del día siguiente). Renderer envía 'YYYY-MM-DD' directo.
+  if (from) { countQuery += ' AND substr(timestamp, 1, 10) >= ?'; query += ' AND substr(timestamp, 1, 10) >= ?'; params.push(from) }
+  if (to) { countQuery += ' AND substr(timestamp, 1, 10) <= ?'; query += ' AND substr(timestamp, 1, 10) <= ?'; params.push(to) }
   const countRow = db.prepare(countQuery).all(...params)[0] as { total: number } | undefined
   const total = countRow?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / pageSize))

@@ -4,7 +4,8 @@ import { useAppStore } from '@/store/appStore'
 import { User, UserRole, ChangeLog } from '../../../shared/types'
 import { Icons } from '@/components/Icons'
 import { Pagination } from '@/components/Pagination'
-import { format, parseISO } from 'date-fns'
+import { DatePicker, todayLocalKey } from '@/components/DatePicker'
+import { format, parseISO, subDays } from 'date-fns'
 
 const roleLabels: Record<UserRole, string> = {
   admin: 'Administrador',
@@ -93,6 +94,15 @@ function parseSnapshot(raw: string | null | undefined): Record<string, unknown> 
   }
 }
 
+function parseLocalKey(key: string): Date | null {
+  if (!key) return null
+  const m = key.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return null
+  const [, y, mo, d] = m.map(Number)
+  if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  return new Date(y, mo - 1, d)
+}
+
 export function UsersPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const confirm = useAppStore((state) => state.confirm)
@@ -107,6 +117,8 @@ export function UsersPage(): JSX.Element {
   const [pageSize] = useState(50)
   const [logAction, setLogAction] = useState('')
   const [logSearch, setLogSearch] = useState('')
+  const [logFrom, setLogFrom] = useState('')
+  const [logTo, setLogTo] = useState('')
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null)
 
   const loadUsers = async () => {
@@ -118,10 +130,14 @@ export function UsersPage(): JSX.Element {
   }
 
   const loadLogs = async () => {
+    const from = logFrom || undefined
+    const to = logTo || undefined
     const result = await window.electronAPI.user.getChangeLogs({
       page: logPage,
       pageSize,
-      action: logAction || undefined
+      action: logAction || undefined,
+      from,
+      to
     })
     if (result.success && result.data) {
       setChangeLogs(result.data.data)
@@ -129,13 +145,70 @@ export function UsersPage(): JSX.Element {
     }
   }
 
+  const handleLogFromChange = (value: string) => {
+    setLogFrom(value)
+    setLogPage(1)
+  }
+  const handleLogToChange = (value: string) => {
+    setLogTo(value)
+    setLogPage(1)
+  }
+  const handleDatePreset = (preset: 'today' | '7d' | '30d' | 'all') => {
+    if (preset === 'all') {
+      setLogFrom('')
+      setLogTo('')
+    } else if (preset === 'today') {
+      const today = todayLocalKey()
+      setLogFrom(today)
+      setLogTo(today)
+    } else if (preset === '7d') {
+      const todayKey = todayLocalKey()
+      const todayDate = parseLocalKey(todayKey)!
+      const fromDate = subDays(todayDate, 6)
+      const fromKey = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-${String(fromDate.getDate()).padStart(2, '0')}`
+      setLogFrom(fromKey)
+      setLogTo(todayKey)
+    } else if (preset === '30d') {
+      const todayKey = todayLocalKey()
+      const todayDate = parseLocalKey(todayKey)!
+      const fromDate = subDays(todayDate, 29)
+      const fromKey = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-${String(fromDate.getDate()).padStart(2, '0')}`
+      setLogFrom(fromKey)
+      setLogTo(todayKey)
+    }
+    setLogPage(1)
+  }
+  const clearDateFilter = () => {
+    setLogFrom('')
+    setLogTo('')
+    setLogPage(1)
+  }
+
+  const todayKeyForFilter = todayLocalKey()
+  const sevenFromKey = (() => {
+    const d = parseLocalKey(todayKeyForFilter)
+    if (!d) return ''
+    const f = subDays(d, 6)
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+  })()
+  const thirtyFromKey = (() => {
+    const d = parseLocalKey(todayKeyForFilter)
+    if (!d) return ''
+    const f = subDays(d, 29)
+    return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
+  })()
+  const isAllActive = !logFrom && !logTo
+  const isTodayActive = logFrom === todayKeyForFilter && logTo === todayKeyForFilter
+  const is7dActive = logFrom === sevenFromKey && logTo === todayKeyForFilter
+  const is30dActive = logFrom === thirtyFromKey && logTo === todayKeyForFilter
+
   useEffect(() => {
     loadUsers()
   }, [page])
 
   useEffect(() => {
     loadLogs()
-  }, [logPage, logAction])
+  }, [logPage, logAction, logFrom, logTo])
 
   useEffect(() => {
     loadUsers()
@@ -256,30 +329,90 @@ export function UsersPage(): JSX.Element {
 
       {tab === 'logs' && (
         <div className="card">
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: '16px 16px 0' }}>
-            <select
-              className="form-select"
-              style={{ maxWidth: 180 }}
-              value={logAction}
-              onChange={(e) => setLogAction(e.target.value)}
-            >
-              <option value="">Todas las acciones</option>
-              <option value="create">Creación</option>
-              <option value="update">Actualización</option>
-              <option value="delete">Eliminación</option>
-              <option value="login">Inicio de sesión</option>
-            </select>
-            <div className="search-box" style={{ flex: 1, minWidth: 200 }}>
-              <Icons.Search />
-              <input
-                type="text"
-                placeholder="Buscar por usuario..."
-                value={logSearch}
-                onChange={e => setLogSearch(e.target.value)}
-              />
+          {/* Filtros historial — sección separada con liquid glass */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 14,
+            margin: '16px 16px 20px',
+            padding: 16,
+            borderRadius: 12,
+            background: 'color-mix(in srgb, var(--color-surface-container) 62%, transparent)',
+            backdropFilter: 'blur(18px) saturate(1.35)',
+            WebkitBackdropFilter: 'blur(18px) saturate(1.35)',
+            border: '1px solid color-mix(in srgb, var(--color-outline-variant) 18%, transparent)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06)'
+          }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                className="form-select"
+                style={{ maxWidth: 180 }}
+                value={logAction}
+                onChange={(e) => { setLogAction(e.target.value); setLogPage(1) }}
+              >
+                <option value="">Todas las acciones</option>
+                <option value="create">Creación</option>
+                <option value="update">Actualización</option>
+                <option value="delete">Eliminación</option>
+                <option value="login">Inicio de sesión</option>
+              </select>
+              <div className="search-box" style={{ flex: 1, minWidth: 200 }}>
+                <Icons.Search />
+                <input
+                  type="text"
+                  placeholder="Buscar por usuario..."
+                  value={logSearch}
+                  onChange={e => setLogSearch(e.target.value)}
+                />
+              </div>
+            </div>
+            {/* Filtro por días — presets + rango con DatePicker */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: 'var(--color-secondary)', marginRight: 4, whiteSpace: 'nowrap' }}>Filtrar por días:</span>
+                <button
+                  className={`filter-pill${isAllActive ? ' active' : ''}`}
+                  onClick={() => handleDatePreset('all')}
+                  title="Mostrar todo el historial"
+                >
+                  Todos
+                </button>
+                <button
+                  className={`filter-pill${isTodayActive ? ' active' : ''}`}
+                  onClick={() => handleDatePreset('today')}
+                >
+                  Hoy
+                </button>
+                <button
+                  className={`filter-pill${is7dActive ? ' active' : ''}`}
+                  onClick={() => handleDatePreset('7d')}
+                  title="Últimos 7 días incluyendo hoy"
+                >
+                  Últimos 7 días
+                </button>
+                <button
+                  className={`filter-pill${is30dActive ? ' active' : ''}`}
+                  onClick={() => handleDatePreset('30d')}
+                  title="Últimos 30 días incluyendo hoy"
+                >
+                  Últimos 30 días
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: 280 }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <DatePicker value={logFrom} onChange={handleLogFromChange} placeholder="Desde" max={logTo || undefined} clearable />
+                </div>
+                <span style={{ color: 'var(--color-secondary)', fontSize: 14 }}>—</span>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <DatePicker value={logTo} onChange={handleLogToChange} placeholder="Hasta" min={logFrom || undefined} clearable />
+                </div>
+                {(logFrom || logTo) && (
+                  <button className="btn btn-sm btn-secondary" onClick={clearDateFilter} title="Limpiar filtro de fechas">
+                    <Icons.X /> Limpiar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          <div className="table-container">
+          <div className="table-container" style={{ margin: '0 16px 16px' }}>
             <table className="table">
               <thead>
                 <tr>

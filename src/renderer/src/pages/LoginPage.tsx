@@ -79,24 +79,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: 'var(--color-bg)',
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--color-surface)',
-          borderRadius: 16,
-          padding: 48,
-          width: 400,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        }}
-      >
+    <div className="login-shell">
+      <div className="login-card-glass">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <img
             src={logoSrc}
@@ -111,8 +95,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               marginBottom: 16,
             }}
           />
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>BodyFitGym</h1>
-          <p style={{ color: 'var(--color-secondary)', marginTop: 8, fontSize: 14 }}>
+          <h1 className="login-title" style={{ fontSize: 26, margin: 0 }}>BodyFitGym</h1>
+          <p className="login-subtitle" style={{ marginTop: 8, fontSize: 14 }}>
             {mustChangePassword ? 'Configuración de seguridad' : 'Sistema de Gestión'}
           </p>
         </div>
@@ -123,7 +107,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <label className="form-label">Usuario</label>
               <input
                 type="text"
-                className="form-input"
+                className="form-input login-glass-input"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Nombre de usuario"
@@ -136,7 +120,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <label className="form-label">Contraseña</label>
               <input
                 type="password"
-                className="form-input"
+                className="form-input login-glass-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Contraseña"
@@ -162,7 +146,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
 
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary login-glass-btn"
               disabled={loading}
               style={{ width: '100%', padding: '12px', fontSize: 16 }}
             >
@@ -191,7 +175,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <label className="form-label">Nueva Contraseña</label>
               <input
                 type="password"
-                className="form-input"
+                className="form-input login-glass-input"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Mínimo 4 caracteres"
@@ -204,7 +188,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <label className="form-label">Confirmar Contraseña</label>
               <input
                 type="password"
-                className="form-input"
+                className="form-input login-glass-input"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita la contraseña"
@@ -230,7 +214,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
 
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary login-glass-btn"
               disabled={changing}
               style={{ width: '100%', padding: '12px', fontSize: 16 }}
             >

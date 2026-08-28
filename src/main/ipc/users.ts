@@ -90,11 +90,11 @@ export function registerUserHandlers(): void {
     }
   })
 
-  ipcMain.handle('user:getChangeLogs', async (_, options?: { page?: number; pageSize?: number; tableName?: string; action?: string }) => {
+  ipcMain.handle('user:getChangeLogs', async (_, options?: { page?: number; pageSize?: number; tableName?: string; action?: string; from?: string; to?: string }) => {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
-      return { success: true, data: getChangeLogs(options?.page || 1, options?.pageSize || 50, options?.tableName, options?.action) }
+      return { success: true, data: getChangeLogs(options?.page || 1, options?.pageSize || 50, options?.tableName, options?.action, options?.from, options?.to) }
     } catch (error) {
       return { success: false, error: sanitizeError(error) }
     }

@@ -369,35 +369,100 @@ p {
 }
 
 .btn-primary {
-  background-color: var(--color-primary-container);
+  background: color-mix(in srgb, var(--color-primary-container) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 32%, transparent);
   color: var(--color-on-primary-container);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-primary) 18%, transparent), 0 2px 10px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.14);
+  position: relative;
+  overflow: hidden;
 }
-
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 42%, transparent 70%);
+  pointer-events: none;
+}
 .btn-primary:hover {
-  box-shadow: var(--shadow-glow-hover);
+  background: color-mix(in srgb, var(--color-primary-container) 90%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-primary) 24%, transparent), 0 4px 14px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.18);
 }
-
 .btn-primary:active {
-  opacity: 0.9;
+  transform: scale(0.98);
+  opacity: 1;
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background: color-mix(in srgb, var(--color-surface-container) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
   color: var(--color-primary-container);
-  border: 1px solid var(--color-primary-container);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 28%, transparent);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
 }
-
+.btn-secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 62%);
+  pointer-events: none;
+}
 .btn-secondary:hover {
-  background-color: rgba(255, 107, 0, 0.1);
+  background: color-mix(in srgb, var(--color-surface-container-high) 72%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.12);
 }
+.btn-secondary:active { transform: scale(0.98); }
 
 .btn-danger {
-  background-color: var(--color-error-container);
+  background: color-mix(in srgb, var(--color-error-container) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-error) 28%, transparent);
   color: var(--color-on-error-container);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-error) 14%, transparent), 0 2px 10px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.10);
+  position: relative;
+  overflow: hidden;
 }
-
+.btn-danger::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
 .btn-danger:hover {
-  opacity: 0.9;
+  background: color-mix(in srgb, var(--color-error-container) 88%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--color-error) 18%, transparent), 0 4px 14px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+.btn-danger:active { transform: scale(0.98); }
+
+/* Light: botones más lechosos */
+[data-theme='light'] .btn-primary {
+  background: color-mix(in srgb, var(--color-primary-container) 88%, rgba(255,255,255,0.55));
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow: 0 8px 24px rgba(196,79,0,0.16), 0 2px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.82);
+}
+[data-theme='light'] .btn-secondary {
+  background: rgba(255,255,255,0.62);
+  border-color: rgba(26,28,30,0.10);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .btn-danger {
+  background: color-mix(in srgb, var(--color-error-container) 82%, rgba(255,255,255,0.55));
+  border-color: color-mix(in srgb, var(--color-error) 22%, transparent);
+  box-shadow: 0 8px 24px rgba(154,37,32,0.14), 0 2px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.85);
 }
 
 .btn-lg {
@@ -1132,10 +1197,12 @@ input[type="number"] {
   }
 }
 
-/* Plan Card */
+/* Plan Card — liquid glass (mismo vidrio que botones del kiosco) */
 .plan-card {
-  background: linear-gradient(135deg, var(--color-surface-container) 0%, var(--color-surface-container-low) 100%);
-  border: 1px solid var(--color-surface-container-high);
+  background: color-mix(in srgb, var(--color-surface-container-low) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 26%, transparent);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   display: flex;
@@ -1144,26 +1211,40 @@ input[type="number"] {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .plan-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--color-primary-container);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 42%, transparent 65%);
+  pointer-events: none;
 }
 
+.plan-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 38%, transparent);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.plan-card.active {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 28%, transparent);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.10);
+}
 .plan-card.active::before {
   opacity: 1;
 }
 
-.plan-card.active {
-  border-color: var(--color-primary-container);
+[data-theme='light'] .plan-card {
+  background: rgba(255,255,255,0.62);
+  border-color: rgba(26, 28, 30, 0.10);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .plan-card:hover {
+  background: rgba(255,255,255,0.74);
+  border-color: rgba(26, 28, 30, 0.14);
 }
 
 .plan-card-header {
@@ -1217,10 +1298,12 @@ input[type="number"] {
   border-top: 1px solid var(--color-surface-container-high);
 }
 
-/* Promo Card */
+/* Promo Card — liquid glass (mismo vidrio que plan-card y kiosco) */
 .promo-card {
-  background: linear-gradient(135deg, var(--color-surface-container) 0%, var(--color-surface-container-low) 100%);
-  border: 1px solid var(--color-surface-container-high);
+  background: color-mix(in srgb, var(--color-surface-container-low) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 26%, transparent);
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   display: flex;
@@ -1229,32 +1312,40 @@ input[type="number"] {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .promo-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--color-success);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 42%, transparent 65%);
+  pointer-events: none;
 }
 
+.promo-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 38%, transparent);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.promo-card.active {
+  border-color: color-mix(in srgb, var(--color-outline-variant) 28%, transparent);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.10);
+}
 .promo-card.active::before {
   opacity: 1;
 }
 
-.promo-card:hover {
-  border-color: var(--color-success);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+[data-theme='light'] .promo-card {
+  background: rgba(255,255,255,0.62);
+  border-color: rgba(26, 28, 30, 0.10);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.92);
 }
-
-.promo-card.active {
-  border-color: var(--color-success);
+[data-theme='light'] .promo-card:hover {
+  background: rgba(255,255,255,0.74);
+  border-color: rgba(26, 28, 30, 0.14);
 }
 
 .promo-card-value {
@@ -1625,15 +1716,38 @@ input[type="number"] {
   align-items: center;
   gap: 10px;
   padding: 0 16px;
-  background-color: var(--color-surface-container);
-  border: 1px solid var(--color-surface-container-highest);
+  background: color-mix(in srgb, var(--color-surface-container) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 22%, transparent);
   border-radius: var(--radius-md);
   transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
 }
-
+.search-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
 .search-box:focus-within {
-  border-color: var(--color-primary-container);
-  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--color-surface-container-high) 68%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent), 0 6px 20px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+[data-theme='light'] .search-box {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26,28,30,0.09);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .search-box:focus-within {
+  background: rgba(255,255,255,0.72);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow: 0 0 0 3px rgba(196,79,0,0.14), 0 6px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
 }
 
 .search-box svg {
@@ -1659,8 +1773,10 @@ input[type="number"] {
 }
 
 .search-input {
-  background-color: var(--color-surface-container);
-  border: 1px solid var(--color-surface-container-high);
+  background: color-mix(in srgb, var(--color-surface-container) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 22%, transparent);
   border-radius: var(--radius-md);
   padding: 8px 14px;
   padding-left: 40px;
@@ -1669,6 +1785,7 @@ input[type="number"] {
   color: var(--color-on-surface);
   outline: none;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23c8c6c5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: left 12px center;
@@ -1677,8 +1794,19 @@ input[type="number"] {
 }
 
 .search-input:focus {
-  border-color: var(--color-primary-container);
-  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+  border-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--color-surface-container-high) 68%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent), 0 6px 20px rgba(0,0,0,0.08);
+}
+[data-theme='light'] .search-input {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26,28,30,0.09);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .search-input:focus {
+  background: rgba(255,255,255,0.72);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow: 0 0 0 3px rgba(196,79,0,0.14), 0 6px 20px rgba(0,0,0,0.06);
 }
 
 .table-container {
@@ -2060,27 +2188,60 @@ tr:hover td {
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--color-surface-container-high);
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
   margin-bottom: var(--spacing-md);
+  background: color-mix(in srgb, var(--color-surface-container) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow-x: auto;
 }
-
 .tab {
-  padding: 12px var(--spacing-md);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-secondary);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-radius: 9999px;
+  border: 1px solid transparent;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
-
 .tab:hover {
+  background: color-mix(in srgb, var(--color-surface-container-high) 62%, transparent);
   color: var(--color-on-surface);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 18%, transparent);
 }
-
 .tab.active {
-  color: var(--color-primary-container);
-  border-bottom-color: var(--color-primary-container);
+  background: color-mix(in srgb, var(--color-primary-container) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  color: var(--color-on-primary-container);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 14%, transparent), inset 0 1px 0 rgba(255,255,255,0.14);
+}
+.tab.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 62%);
+  pointer-events: none;
+}
+[data-theme='light'] .tabs {
+  background: rgba(255,255,255,0.52);
+  border-color: rgba(26,28,30,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .tab.active {
+  background: color-mix(in srgb, var(--color-primary-container) 88%, rgba(255,255,255,0.55));
+  border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  box-shadow: 0 6px 20px rgba(196,79,0,0.14), inset 0 1px 0 rgba(255,255,255,0.80);
 }
 
 .photo-upload {
@@ -2372,20 +2533,50 @@ tr:hover td {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: var(--color-surface-container);
+  background: color-mix(in srgb, var(--color-surface-container) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
   color: var(--color-on-surface-variant);
-  border: 1px solid var(--color-surface-container-highest);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 22%, transparent);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+  position: relative;
+  overflow: hidden;
 }
-
+.filter-pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 60%);
+  pointer-events: none;
+}
 .filter-pill.active {
-  background-color: var(--color-primary-container);
+  background: color-mix(in srgb, var(--color-primary-container) 84%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
   color: var(--color-on-primary-container);
-  border-color: var(--color-primary-container);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--color-primary) 16%, transparent), inset 0 1px 0 rgba(255,255,255,0.14);
 }
-
+.filter-pill.active::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.16) 0%, transparent 65%);
+}
 .filter-pill:hover:not(.active) {
-  background-color: var(--color-surface-container-high);
+  background: color-mix(in srgb, var(--color-surface-container-high) 72%, transparent);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 32%, transparent);
   color: var(--color-on-surface);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.10);
+}
+[data-theme='light'] .filter-pill {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26,28,30,0.09);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'] .filter-pill.active {
+  background: color-mix(in srgb, var(--color-primary-container) 88%, rgba(255,255,255,0.55));
+  border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
+  box-shadow: 0 6px 20px rgba(196,79,0,0.14), inset 0 1px 0 rgba(255,255,255,0.82);
 }
 
 .kpi-left-border {
@@ -2491,8 +2682,11 @@ code {
 
 /* =============================================
    Kinetic Pulse - Kiosk Theme (extends dark palette)
+   Compat: [data-theme='kiosk'] legacy. New: [data-theme='dark'][data-kiosk='true']
+   + [data-theme='light'][data-kiosk='true'] syncs with Configuración > Marca
    ============================================= */
-[data-theme='kiosk'] {
+[data-theme='kiosk'],
+[data-theme='dark'][data-kiosk='true'] {
   --color-on-surface-variant: #e2bfb0;
   --color-outline: #a98a7d;
   --color-outline-variant: #5a4136;
@@ -2508,4 +2702,633 @@ code {
   --color-tertiary: #c8c6c6;
   --color-on-tertiary: #303030;
   --color-tertiary-container: #9a9999;
+}
+
+/* Kiosco en modo claro: hereda la paleta light base, solo ajusta glows */
+[data-theme='light'][data-kiosk='true'] {
+  /* usa los tokens de [data-theme='light'] tal cual; pequeños retoques kiosco */
+  --color-surface-tint: #C44F00;
+  /* ── Mejora contraste TEXTO manteniendo liquid glass intacto (glass 0.58-0.62 sin tocar) ── */
+  /* Warning #C47A0B (3.09:1) → #7A4D00 (~6.1:1 vs #F5F3F0) para estados congelado/isFrozen */
+  --color-warning: #7A4D00;
+  /* Secundario outline #74777F (4.04:1 13px FAIL) → #44474E (8.4:1) solo en kiosco light: usado por sets/reps y Volviendo */
+  --color-outline: #5E636E;
+  /* Primario gym-name #C44F00 (4.25:1 borderline 16px) → #A84800 (~5.8:1) solo texto */
+}
+
+/* ── Kiosco light: solo texto (glass intacto) ── */
+[data-theme='light'][data-kiosk='true'] .kiosk-gym-name {
+  color: #A84800;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-primary-glass {
+  color: #331100;
+}
+/* El icono del botón hereda currentColor, pero aseguramos contraste */
+[data-theme='light'][data-kiosk='true'] .kiosk-primary-glass svg {
+  color: #331100;
+  stroke: #331100;
+}
+
+/* Background icon.png detrás del contenido del kiosco — img centrada, grande y notoria
+   Usa <img class="kiosk-bg"> para que filter:drop-shadow siga el alfa del PNG
+    (triángulo/círculo) y el plateado no se funda en el fondo claro. */
+.kiosk-bg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(94vw, 980px);
+  height: auto;
+  max-width: 94vw;
+  max-height: 88vh;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+  /* dark: leve glow negro para separar del #131313 */
+  filter: saturate(1) contrast(1.06) drop-shadow(0 12px 32px rgba(0,0,0,0.45)) drop-shadow(0 2px 10px rgba(0,0,0,0.35));
+  transition: opacity 0.35s ease, filter 0.35s ease;
+  /* fallback para div con background-image (legacy) */
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: min(94vw, 980px);
+}
+/* Light: el triángulo plateado se funde con #F5F3F0 — subir opacidad + oscurecer
+   + borde oscuro que sigue el silueteado del PNG. */
+[data-theme='light'][data-kiosk='true'] .kiosk-bg,
+[data-theme='light'] .kiosk-bg {
+  opacity: 0.34;
+  filter: saturate(1.18) contrast(1.32) brightness(0.84)
+    drop-shadow(0 0 1px rgba(26, 28, 30, 0.55))
+    drop-shadow(0 1px 0 rgba(26, 28, 30, 0.45))
+    drop-shadow(0 12px 32px rgba(0,0,0,0.22));
+}
+@media (max-width: 600px) {
+  .kiosk-bg {
+    width: min(98vw, 720px);
+    background-size: min(98vw, 720px);
+  }
+}
+
+/* Icono decorativo esquina inferior izquierda — replica kiosk-bg pero pequeño y anclado */
+.kiosk-bg-corner {
+  position: absolute;
+  left: 26px;
+  bottom: 22px;
+  width: 210px;
+  height: auto;
+  max-width: 36vw;
+  max-height: 30vh;
+  object-fit: contain;
+  object-position: left bottom;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.52;
+  filter: saturate(1.12) contrast(1.18) brightness(1.04) drop-shadow(0 12px 32px rgba(0,0,0,0.48)) drop-shadow(0 3px 10px rgba(0,0,0,0.36));
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-bg-corner,
+[data-theme='light'] .kiosk-bg-corner {
+  opacity: 0.68;
+  filter: saturate(1.22) contrast(1.38) brightness(0.96)
+    drop-shadow(0 0 1px rgba(26, 28, 30, 0.65))
+    drop-shadow(0 2px 0 rgba(26, 28, 30, 0.55))
+    drop-shadow(0 12px 32px rgba(0,0,0,0.24));
+}
+@media (max-width: 600px) {
+  .kiosk-bg-corner {
+    width: 156px;
+    left: 18px;
+    bottom: 16px;
+  }
+}
+
+/* Fondo central del kiosco desactivado; esquina inferior izquierda activa */
+[data-kiosk='true'] .kiosk-bg,
+.kiosk-bg {
+  display: none !important;
+}
+[data-kiosk='true'] .kiosk-bg-corner,
+.kiosk-bg-corner {
+  display: block !important;
+}
+
+/* Icono del gym en esquina superior derecha (reemplaza al reloj) */
+.kiosk-header-gym-icon {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 12px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.22));
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-header-gym-icon {
+  filter: drop-shadow(0 1px 6px rgba(0,0,0,0.14));
+}
+@media (max-width: 600px) {
+  .kiosk-header-gym-icon { width: 42px; height: 42px; }
+}
+
+/* ── Liquid Glass para botones del kiosco ── */
+.kiosk-numpad-btn {
+  height: 70px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  font-family: 'Montserrat', sans-serif;
+  color: var(--color-on-surface);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  /* glass base — dark kiosk: surface translúcida */
+  background: color-mix(in srgb, var(--color-surface-container) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 28%, transparent);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.22),
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.18);
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.kiosk-numpad-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 42%, transparent 72%);
+  pointer-events: none;
+}
+.kiosk-numpad-btn:hover {
+  background: color-mix(in srgb, var(--color-surface-container-high) 72%, transparent);
+  border-color: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 36px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 -1px 0 rgba(0,0,0,0.12);
+}
+.kiosk-numpad-btn:active {
+  transform: scale(0.965);
+  background: color-mix(in srgb, var(--color-surface-container-high) 85%, transparent);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.kiosk-backspace-btn {
+  color: var(--color-on-surface);
+}
+.kiosk-backspace-btn:hover {
+  border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+  background: color-mix(in srgb, var(--color-error-container) 18%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.kiosk-primary-glass {
+  height: 70px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-on-primary);
+  cursor: pointer;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--color-primary) 28%, transparent),
+    0 4px 16px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    inset 0 -1px 0 rgba(0,0,0,0.15);
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.kiosk-primary-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.06) 38%, transparent 70%);
+  pointer-events: none;
+}
+.kiosk-primary-glass:hover {
+  background: color-mix(in srgb, var(--color-primary) 90%, transparent);
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 36px color-mix(in srgb, var(--color-primary) 34%, transparent),
+    0 6px 20px rgba(0,0,0,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.28);
+}
+.kiosk-primary-glass:active {
+  transform: scale(0.97);
+}
+
+/* Light kiosk: vidrio más lechoso, borde sutil */
+[data-theme='light'][data-kiosk='true'] .kiosk-numpad-btn {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26, 28, 30, 0.08);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    inset 0 -1px 0 rgba(0,0,0,0.04);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-numpad-btn:hover {
+  background: rgba(255,255,255,0.72);
+  border-color: rgba(26, 28, 30, 0.12);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-backspace-btn:hover {
+  background: color-mix(in srgb, var(--color-error-container) 55%, rgba(255,255,255,0.6));
+  border-color: rgba(154, 37, 32, 0.28);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-primary-glass {
+  background: color-mix(in srgb, var(--color-primary-container) 88%, rgba(255,255,255,0.55));
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  box-shadow:
+    0 10px 28px rgba(196, 79, 0, 0.18),
+    0 4px 16px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.85);
+}
+
+/* ── Liquid glass para input de código y reloj ── */
+.kiosk-clock-glass {
+  border-radius: 12px;
+  padding: 12px 24px;
+  text-align: right;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-surface-container-high) 55%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 28%, transparent);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.10);
+}
+.kiosk-clock-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.kiosk-code-display {
+  width: 100%;
+  max-width: 360px;
+  height: 76px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 20px;
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface-container-low) 60%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1.5px solid color-mix(in srgb, var(--color-outline-variant) 32%, transparent);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.16);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.kiosk-code-display::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 45%, transparent 75%);
+  pointer-events: none;
+}
+
+[data-theme='light'][data-kiosk='true'] .kiosk-clock-glass {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26, 28, 30, 0.08);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.92);
+}
+
+/* Quitar fondo del reloj en esquina superior derecha (kiosco) a petición */
+[data-kiosk='true'] .kiosk-clock-glass {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 4px 12px;
+}
+[data-kiosk='true'] .kiosk-clock-glass::before { display: none !important; }
+[data-theme='light'][data-kiosk='true'] .kiosk-code-display {
+  background: rgba(255,255,255,0.62);
+  border-color: rgba(26, 28, 30, 0.10);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    inset 0 -1px 0 rgba(0,0,0,0.04);
+}
+
+/* ── Liquid glass para alerta de código inválido ── */
+.kiosk-error-glass {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border-radius: 14px;
+  padding: 16px 20px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-error) 13%, var(--color-surface-container) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-error) 36%, transparent);
+  box-shadow:
+    0 12px 40px color-mix(in srgb, var(--color-error) 20%, transparent),
+    0 8px 28px rgba(0,0,0,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.14);
+}
+.kiosk-error-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 40%, transparent 75%);
+  pointer-events: none;
+}
+.kiosk-error-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--color-error) 22%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--color-error) 28%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+}
+.kiosk-error-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 90%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-error) 16%, transparent);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+[data-theme='light'][data-kiosk='true'] .kiosk-error-glass {
+  background: color-mix(in srgb, var(--color-error) 11%, rgba(255,255,255,0.64));
+  border-color: color-mix(in srgb, var(--color-error) 28%, transparent);
+  box-shadow:
+    0 12px 40px rgba(154, 37, 32, 0.16),
+    0 8px 28px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-error-icon {
+  background: color-mix(in srgb, var(--color-error) 16%, rgba(255,255,255,0.65));
+  border-color: color-mix(in srgb, var(--color-error) 22%, transparent);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-error-glow {
+  background: color-mix(in srgb, var(--color-error) 13%, transparent);
+  opacity: 0.85;
+}
+
+/* ── Header branding + tipografía alto contraste sobre glass ── */
+.kiosk-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 6px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-surface-container-high) 48%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, var(--color-outline-variant) 26%, transparent);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.08);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(60vw, 560px);
+}
+.kiosk-logo-header {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 8px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.22));
+}
+.kiosk-gym-name {
+  font-size: clamp(18px, 2.1vw, 22px);
+  font-weight: 900;
+  color: var(--color-primary);
+  margin: 0;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* margen interno para que la bastardilla no recorte la última letra (G/Y) */
+  padding-right: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 2px 16px rgba(0,0,0,0.28);
+}
+
+.kiosk-welcome-title {
+  font-weight: 900 !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.45), 0 2px 18px rgba(0,0,0,0.35), 0 8px 28px rgba(0,0,0,0.22);
+}
+.kiosk-welcome-sub {
+  font-weight: 600 !important;
+  color: var(--color-on-surface) !important;
+  opacity: 0.94;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 2px 12px rgba(0,0,0,0.22);
+}
+.kiosk-numpad-btn {
+  text-shadow: 0 1px 0 rgba(0,0,0,0.38), 0 1px 10px rgba(0,0,0,0.22);
+  font-weight: 900 !important;
+}
+.kiosk-clock-glass p {
+  text-shadow: 0 1px 0 rgba(0,0,0,0.30), 0 2px 12px rgba(0,0,0,0.22);
+}
+
+[data-theme='light'][data-kiosk='true'] .kiosk-header-brand {
+  background: rgba(255,255,255,0.58);
+  border-color: rgba(26, 28, 30, 0.08);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.92);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-logo-header {
+  filter: drop-shadow(0 1px 6px rgba(0,0,0,0.12));
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-gym-name {
+  text-shadow: none;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-welcome-title {
+  text-shadow: none;
+  color: #1A1C1E !important;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-welcome-sub {
+  text-shadow: none;
+  color: #44474E !important;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-numpad-btn {
+  text-shadow: none;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-clock-glass p {
+  text-shadow: none;
+}
+
+@media (max-width: 600px) {
+  .kiosk-header-brand { gap: 8px; padding: 5px 12px 5px 6px; max-width: min(62vw, 360px); }
+  .kiosk-logo-header { width: 36px; height: 36px; }
+  .kiosk-gym-name { font-size: 16px; }
+}
+@media (max-width: 900px) {
+  .kiosk-header-brand { max-width: min(58vw, 480px); }
+}
+
+/* ── Liquid glass para login — mismos tokens que kiosco ── */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--color-bg);
+  position: relative;
+  overflow: hidden;
+}
+/* Card: visual sólido original — se conserva solo tipografía */
+.login-card-glass {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-surface-container-high);
+  border-radius: 16px;
+  padding: 48px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.login-card-glass::before { display: none; }
+.login-card-glass > * { position: relative; z-index: 1; }
+
+/* Inputs: visual sólido original */
+.form-input.login-glass-input {
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-surface-container-highest);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.30), 0 1px 10px rgba(0,0,0,0.18);
+}
+.form-input.login-glass-input::placeholder {
+  color: color-mix(in srgb, var(--color-on-surface-variant) 70%, transparent);
+  font-weight: 500;
+}
+.form-input.login-glass-input:focus {
+  background: var(--color-surface-container);
+  border-color: var(--color-primary-container);
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+}
+/* Botón: visual sólido original */
+.btn.login-glass-btn {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  position: relative;
+  overflow: visible;
+}
+.btn.login-glass-btn::before { display: none; }
+.btn.login-glass-btn:hover {
+  box-shadow: var(--shadow-glow-hover);
+}
+
+/* Tipografía login — idéntica a kiosco */
+.login-card-glass .form-label {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-on-surface);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.30), 0 2px 12px rgba(0,0,0,0.18);
+}
+.login-title {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.015em;
+  color: var(--color-primary);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35), 0 2px 16px rgba(0,0,0,0.28);
+  line-height: 1;
+}
+.login-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--color-on-surface);
+  opacity: 0.94;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.30), 0 2px 12px rgba(0,0,0,0.18);
+}
+
+[data-theme='light'] .login-card-glass {
+  background: var(--color-surface);
+  border-color: var(--color-surface-container-high);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+[data-theme='light'] .login-card-glass::before { display: none; }
+[data-theme='light'] .form-input.login-glass-input {
+  background: var(--color-surface-container);
+  border-color: var(--color-surface-container-high);
+  box-shadow: none;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.88), 0 1px 6px rgba(0,0,0,0.08);
+  color: #1A1C1E;
+}
+[data-theme='light'] .form-input.login-glass-input:focus {
+  background: var(--color-surface-container);
+  border-color: var(--color-primary-container);
+  box-shadow: 0 0 0 3px rgba(196, 79, 0, 0.15);
+}
+[data-theme='light'] .login-card-glass .form-label {
+  color: #1A1C1E;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.88), 0 1px 8px rgba(0,0,0,0.08);
+}
+[data-theme='light'] .login-title {
+  text-shadow: 0 1px 0 rgba(255,255,255,0.92), 0 2px 10px rgba(0,0,0,0.10);
+}
+[data-theme='light'] .login-subtitle {
+  color: #44474E !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.85), 0 1px 8px rgba(0,0,0,0.08);
 }
