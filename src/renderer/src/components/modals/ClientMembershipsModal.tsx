@@ -53,6 +53,7 @@ export function ClientMembershipsModal({
   useFormSaved('renew', () => loadData())
   useFormSaved('freeze', () => loadData())
   useFormSaved('abono', () => loadData())
+  useFormSaved('editMembership', () => loadData())
 
   const handleRenew = () => {
     window.electronAPI.window.openForm('renew', { clientId: client.id })
@@ -107,16 +108,15 @@ export function ClientMembershipsModal({
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {!activeMembership && (
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleRenew}
-                style={{ minHeight: 36 }}
-              >
-                <Icons.Plus />
-                Renovar
-              </button>
-            )}
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleRenew}
+              style={{ minHeight: 36 }}
+              title={activeMembership ? 'Agregar membresía encolada (se activará al vencer la actual)' : 'Renovar'}
+            >
+              <Icons.Plus />
+              {activeMembership ? 'Agregar' : 'Renovar'}
+            </button>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setShowRoutinesModal(true)}
@@ -171,7 +171,7 @@ export function ClientMembershipsModal({
                     <th>Vence</th>
                     <th>Estado</th>
                     <th>Saldo</th>
-                    <th style={{ width: 200 }}>Acciones</th>
+                    <th style={{ width: 240 }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -236,6 +236,27 @@ export function ClientMembershipsModal({
                                 }}
                               >
                                 <Icons.Play />
+                              </button>
+                            )}
+                            {(membership.status === 'active' || membership.status === 'scheduled') && (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() =>
+                                  window.electronAPI.window.openForm('editMembership', {
+                                    membershipId: membership.id,
+                                    clientId: client.id,
+                                  })
+                                }
+                                title="Editar membresía"
+                                style={{
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Icons.Edit />
                               </button>
                             )}
                             {debt && debt.balance > 0 && (

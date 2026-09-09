@@ -19,6 +19,8 @@ export function SystemSection(): JSX.Element {
   const [showMigrationModal, setShowMigrationModal] = useState(false)
   const [migrationStatus, setMigrationStatus] = useState('')
   const [migrationBackupPath, setMigrationBackupPath] = useState<string | null>(null)
+  const [backingUp, setBackingUp] = useState(false)
+  const [restoring, setRestoring] = useState(false)
 
   const loadAutoStart = async () => {
     try {
@@ -153,33 +155,51 @@ export function SystemSection(): JSX.Element {
                 <Icons.Download />
                 Crear Respaldo Ahora
               </button>
-              <button className="btn btn-secondary" onClick={async () => {
-                if (window.electronAPI?.system?.backupDb) {
+              <button className="btn btn-secondary" disabled={backingUp} onClick={async () => {
+                if (!window.electronAPI?.system?.backupDb || backingUp) return
+                setBackingUp(true)
+                try {
                   const result = await window.electronAPI.system.backupDb()
-                  if (result.success) {
-                    showToast('success', `Respaldo guardado en: ${result.data}`, 'Respaldo Exitoso')
+                  if (result.success && result.data) {
+                    const fotos = result.data.photoCount > 0 ? ` (${result.data.photoCount} fotos)` : ''
+                    showToast('success', `Respaldo completo guardado${fotos} en: ${result.data.filePath}`, 'Respaldo Exitoso')
                   } else if (result.error !== 'Canceled') {
                     showToast('error', result.error || 'Error al crear respaldo', 'Error')
                   }
+                } catch (e) {
+                  showToast('error', toErrorMessage(e, 'Error al crear respaldo'), 'Error')
+                } finally {
+                  setBackingUp(false)
                 }
               }}>
                 <Icons.Download />
-                Guardar Copia (elegir ubicación)
+                {backingUp ? 'Guardando…' : 'Guardar Copia (BD + Fotos)'}
               </button>
-              <button className="btn btn-secondary" onClick={async () => {
-                if (window.electronAPI?.system?.restoreDb) {
-                  const ok = await confirm({ title: 'Restaurar base de datos', message: '¿Restaurar base de datos? Los cambios no guardados se perderán.', variant: 'warning', confirmLabel: 'Restaurar' })
-                  if (!ok) return
+              <button className="btn btn-secondary" disabled={restoring} onClick={async () => {
+                if (!window.electronAPI?.system?.restoreDb || restoring) return
+                const ok = await confirm({
+                  title: 'Restaurar base de datos',
+                  message: '¿Restaurar desde un respaldo?\n\n• Archivo .zip: restaura la base de datos Y las fotos de clientes.\n• Archivo .db: solo restaura la base de datos.\n\nLos datos actuales se reemplazan por los del respaldo.',
+                  variant: 'warning',
+                  confirmLabel: 'Restaurar'
+                })
+                if (!ok) return
+                setRestoring(true)
+                try {
                   const result = await window.electronAPI.system.restoreDb()
                   if (result.success) {
                     showToast('success', 'Base de datos restaurada. Reinicie la aplicación.', 'Restauración Exitosa')
                   } else if (result.error !== 'Canceled') {
                     showToast('error', result.error || 'Error al restaurar base de datos', 'Error')
                   }
+                } catch (e) {
+                  showToast('error', toErrorMessage(e, 'Error al restaurar base de datos'), 'Error')
+                } finally {
+                  setRestoring(false)
                 }
               }}>
                 <Icons.Upload />
-                Restaurar Base de Datos
+                {restoring ? 'Restaurando…' : 'Restaurar Base de Datos'}
               </button>
             </div>
             <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
@@ -237,7 +257,7 @@ export function SystemSection(): JSX.Element {
               </button>
             </div>
             <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 8 }}>
-              La base de datos contiene clientes, membresías, pagos, registros de acceso y configuración.
+              El botón Guardar Copia genera un archivo .zip con la base de datos (clientes, membresías, pagos, registros de acceso y configuración) más las fotos de los clientes actuales. Los respaldos automáticos solo incluyen la base de datos (.db).
             </p>
           </div>
 

@@ -2832,12 +2832,12 @@ code {
 
 /* ── Liquid Glass para botones del kiosco ── */
 .kiosk-numpad-btn {
-  height: 70px;
+  height: clamp(52px, 8.5vh, 70px);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: clamp(20px, 3.2vh, 26px);
   font-weight: 800;
   font-family: 'Montserrat', sans-serif;
   color: var(--color-on-surface);
@@ -2890,7 +2890,7 @@ code {
 }
 
 .kiosk-primary-glass {
-  height: 70px;
+  height: clamp(52px, 8.5vh, 70px);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -2990,7 +2990,7 @@ code {
 .kiosk-code-display {
   width: 100%;
   max-width: 360px;
-  height: 76px;
+  height: clamp(58px, 9vh, 76px);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -3036,6 +3036,26 @@ code {
   padding: 4px 12px;
 }
 [data-kiosk='true'] .kiosk-clock-glass::before { display: none !important; }
+.kiosk-code-value {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: clamp(26px, 5vh, 36px);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--color-on-surface);
+  line-height: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.kiosk-code-placeholder {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: clamp(18px, 4vh, 24px);
+  letter-spacing: 0.45em;
+  color: color-mix(in srgb, var(--color-on-surface) 35%, transparent);
+  line-height: 1;
+}
 [data-theme='light'][data-kiosk='true'] .kiosk-code-display {
   background: rgba(255,255,255,0.62);
   border-color: rgba(26, 28, 30, 0.10);
@@ -3214,6 +3234,58 @@ code {
 }
 @media (max-width: 900px) {
   .kiosk-header-brand { max-width: min(58vw, 480px); }
+}
+
+/* ── Responsive del formulario del kiosco (pantallas bajas/estrechas) ──
+   El root permite scroll vertical y centra con margin:auto: cabe todo sin
+   recortar botones; los botones/display usan clamp() con vh para encogerse. */
+/* Bienvenida con nombre del gym resaltado */
+.kiosk-welcome-gym {
+  margin: 0 0 6px 0;
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(15px, 2.6vw, 22px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-on-surface);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.45), 0 2px 18px rgba(0,0,0,0.35);
+}
+.kiosk-gym-highlight {
+  color: var(--color-primary);
+  font-style: italic;
+  font-weight: 900;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-welcome-gym {
+  text-shadow: none;
+  color: #1A1C1E;
+}
+[data-theme='light'][data-kiosk='true'] .kiosk-gym-highlight {
+  color: #A84800;
+  text-shadow: none;
+}
+.kiosk-backspace-btn svg {
+  width: clamp(28px, 5.5vh, 48px);
+  height: auto;
+}
+/* Pantallas bajas: compactar marca, bienvenida y reloj */
+@media (max-height: 720px) {
+  .kiosk-welcome-gym { font-size: clamp(13px, 2.6vh, 17px); }
+  .kiosk-header-brand { padding: 4px 12px 4px 6px; }
+  .kiosk-clock-glass { padding: 8px 16px; }
+  .kiosk-welcome-title { font-size: clamp(15px, 3vh, 20px) !important; }
+  .kiosk-welcome-sub { font-size: 14px !important; margin-top: 4px !important; }
+}
+/* Pantallas estrechas: contenido con padding lateral y error a ancho completo */
+@media (max-width: 600px) {
+  .kiosk-idle-content { padding-left: 16px !important; padding-right: 16px !important; }
+  .kiosk-error-float {
+    top: 12px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
 }
 
 /* ── Liquid glass para login — mismos tokens que kiosco ── */

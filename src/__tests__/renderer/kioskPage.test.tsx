@@ -183,4 +183,129 @@ describe('KioskPage — control de acceso', () => {
     expect(screen.getByText(/contacta recepción/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /RENOVAR MEMBRESÍA/i })).not.toBeInTheDocument()
   })
+
+  it('formulario inicial: muestra botón Abrir puerta sin validar ningún código', async () => {
+    const mock = installElectronApiMock()
+    const user = userEvent.setup()
+    render(<KioskPage />)
+
+    const openBtn = await screen.findByRole('button', { name: /Abrir puerta/i })
+    expect(openBtn).toBeInTheDocument()
+
+    await user.click(openBtn)
+
+    await waitFor(() => {
+      expect(mock.door.open).toHaveBeenCalledTimes(1)
+      expect(mock.door.open).toHaveBeenCalledWith('manual')
+    })
+    expect(mock.access.validate).not.toHaveBeenCalled()
+    expect(await screen.findByText('Puerta abierta')).toBeInTheDocument()
+  })
+
+  it('reapertura: no borra el código a medio escribir ni valida', async () => {
+    const mock = installElectronApiMock()
+    const user = userEvent.setup()
+    render(<KioskPage />)
+
+    await user.click(screen.getByRole('button', { name: '5' }))
+    await user.click(screen.getByRole('button', { name: /Abrir puerta/i }))
+
+    await waitFor(() => {
+      expect(mock.door.open).toHaveBeenCalledWith('manual')
+    })
+    expect(mock.access.validate).not.toHaveBeenCalled()
+    expect(await screen.findByText('Puerta abierta')).toBeInTheDocument()
+    // El formulario sigue visible (no se validó ni se reseteó al resultado)
+    expect(screen.getByRole('button', { name: /Ingresar/i })).toBeInTheDocument()
+  })
+
+  it('puerta ya abierta: muestra aviso sin marcar error', async () => {
+    installElectronApiMock({
+      door: {
+        open: vi.fn(() => Promise.resolve({ success: true, data: false }))
+      }
+    })
+    const user = userEvent.setup()
+    render(<KioskPage />)
+
+    await user.click(await screen.findByRole('button', { name: /Abrir puerta/i }))
+
+    expect(await screen.findByText('La puerta ya está abierta')).toBeInTheDocument()
+  })
+
+  it('fallo del relé: muestra error y permite reintentar tras el cooldown', async () => {
+    const mock = installElectronApiMock({
+      door: {
+        open: vi.fn(() => Promise.resolve({ success: false, error: 'relay down' }))
+      }
+    })
+    const user = userEvent.setup()
+    render(<KioskPage />)
+
+    const openBtn = await screen.findByRole('button', { name: /Abrir puerta/i })
+    await user.click(openBtn)
+
+    expect(await screen.findByText('relay down')).toBeInTheDocument()
+    // Cooldown de 3s: el botón queda deshabilitado justo después del pulso
+    expect(openBtn).toBeDisabled()
+    expect(mock.door.open).toHaveBeenCalledTimes(1)
+  })
+
+    it('pantalla de resultado: no muestra el botón de apertura manual', async () => {
+
+    installElectronApiMock({
+      access: {
+        validate: vi.fn(() =>
+          Promise.resolve({
+            success: true,
+            data: validation({
+              valid: true,
+              code: 'granted',
+              message: 'Acceso concedido',
+              client: CLIENT,
+              membership: futureMembership(10),
+              debt: []
+            })
+          })
+        )
+      }
+    })
+    const user = userEvent.setup()
+    render(<KioskPage />)
+
+    await enterCodeAndCheckIn(user, '5555')
+
+    expect(await screen.findByText(/JUAN PÉREZ/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Abrir puerta/i })).not.toBeInTheDocument()
+  })
+
+  it('responsive: el formulario permite scroll vertical y expone todo el teclado', async () => {
+    installElectronApiMock()
+    render(<KioskPage />)
+
+    // El root debe permitir scroll (antes: overflow hidden recortaba medio botón)
+    const root = document.querySelector('.kiosk-idle-root')
+    expect(root).not.toBeNull()
+    expect(root).toHaveStyle({ overflowY: 'auto' })
+
+    // Todos los botones del formulario existen y están habilitados
+    for (const digit of ['1', '5', '9', '0']) {
+      expect(await screen.findByRole('button', { name: digit })).toBeEnabled()
+    }
+    expect(await screen.findByRole('button', { name: /Ingresar/i })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: /Abrir puerta/i })).toBeEnabled()
+  })
+
+  it('bienvenida: nombre del gym resaltado y sin marca superior', async () => {
+    installElectronApiMock()
+    render(<KioskPage />)
+
+    // "Bienvenido a {nombre}" con el nombre resaltado (viene de settings)
+    expect(await screen.findByText(/Bienvenido a/i)).toBeInTheDocument()
+    expect(screen.getByText('BodyFitGym')).toBeInTheDocument()
+    expect(document.querySelector('.kiosk-gym-highlight')).not.toBeNull()
+    // Sin logo ni cápsula en la parte superior
+    expect(document.querySelector('.kiosk-idle-brand-row')).toBeNull()
+    expect(document.querySelector('.kiosk-idle-header')).toBeNull()
+  })
 })

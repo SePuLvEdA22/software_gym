@@ -10,6 +10,7 @@ import { updateWhatsappConfig, checkAndSendExpiryReminders, getWhatsappConfig, s
 import { initUpdater } from './updater'
 import { getBackupConfig, performAutoBackup } from './backup'
 import { ensureThumbnails } from './photos'
+import { startScheduledActivator } from './database/scheduledActivator'
 import {
   getAppMode,
   ensureAdminWindow,
@@ -231,6 +232,8 @@ app.whenReady().then(async () => {
   // reiniciar al cambiar checkIntervalHours en la configuración (sin reiniciar
   // la app); sees reinicia además vía IPC (system:restartReminderInterval).
   startReminderScheduler()
+  // Activa membresías programadas puntualmente a medianoche y al arrancar
+  startScheduledActivator()
 
   // ── Respaldo automático de la base de datos ──
   // Copia al iniciar la aplicación (si está habilitado) y luego una copia
@@ -260,6 +263,10 @@ app.whenReady().then(async () => {
   // Allow dynamic interval restart when config changes
   ipcMain.handle('system:restartReminderInterval', async () => {
     startReminderScheduler()
+    return { success: true }
+  })
+  ipcMain.handle('system:restartScheduledActivator', async () => {
+    startScheduledActivator()
     return { success: true }
   })
 

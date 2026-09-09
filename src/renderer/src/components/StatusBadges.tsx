@@ -51,6 +51,14 @@ export const statusBadge = (status: ClientStatus) => {
 }
 
 export function getMembershipStatusBadge(membership: Membership) {
+  if (membership.status === 'scheduled') {
+    return (
+      <span className="status-badge status-badge-info">
+        <PulseDot />
+        Programada
+      </span>
+    )
+  }
   if (membership.status === 'frozen') {
     return (
       <span className="status-badge status-badge-warning">

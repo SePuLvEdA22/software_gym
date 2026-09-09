@@ -4,7 +4,7 @@ export const GenderSchema = z.enum(['male', 'female', 'other', 'not_specified'])
 export const ClientStatusSchema = z.enum(['active', 'inactive', 'expired', 'suspended'])
 export const PaymentMethodSchema = z.enum(['cash', 'transfer', 'card', 'nequi', 'daviplata'])
 export const MembershipTypeSchema = z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'semiannual', 'annual'])
-export const MembershipStatusSchema = z.enum(['active', 'expired', 'cancelled', 'frozen'])
+export const MembershipStatusSchema = z.enum(['active', 'expired', 'cancelled', 'frozen', 'scheduled'])
 export const UserRoleSchema = z.enum(['admin', 'reception', 'trainer', 'accounting'])
 
 export const CreateClientSchema = z.object({
@@ -56,6 +56,14 @@ export const CreateMembershipSchema = z.object({
   startDate: z.string(),
   endDate: z.string(),
   status: MembershipStatusSchema.optional(),
+})
+
+export const UpdateMembershipSchema = z.object({
+  planId: z.string().uuid().optional(),
+  startDate: z.string().min(1).optional(),
+  endDate: z.string().min(1).optional(),
+  status: MembershipStatusSchema.optional(),
+  reason: z.string().max(500).optional(),
 })
 
 export const RecordPaymentSchema = z.object({

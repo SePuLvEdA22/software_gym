@@ -3,7 +3,8 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, PaymentMethod } from '@shared/types'
 import { formatCurrency } from '@/utils/format'
-import { format, parse, parseISO, addDays, isValid } from 'date-fns'
+import { format, parseISO, addDays, isValid } from 'date-fns'
+import { DatePicker, todayLocalKey } from '@/components/DatePicker'
 import { toErrorMessage } from '../../../../shared/errors'
 
 const paymentMethods: { value: PaymentMethod; label: string }[] = [
@@ -43,7 +44,8 @@ export function RenewModal({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [amount, setAmount] = useState<number>(0)
   const [discount, setDiscount] = useState<number>(0)
-  const [startDate, setStartDate] = useState<string>(format(new Date(), 'dd/MM/yyyy'))
+  const [startDate, setStartDate] = useState<string>(todayLocalKey())
+  const [quantity, setQuantity] = useState<number>(1)
   const [loading, setLoading] = useState(false)
   const [promoInfo, setPromoInfo] = useState<{ price: number; discount: number; promotionName: string | null } | null>(null)
 
@@ -74,48 +76,66 @@ export function RenewModal({
 
 
   const handleRenew = async () => {
-    if (!selectedPlan) return
+    if (!selectedPlan || !selectedPlanData) return
+    const qty = Math.max(1, Math.min(12, Math.floor(quantity) || 1))
     setLoading(true)
     try {
-      const pendingBalance = selectedPlanData ? (selectedPlanData.price - discount) - amount : 0
-      const notes = [
+      const pendingBalance = (selectedPlanData.price - discount) - amount
+      const notesBase = [
         discount > 0 ? `Descuento aplicado: ${promoInfo?.promotionName || '$' + discount.toLocaleString('es-CO')}` : '',
         pendingBalance > 0 ? `Pago parcial. Saldo pendiente: $${pendingBalance.toLocaleString('es-CO')}` : ''
       ].filter(Boolean).join(' | ') || undefined
 
-      const parsedStart = startDate ? parse(startDate, 'dd/MM/yyyy', new Date()) : null
-      const startDateIso = parsedStart && isValid(parsedStart) ? parsedStart.toISOString() : undefined
+      const parsedStart = startDate ? parseISO(startDate) : new Date()
+      const baseStart = parsedStart && isValid(parsedStart) ? parsedStart : new Date()
+      const duration = Math.max(1, selectedPlanData.durationDays)
 
-      const result = useKioskApi
-        ? await window.electronAPI.kiosk.createRenewal(
-            client.id,
-            selectedPlan,
-            amount,
-            paymentMethod,
-            startDateIso,
-            notes,
-            discount > 0 ? discount : undefined
-          )
-        : await window.electronAPI.membership.createWithPayment(
-            client.id,
-            selectedPlan,
-            amount,
-            paymentMethod,
-            startDateIso,
-            notes,
-            discount > 0 ? discount : undefined
-          )
+      let createdCount = 0
+      let lastError: string | undefined
 
-      if (result.success && result.data?.membership) {
-        showToast('success', 'Membresía creada exitosamente', 'Éxito')
+      for (let i = 0; i < qty; i++) {
+        const iterStart = addDays(baseStart, i * duration)
+        const startDateIso = iterStart.toISOString()
+        const notes = qty > 1 ? `${notesBase ? notesBase + ' | ' : ''}Cuota ${i + 1}/${qty}`.trim() || undefined : notesBase
+
+        const result = useKioskApi
+          ? await window.electronAPI.kiosk.createRenewal(
+              client.id,
+              selectedPlan,
+              amount,
+              paymentMethod,
+              startDateIso,
+              notes,
+              discount > 0 ? discount : undefined
+            )
+          : await window.electronAPI.membership.createWithPayment(
+              client.id,
+              selectedPlan,
+              amount,
+              paymentMethod,
+              startDateIso,
+              notes,
+              discount > 0 ? discount : undefined
+            )
+
+        if (result.success && (result.data as { membership?: Membership | null })?.membership) {
+          createdCount++
+        } else {
+          lastError = (result.data as { error?: string } | null)?.error || result.error || 'No se pudo crear la membresía'
+          break
+        }
+      }
+
+      if (createdCount === qty) {
+        showToast('success', qty === 1 ? 'Membresía creada exitosamente' : `${qty} membresías creadas y encoladas`, 'Éxito')
+        onSuccess()
+        onClose()
+      } else if (createdCount > 0) {
+        showToast('warning', `Se crearon ${createdCount}/${qty}. Error en la siguiente: ${lastError}`, 'Parcial')
         onSuccess()
         onClose()
       } else {
-        showToast(
-          'warning',
-          (result.data as { error?: string } | null)?.error || result.error || 'No se pudo crear la membresía',
-          'Error'
-        )
+        showToast('warning', lastError || 'No se pudo crear la membresía', 'Error')
       }
     } catch (error) {
       showToast('error', toErrorMessage(error, 'Error desconocido'), 'Error')
@@ -126,11 +146,11 @@ export function RenewModal({
 
   const getEndDate = () => {
     if (!selectedPlanData || !startDate) return null
-    const start = startDate ? parse(startDate, 'dd/MM/yyyy', new Date()) : new Date()
+    const start = startDate ? parseISO(startDate) : new Date()
     if (!isValid(start)) return '-'
-    // La membresía vence al final del ÚLTIMO día de su duración
-    // (p. ej. 1 día comprado hoy vence hoy), igual que createMembership.
-    const end = addDays(start, Math.max(1, selectedPlanData.durationDays) - 1)
+    const qty = Math.max(1, Math.floor(quantity) || 1)
+    const totalDays = Math.max(1, selectedPlanData.durationDays) * qty
+    const end = addDays(start, totalDays - 1)
     return format(end, 'dd/MM/yyyy')
   }
 
@@ -171,7 +191,7 @@ export function RenewModal({
             </div>
           )}
 
-          <div className="form-group" style={{ marginBottom: 20 }}>
+          <div className="form-group" style={{ marginBottom: 16 }}>
             <label className="form-label">Plan de Membresía</label>
             <select
               className="form-select"
@@ -188,16 +208,31 @@ export function RenewModal({
             </select>
           </div>
 
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">Cantidad (membresías a encolar)</label>
+            <input
+              type="number"
+              className="form-input"
+              value={quantity}
+              onChange={(e) => {
+                const v = parseInt(e.target.value.replace(/\D/g, '') || '1', 10)
+                setQuantity(Math.max(1, Math.min(12, v)))
+              }}
+              min={1}
+              max={12}
+              placeholder="1"
+            />
+            <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+              {quantity > 1
+                ? `Se crearán ${quantity} membresías consecutivas (${selectedPlanData ? selectedPlanData.durationDays * quantity : 0} días en total) que se activarán una tras otra. Para días no consecutivos, crea con cantidad 1 y luego edita la fecha de inicio de la programada.`
+                : 'Compra una sola membresía. Si el cliente ya tiene una activa, la nueva quedará programada y se activará al vencer la actual.'}
+            </div>
+          </div>
+
           <div className="form-row" style={{ marginBottom: 20 }}>
             <div className="form-group">
               <label className="form-label">Fecha de Inicio</label>
-              <input
-                type="text"
-                className="form-input"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                placeholder="dd/mm/aaaa"
-              />
+              <DatePicker value={startDate} onChange={setStartDate} placeholder="Seleccionar fecha" />
             </div>
             <div className="form-group">
               <label className="form-label">Fecha de Vencimiento</label>
@@ -271,17 +306,18 @@ export function RenewModal({
           <div className="card" style={{ padding: 16, backgroundColor: 'var(--color-surface-container-high)', marginTop: 16 }}>
             <div className="form-row-2">
               <div className="form-group">
-                <label className="form-label">Total a Pagar</label>
+                <label className="form-label">Total a Pagar {quantity > 1 ? `(x${quantity})` : ''}</label>
                 <input
                   type="text"
                   className="form-input"
-                  value={selectedPlanData ? formatCurrency(Math.max(0, selectedPlanData.price - discount)) : ''}
+                  value={selectedPlanData ? formatCurrency(Math.max(0, selectedPlanData.price - discount) * (quantity > 1 ? quantity : 1)) : ''}
                   disabled
                   style={{ backgroundColor: 'var(--color-surface-container-low)', fontWeight: 600 }}
                 />
+                {quantity > 1 && selectedPlanData && <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 2 }}>{formatCurrency(Math.max(0, selectedPlanData.price - discount))} c/u</div>}
               </div>
               <div className="form-group">
-                <label className="form-label">Monto Pagado</label>
+                <label className="form-label">Monto Pagado {quantity > 1 ? `(por cuota)` : ''}</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -295,14 +331,15 @@ export function RenewModal({
                   }}
                   placeholder="0"
                 />
+                {quantity > 1 && <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 2 }}>Se registrará {quantity} pagos de {formatCurrency(amount || 0)} c/u</div>}
               </div>
             </div>
             {selectedPlanData && amount < (selectedPlanData.price - discount) && (
               <div className="alert alert-warning" style={{ marginTop: 8, marginBottom: 0, padding: '8px 12px' }}>
                 <Icons.Bell />
                 <div>
-                  <strong>Saldo Pendiente: {formatCurrency((selectedPlanData.price - discount) - amount)}</strong>
-                  <div style={{ fontSize: 12 }}>Este saldo quedará registrado como deuda del cliente</div>
+                  <strong>Saldo Pendiente: {formatCurrency(((selectedPlanData.price - discount) - amount) * (quantity > 1 ? quantity : 1))}</strong>
+                  <div style={{ fontSize: 12 }}>Este saldo quedará registrado como deuda del cliente {quantity > 1 ? `(${(selectedPlanData.price - discount) - amount} por cuota)` : ''}</div>
                 </div>
               </div>
             )}
@@ -319,7 +356,7 @@ export function RenewModal({
             onClick={handleRenew}
             disabled={!selectedPlan || loading}
           >
-            {loading ? 'Procesando...' : 'Confirmar'}
+            {loading ? 'Procesando...' : quantity > 1 ? `Confirmar (${quantity})` : 'Confirmar'}
           </button>
         </div>
     </>

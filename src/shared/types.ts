@@ -83,7 +83,7 @@ export interface FreezeHistory {
   unfrozenBy: 'manual' | 'auto' | null
 }
 
-export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen'
+export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'frozen' | 'scheduled'
 
 export interface Payment {
   id: string

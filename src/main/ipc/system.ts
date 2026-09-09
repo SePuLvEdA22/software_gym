@@ -1,7 +1,8 @@
 import { ipcMain, dialog } from 'electron'
 import { writeFileSync } from 'fs'
 import log from 'electron-log'
-import { backupDatabase, restoreDatabase, getDatabase } from '../database/index'
+import { restoreDatabase, getDatabase } from '../database/index'
+import { createFullBackup, restoreFullBackup } from '../fullBackup'
 import { autoUnfreezeDueMemberships, updateExpiredMemberships } from '../database/memberships'
 import {
   getSessionUser,
@@ -54,14 +55,22 @@ export function registerSystemHandlers(): void {
     const auth = requireRole('admin')
     if (auth) return auth
     try {
+      // Respaldo completo manual: un solo .zip con la base de datos y las
+      // fotos de los clientes actuales (los automáticos siguen siendo .db).
       const { canceled, filePath } = await dialog.showSaveDialog({
-        title: 'Guardar copia de seguridad',
-        defaultPath: `backup-bodyfitgym-${new Date().toISOString().slice(0, 10)}.db`,
-        filters: [{ name: 'Database', extensions: ['db'] }]
+        title: 'Guardar copia de seguridad (base de datos + fotos)',
+        defaultPath: `backup-bodyfitgym-${new Date().toISOString().slice(0, 10)}.zip`,
+        filters: [{ name: 'Respaldo completo', extensions: ['zip'] }]
       })
-      if (canceled || !filePath) return { success: false, error: 'Cancelado' }
-      const ok = backupDatabase(filePath)
-      return { success: ok, data: filePath }
+      if (canceled || !filePath) return { success: false, error: 'Canceled' }
+      const result = await createFullBackup(filePath)
+      if (!result.success) {
+        return { success: false, error: result.error || 'No se pudo crear el respaldo' }
+      }
+      return {
+        success: true,
+        data: { filePath: result.filePath as string, photoCount: result.photoCount }
+      }
     } catch (error) {
       log.error('Backup error:', error)
       return { success: false, error: sanitizeError(error) }
@@ -74,11 +83,16 @@ export function registerSystemHandlers(): void {
     try {
       const { canceled, filePaths } = await dialog.showOpenDialog({
         title: 'Restaurar copia de seguridad',
-        filters: [{ name: 'Database', extensions: ['db'] }],
+        filters: [{ name: 'Respaldo de BodyFitGym', extensions: ['db', 'zip'] }],
         properties: ['openFile']
       })
-      if (canceled || filePaths.length === 0) return { success: false, error: 'Cancelado' }
-      const ok = await restoreDatabase(filePaths[0])
+      if (canceled || filePaths.length === 0) return { success: false, error: 'Canceled' }
+      const srcPath = filePaths[0]
+      // Un .zip es un respaldo completo (BD + fotos); un .db legacy solo repone
+      // la base de datos.
+      const ok = srcPath.toLowerCase().endsWith('.zip')
+        ? (await restoreFullBackup(srcPath)).success
+        : await restoreDatabase(srcPath)
       return { success: ok }
     } catch (error) {
       log.error('Restore error:', error)

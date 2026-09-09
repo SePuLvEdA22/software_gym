@@ -1,6 +1,6 @@
 import { AccessValidation } from '../../shared/types'
 import { getClientByAccessCode, updateClientStatus } from './clients'
-import { getActiveOrFrozenMembership, getClientDebt } from './memberships'
+import { getActiveOrFrozenMembership, getClientDebt, activateScheduledMemberships } from './memberships'
 import { logAccess } from './accessLogs'
 import { getClientRoutines } from './routines'
 
@@ -22,6 +22,11 @@ import { getClientRoutines } from './routines'
  * CON membresía activa obtiene acceso (comportamiento histórico conservado).
  */
 export function validateAccess(accessCode: string): AccessValidation {
+  try {
+    activateScheduledMemberships()
+  } catch {
+    // best-effort, no bloquear el acceso
+  }
   const client = getClientByAccessCode(accessCode)
 
   if (!client) {

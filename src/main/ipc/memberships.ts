@@ -1,11 +1,13 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import { RecordPaymentSchema } from '../../shared/schemas'
+import { RecordPaymentSchema, UpdateMembershipSchema } from '../../shared/schemas'
 import { getAllPlans, getPlanById, createPlan, updatePlan, deletePlan } from '../database/plans'
 import {
   createMembership,
   getActiveMembership,
   getClientMemberships,
+  getMembershipById,
+  updateMembership,
   freezeMembership,
   unfreezeMembership,
   getFreezeHistory
@@ -257,6 +259,44 @@ export function registerMembershipHandlers(): void {
       return { success: true, data: getFreezeHistory(membershipId) }
     } catch (error) {
       log.error('Error getting freeze history:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('membership:getById', async (_, membershipId: string) => {
+    const auth = requirePermission('memberships.view')
+    if (auth) return auth
+    try {
+      const membership = getMembershipById(membershipId)
+      return { success: true, data: membership }
+    } catch (error) {
+      log.error('Error getting membership:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('membership:update', async (_, membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }) => {
+    const auth = requirePermission('memberships.edit')
+    if (auth) return auth
+    try {
+      const { reason, ...membershipData } = data
+      validateOrThrow(UpdateMembershipSchema, membershipData as never)
+      const oldMembership = getMembershipById(membershipId)
+      if (!oldMembership) return { success: false, error: 'Membresía no encontrada' }
+      if (oldMembership.status !== 'active' && oldMembership.status !== 'scheduled') return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
+      const updated = updateMembership(membershipId, membershipData as never)
+      if (updated) {
+        const clientName = clientLabel(updated.clientId)
+        logChange('memberships', membershipId, 'update',
+          { ...oldMembership, clientName },
+          { ...updated, clientName, reason: reason || null }
+        )
+      } else {
+        return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
+      }
+      return { success: !!updated, data: updated }
+    } catch (error) {
+      log.error('Error updating membership:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })

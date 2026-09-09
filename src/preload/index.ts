@@ -34,7 +34,8 @@ import {
   ClientRoutine,
   RoutineExercise,
   GymSettings,
-  BackupConfig
+  BackupConfig,
+  DoorEventTrigger
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -99,6 +100,10 @@ const electronAPI = {
       ipcRenderer.invoke('membership:getActive', clientId),
     getByClient: (clientId: string): Promise<IpcResult<Membership[]>> =>
       ipcRenderer.invoke('membership:getByClient', clientId),
+    getById: (membershipId: string): Promise<IpcResult<Membership | null>> =>
+      ipcRenderer.invoke('membership:getById', membershipId),
+    update: (membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }): Promise<IpcResult<Membership | null>> =>
+      ipcRenderer.invoke('membership:update', membershipId, data),
     freeze: (membershipId: string, reason?: string, plannedDays?: number): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:freeze', membershipId, reason, plannedDays),
     unfreeze: (membershipId: string): Promise<IpcResult<Membership | null>> =>
@@ -179,8 +184,8 @@ const electronAPI = {
   },
 
   door: {
-    open: (): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('door:open'),
+    open: (trigger?: DoorEventTrigger): Promise<IpcResult<boolean>> =>
+      ipcRenderer.invoke('door:open', trigger),
     getStatus: (): Promise<IpcResult<{ status: string; mockMode: boolean }>> =>
       ipcRenderer.invoke('door:getStatus'),
     getConfig: (): Promise<IpcResult<DoorConfig>> =>
@@ -260,7 +265,7 @@ const electronAPI = {
   system: {
     updateExpired: (): Promise<IpcResult<number>> =>
       ipcRenderer.invoke('system:updateExpired'),
-    backupDb: (): Promise<IpcResult<string>> =>
+    backupDb: (): Promise<IpcResult<{ filePath: string; photoCount: number }>> =>
       ipcRenderer.invoke('system:backupDb'),
     restoreDb: (): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('system:restoreDb'),

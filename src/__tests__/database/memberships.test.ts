@@ -269,14 +269,21 @@ describe('Memberships Database', () => {
       expect(result.payment).not.toBeNull()
     })
 
-    it('bloquea renovar cuando la membresía aún se extiende más allá de hoy', () => {
+    it('encola renovar cuando la membresía aún se extiende más allá de hoy', () => {
       const c = createClient({ ...sampleClientRaw, documentId: `BLK-${Date.now()}`, accessCode: `BK${Date.now()}` })
       const plan = createPlan({ name: 'Plan a Futuro', type: 'monthly', price: 50000, durationDays: 30, description: '' })
-      createMembership(c.id, plan.id)
+      const first = createMembership(c.id, plan.id)!
+      expect(first.status).toBe('active')
 
       const result = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
-      expect(result.membership).toBeNull()
-      expect(result.error).toContain('ya tiene una membresía activa')
+      // Ahora se encola como programada en lugar de bloquear
+      expect(result.membership).not.toBeNull()
+      expect(result.membership!.status).toBe('scheduled')
+      expect(result.error).toBeUndefined()
+      // La programada debe empezar al día siguiente de la activa
+      expect(result.membership!.startDate.slice(0, 10) > first.endDate.slice(0, 10)).toBe(true)
+      // El acceso sigue siendo con la primera (activa)
+      expect(getActiveMembership(c.id)!.id).toBe(first.id)
     })
   })
 

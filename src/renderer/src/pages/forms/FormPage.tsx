@@ -12,6 +12,7 @@ import { RenewFormPage } from './RenewFormPage'
 import { FreezeFormPage } from './FreezeFormPage'
 import { AbonoFormPage } from './AbonoFormPage'
 import { StatsFormPage } from './StatsFormPage'
+import { EditMembershipFormPage } from './EditMembershipFormPage'
 
 const FORM_PAGES: Record<string, () => JSX.Element> = {
   user: UserFormPage,
@@ -25,7 +26,8 @@ const FORM_PAGES: Record<string, () => JSX.Element> = {
   renew: RenewFormPage,
   freeze: FreezeFormPage,
   abono: AbonoFormPage,
-  stats: StatsFormPage
+  stats: StatsFormPage,
+  editMembership: EditMembershipFormPage
 }
 
 export function FormPage(): JSX.Element {

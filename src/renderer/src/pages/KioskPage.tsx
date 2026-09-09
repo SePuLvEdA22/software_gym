@@ -61,9 +61,12 @@ function ClockWidget(): JSX.Element {
   )
 }
 
+type ManualOpenTone = 'idle' | 'success' | 'warn' | 'error'
+
 function IdleScreen({
   settings, accessCode, showAdminButton, onGoToAdmin, errorMessage,
-  onDigit, onBackspace, onCheckIn
+  onDigit, onBackspace, onCheckIn, onManualOpen, manualOpenPending,
+  manualOpenCoolingDown, manualOpenMessage, manualOpenTone
 }: {
   settings: GymSettings | null
   accessCode: string
@@ -73,18 +76,47 @@ function IdleScreen({
   onDigit: (d: string) => void
   onBackspace: () => void
   onCheckIn: () => void
+  onManualOpen: () => void
+  manualOpenPending: boolean
+  manualOpenCoolingDown: boolean
+  manualOpenMessage: string
+  manualOpenTone: ManualOpenTone
 }): JSX.Element {
-  const maxDots = Math.max(6, Math.min(accessCode.length || 6, 12))
-  const filled = accessCode.slice(0, maxDots).length
-
   const numpadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
+  // El código puede tener hasta 20 dígitos, pero el display usa fuente grande
+  // con letter-spacing amplio: al pasar de ~10 dígitos el texto se desbordaba
+  // y `text-overflow: ellipsis` ocultaba los dígitos nuevos. Medimos el ancho
+  // real del display y reducimos la fuente para que TODOS los dígitos queden
+  // siempre visibles mientras se escribe.
+  const codeDisplayRef = useRef<HTMLDivElement | null>(null)
+  const [codeAreaWidth, setCodeAreaWidth] = useState(320)
+  useEffect(() => {
+    const el = codeDisplayRef.current
+    if (!el) return
+    // clientWidth incluye el padding; el contenido útil resta 20px de cada lado.
+    const update = () => setCodeAreaWidth(Math.max(0, el.clientWidth - 40))
+    update()
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(update)
+      ro.observe(el)
+      return () => ro.disconnect()
+    }
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  // Ancho por dígito en JetBrains Mono ≈ 0.60em + letter-spacing 0.22em = 0.84em.
+  // El margen 0.98 garantiza que nunca se recorte el último dígito por redondeo.
+  const codeFontSize = accessCode
+    ? Math.min(36, Math.max(16, (codeAreaWidth * 0.98) / (accessCode.length * 0.84)))
+    : undefined
+
   return (
-    <div style={{
+    <div className="kiosk-idle-root" style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       minHeight: '100vh', backgroundColor: 'var(--color-bg)',
       position: 'relative', fontFamily: "'Montserrat', 'Inter', sans-serif",
-      overflow: 'hidden', userSelect: 'none'
+      overflowX: 'hidden', overflowY: 'auto', userSelect: 'none'
     }}>
       {/* Icon background — <img> para drop-shadow con forma */}
       <img src={kioskBg} className="kiosk-bg" alt="" aria-hidden draggable={false} />
@@ -115,26 +147,13 @@ function IdleScreen({
         </button>
       )}
 
-      {/* Header: Logo + Gym Name + Reloj a la derecha (icono esquina quitado) */}
-      <div style={{
-        width: '100%', display: 'flex', justifyContent: 'space-between',
-        alignItems: 'center', padding: '18px 32px 16px',
-        borderBottom: '1px solid var(--color-surface-container-highest)',
-        gap: 16
-      }}>
-        <div className="kiosk-header-brand" style={{ visibility: settings?.name ? 'visible' : 'hidden' }}>
-          <img src={kioskBg} className="kiosk-logo-header" alt="" aria-hidden draggable={false} />
-          <h1 className="kiosk-gym-name" title={settings?.name || ''}>{settings?.name || 'Gym'}</h1>
-        </div>
-        <ClockWidget />
-      </div>
-
       {/* Main Content */}
-      <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 36,
-        padding: '0 32px 40px', maxWidth: 480, width: '100%', zIndex: 1,
-        position: 'relative'
+      <div className="kiosk-idle-content" style={{
+        flex: '1 0 auto', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 'clamp(14px, 2.6vh, 36px)',
+        padding: 'clamp(12px, 2.4vh, 32px) 32px clamp(16px, 3vh, 40px)',
+        maxWidth: 480, width: '100%', zIndex: 1,
+        position: 'relative', margin: 'auto'
       }}>
         {/* Welcome Section */}
         <div style={{ textAlign: 'center', width: '100%', maxWidth: 420 }}>
@@ -146,7 +165,11 @@ function IdleScreen({
             overflowWrap: 'break-word', wordBreak: 'break-word',
             hyphens: 'auto'
           }}>
-            {settings?.welcomeMessage || 'Bienvenido, nos complace que seas parte de nuestro equipo.'}
+            Bienvenido a{' '}
+            <span className="kiosk-gym-highlight" title={settings?.name || 'BodyFit Gym'}>
+              {settings?.name || 'BodyFit Gym'}
+            </span>
+            , nos complace que seas parte de nuestro equipo.
           </h2>
           <p className="kiosk-welcome-sub" style={{
             fontSize: 17, marginTop: 8,
@@ -156,21 +179,24 @@ function IdleScreen({
           </p>
         </div>
 
-        {/* Code Dots Display — liquid glass */}
-        <div className="kiosk-code-display">
-          {Array.from({ length: maxDots }).map((_, i) => (
-            <span key={i} style={{
-              width: 14, height: 14, borderRadius: '50%',
-              backgroundColor: i < filled ? 'var(--color-primary)' : 'var(--color-outline)',
-              transition: 'all 0.2s ease', flexShrink: 0
-            }} />
-          ))}
+        {/* Code Display — muestra el código en claro para que el staff/cliente lo vea */}
+        <div ref={codeDisplayRef} className="kiosk-code-display" aria-live="polite" aria-label={accessCode ? `Código ingresado ${accessCode}` : 'Código vacío'}>
+          {accessCode ? (
+            <span
+              className="kiosk-code-value"
+              style={codeFontSize !== undefined ? { fontSize: codeFontSize } : undefined}
+            >
+              {accessCode}
+            </span>
+          ) : (
+            <span className="kiosk-code-placeholder" aria-hidden="true">— — — —</span>
+          )}
         </div>
 
         {/* Numeric Keypad */}
-        <div style={{
+        <div className="kiosk-keypad" style={{
           display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 12, width: '100%', maxWidth: 360
+          gap: 'clamp(8px, 1.4vh, 12px)', width: '100%', maxWidth: 360
         }}>
           {numpadKeys.map(d => (
             <button key={d} onClick={() => onDigit(d)} className="kiosk-numpad-btn">
@@ -195,40 +221,119 @@ function IdleScreen({
           </button>
         </div>
 
+        {/* Apertura manual para staff (mouse): reabre sin reescribir el código.
+            Solo llama a door:open con trigger 'manual'; no valida ni registra acceso. */}
+        <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onManualOpen}
+            disabled={manualOpenPending || manualOpenCoolingDown}
+            aria-label="Abrir puerta"
+            title="El personal puede reabrir la puerta sin pedir el código de nuevo"
+            className="kiosk-numpad-btn"
+            style={{
+              width: '100%', padding: '12px 16px', fontSize: 15, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              opacity: manualOpenPending || manualOpenCoolingDown ? 0.6 : 1,
+              cursor: manualOpenPending || manualOpenCoolingDown ? 'wait' : 'pointer'
+            }}
+          >
+            <MaterialIcon name="door_open" style={{ fontSize: 20 }} />
+            {manualOpenPending ? 'Abriendo…' : 'Abrir puerta'}
+          </button>
+        </div>
+
       </div>
 
-      {/* Error Message — floating at top-right of viewport */}
-      {errorMessage && (
-        <div style={{
-          position: 'absolute', top: 100, right: 32, zIndex: 50,
+      {/* Floating toasts — error de código + aviso de puerta (misma posición, apilados) */}
+      {(errorMessage || manualOpenMessage) && (
+        <div className="kiosk-error-float" style={{
+          position: 'absolute', top: 16, right: 32, zIndex: 50,
           width: 400, maxWidth: 'calc(100% - 64px)',
-          pointerEvents: 'none'
+          pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: 12
         }}>
-          <div style={{
-            animation: 'kiosk-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, kiosk-fade-in 0.35s ease-out both',
-            position: 'relative'
-          }}>
-            {/* Red glow behind — glass */}
-            <div className="kiosk-error-glow" />
-            <div className="kiosk-error-glass">
-              <div className="kiosk-error-icon">
-                <MaterialIcon name="block" style={{ fontSize: 22, color: 'var(--color-error)' }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{
-                  color: 'var(--color-error)', fontWeight: 700, fontSize: 13, margin: 0,
-                  textTransform: 'uppercase', letterSpacing: '0.04em'
-                }}>
-                  Código inválido
-                </p>
-                <p style={{
-                  color: 'var(--color-on-surface-variant)', fontWeight: 500, fontSize: 13, margin: '2px 0 0 0', lineHeight: 1.4
-                }}>
-                  {errorMessage}
-                </p>
+          {errorMessage && (
+            <div style={{
+              animation: 'kiosk-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, kiosk-fade-in 0.35s ease-out both',
+              position: 'relative'
+            }}>
+              <div className="kiosk-error-glow" />
+              <div className="kiosk-error-glass">
+                <div className="kiosk-error-icon">
+                  <MaterialIcon name="block" style={{ fontSize: 22, color: 'var(--color-error)' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{
+                    color: 'var(--color-error)', fontWeight: 700, fontSize: 13, margin: 0,
+                    textTransform: 'uppercase', letterSpacing: '0.04em'
+                  }}>
+                    Código inválido
+                  </p>
+                  <p style={{
+                    color: 'var(--color-on-surface-variant)', fontWeight: 500, fontSize: 13, margin: '2px 0 0 0', lineHeight: 1.4
+                  }}>
+                    {errorMessage}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {manualOpenMessage && (() => {
+            const toneColor = manualOpenTone === 'success'
+              ? 'var(--color-success)'
+              : manualOpenTone === 'warn'
+                ? 'var(--color-warning)'
+                : 'var(--color-error)'
+            const toneIcon = manualOpenTone === 'success'
+              ? 'door_open'
+              : manualOpenTone === 'warn'
+                ? 'warning'
+                : 'error'
+            const toneTitle = manualOpenTone === 'success'
+              ? 'Puerta abierta'
+              : manualOpenTone === 'warn'
+                ? 'Aviso'
+                : 'Error'
+            return (
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  animation: 'kiosk-fade-in 0.35s ease-out both',
+                  position: 'relative'
+                }}
+              >
+                <div className="kiosk-error-glow" style={{ background: `color-mix(in srgb, ${toneColor} 16%, transparent)` }} />
+                <div
+                  className="kiosk-error-glass"
+                  style={{
+                    background: `color-mix(in srgb, ${toneColor} 13%, var(--color-surface-container) 62%, transparent)`,
+                    borderColor: `color-mix(in srgb, ${toneColor} 36%, transparent)`,
+                    boxShadow: `0 12px 40px color-mix(in srgb, ${toneColor} 20%, transparent), 0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.14)`
+                  }}
+                >
+                  <div className="kiosk-error-icon" style={{ background: `color-mix(in srgb, ${toneColor} 22%, transparent)`, borderColor: `color-mix(in srgb, ${toneColor} 28%, transparent)` }}>
+                    <MaterialIcon name={toneIcon} style={{ fontSize: 22, color: toneColor }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{
+                      color: toneColor, fontWeight: 700, fontSize: 13, margin: 0,
+                      textTransform: 'uppercase', letterSpacing: '0.04em'
+                    }}>
+                      {toneTitle}
+                    </p>
+                    {manualOpenMessage !== toneTitle && (
+                      <p style={{
+                        color: 'var(--color-on-surface-variant)', fontWeight: 500, fontSize: 13, margin: '2px 0 0 0', lineHeight: 1.4
+                      }}>
+                        {manualOpenMessage}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -268,6 +373,9 @@ function IdleScreen({
   // cuando el acceso fue denegado o la fecha de vencimiento ya pasó.
   const isExpired = !validationResult.valid || daysRemaining < 0
   const isFrozen = !validationResult.valid && validationResult.code === 'denied_frozen'
+  // Aviso rojizo cuando queda ≤1 día (incluye "Vence Hoy" = 0): sigue concediendo
+  // acceso (puerta abre) pero el color advierte cercanía a vencer.
+  const isExpiringSoon = validationResult.valid && daysRemaining >= 0 && daysRemaining <= 1
   const daysText = !membership
     ? '0 Días Restantes'
     : daysRemaining > 1
@@ -276,23 +384,25 @@ function IdleScreen({
         ? '1 Día Restante'
         : 'Vence Hoy'
 
-  // Estado visual del kiosco: verde (permitido), ámbar (congelada — denegado
-  // temporal que NO es un vencimiento) y rojo (vencida). Una membresía
-  // congelada no se muestra como "Vencida": el mensaje genérico invita a
-  // contactar recepción.
-  const statusColor = validationResult.valid
-    ? 'var(--color-success)'
-    : isFrozen
+  // Estado visual: verde (activa con holgura), rojizo (por vencer ≤1 día, aun
+  // con acceso concedido), ámbar (congelada) y rojo (vencida/denegada).
+  const statusColor = !validationResult.valid
+    ? isFrozen
       ? 'var(--color-warning)'
       : 'var(--color-error)'
+    : isExpiringSoon
+      ? 'var(--color-error)'
+      : 'var(--color-success)'
 
-  const statusLabel = validationResult.valid
-    ? 'Acceso Permitido — Membresía Activa'
-    : isFrozen
+  const statusLabel = !validationResult.valid
+    ? isFrozen
       ? 'Acceso Denegado — Membresía Congelada'
       : 'Acceso Denegado — Membresía Vencida'
+    : isExpiringSoon
+      ? 'Acceso Permitido — Por Vencer'
+      : 'Acceso Permitido — Membresía Activa'
 
-  const estadoLabel = validationResult.valid ? 'Activa' : isFrozen ? 'Congelada' : 'Vencida'
+  const estadoLabel = !validationResult.valid ? (isFrozen ? 'Congelada' : 'Vencida') : isExpiringSoon ? 'Por Vencer' : 'Activa'
 
   // Para congelada los días restantes no aplican: se muestra el mensaje del
   // backend ("Membresía congelada - contacta recepción").
@@ -420,9 +530,9 @@ function IdleScreen({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 2
                 }}>
-                  <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'close' : 'check'} style={{
+                  <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'close' : isExpiringSoon ? 'warning' : 'check'} style={{
                     fontSize: 16,
-                    color: isFrozen ? 'var(--color-on-warning)' : isExpired ? 'var(--color-on-error)' : '#fff'
+                    color: isFrozen ? 'var(--color-on-warning)' : isExpired || isExpiringSoon ? 'var(--color-on-error)' : '#fff'
                   }} />
                 </div>
               </div>
@@ -476,7 +586,7 @@ function IdleScreen({
                   borderLeft: `4px solid ${statusColor}`
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'event_busy' : 'check_circle'} style={{ color: statusColor, fontSize: 20 }} />
+                    <MaterialIcon name={isFrozen ? 'ac_unit' : isExpired ? 'event_busy' : isExpiringSoon ? 'warning' : 'check_circle'} style={{ color: statusColor, fontSize: 20 }} />
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-on-surface-variant)' }}>Estado</span>
                   </div>
                   <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
@@ -630,6 +740,19 @@ export function KioskPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState('')
   const [gymSettings, setGymSettings] = useState<GymSettings | null>(null)
   const isValidating = useRef(false)
+  // Reapertura manual desde el formulario (staff con mouse): no valida código,
+  // solo reabre la puerta. Con cooldown para no martillar el relé.
+  const [doorPending, setDoorPending] = useState(false)
+  const [doorCoolingDown, setDoorCoolingDown] = useState(false)
+  const [doorMessage, setDoorMessage] = useState('')
+  const [doorTone, setDoorTone] = useState<ManualOpenTone>('idle')
+  const doorCooldownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (doorCooldownTimer.current) clearTimeout(doorCooldownTimer.current)
+    }
+  }, [])
 
   useEffect(() => {
     window.electronAPI.gym.getSettings().then((result) => {
@@ -711,6 +834,37 @@ export function KioskPage(): JSX.Element {
     }
   }, [accessState])
 
+  const handleManualOpen = useCallback(async () => {
+    if (doorPending || doorCoolingDown) return
+    setDoorPending(true)
+    // Opción A: sin toast intermedio — el botón ya muestra "Abriendo…"
+    setDoorMessage('')
+    try {
+      const result = await window.electronAPI.door.open('manual')
+      if (result.success && result.data) {
+        setDoorTone('success')
+        setDoorMessage('Puerta abierta')
+      } else if (result.success) {
+        setDoorTone('warn')
+        setDoorMessage('La puerta ya está abierta')
+      } else {
+        setDoorTone('error')
+        setDoorMessage(result.error || 'No se pudo abrir la puerta')
+      }
+    } catch {
+      setDoorTone('error')
+      setDoorMessage('No se pudo abrir la puerta')
+    } finally {
+      setDoorPending(false)
+      setDoorCoolingDown(true)
+      if (doorCooldownTimer.current) clearTimeout(doorCooldownTimer.current)
+      doorCooldownTimer.current = setTimeout(() => {
+        setDoorCoolingDown(false)
+        doorCooldownTimer.current = null
+      }, 3000)
+    }
+  }, [doorPending, doorCoolingDown])
+
   const validateAccess = useCallback(async () => {
     if (accessCode.length < 1 || isValidating.current) return
     isValidating.current = true
@@ -727,7 +881,7 @@ export function KioskPage(): JSX.Element {
 
         setAccessState('result')
         if (result.data.valid) {
-          await window.electronAPI.door.open()
+          await window.electronAPI.door.open('access_code')
         }
       } else {
         setAccessCode('')
@@ -748,6 +902,12 @@ export function KioskPage(): JSX.Element {
     const timer = setTimeout(() => setErrorMessage(''), 5000)
     return () => clearTimeout(timer)
   }, [errorMessage])
+
+  useEffect(() => {
+    if (!doorMessage || doorPending) return
+    const timer = setTimeout(() => setDoorMessage(''), 5000)
+    return () => clearTimeout(timer)
+  }, [doorMessage, doorPending])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -824,6 +984,11 @@ export function KioskPage(): JSX.Element {
       onDigit={handleDigit}
       onBackspace={handleBackspace}
       onCheckIn={validateAccess}
+      onManualOpen={handleManualOpen}
+      manualOpenPending={doorPending}
+      manualOpenCoolingDown={doorCoolingDown}
+      manualOpenMessage={doorMessage}
+      manualOpenTone={doorTone}
     />
   )
 }

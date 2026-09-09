@@ -23,6 +23,7 @@ const FORM_WINDOW_SPECS: Record<string, FormWindowSpec> = {
   measurement: { title: 'Nuevas Medidas', width: 720, height: 780, minWidth: 600, minHeight: 540 },
   goal: { title: 'Nuevo Objetivo', width: 560, height: 620, minWidth: 480, minHeight: 480 },
   renew: { title: 'Nueva Membresía', width: 680, height: 780, minWidth: 560, minHeight: 560 },
+  editMembership: { title: 'Editar Membresía', width: 680, height: 780, minWidth: 560, minHeight: 560 },
   freeze: { title: 'Congelar Membresía', width: 560, height: 580, minWidth: 460, minHeight: 460 },
   abono: { title: 'Registrar Abono', width: 560, height: 620, minWidth: 460, minHeight: 480 },
   stats: { title: 'Estadísticas de Asistencia', width: 560, height: 600, minWidth: 480, minHeight: 440 }

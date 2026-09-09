@@ -141,30 +141,69 @@ export function getExpiringMemberships(days: number): { clientId: string; client
 
 export function getActiveOrFrozenMembership(clientId: string): Membership | null {
   const db = getDatabase()
-  // Día-consciente: se compara contra la FECHA de hoy, no contra el instante
-  // exacto. Una membresía cuyo vencimiento es hoy sigue siendo válida todo el
-  // día (no se vence a mitad de día por la hora de compra).
   const now = todayKey()
 
-  // Una membresía CONGELADA NO consume días: si su vencimiento nominal pasó
-  // mientras estaba congelada no está "vencida", está congelada (al descongelar
-  // se extiende en unfreezeMembership). Por eso el filtro de end_date solo
-  // aplica a las activas; así el kiosco responde denied_frozen (no
-  // denied_expired) y updateExpiredMemberships no las marca vencidas.
   const stmt = db.prepare(`
     SELECT * FROM memberships 
     WHERE client_id = ? 
       AND (
-        (status = 'active' AND end_date >= ?)
+        (status = 'active' AND end_date >= ? AND substr(start_date, 1, 10) <= ?)
         OR status = 'frozen'
       )
     ORDER BY end_date DESC
     LIMIT 1
   `)
   
-  const result = stmt.get(clientId, now) as DbMembership | undefined
+  const result = stmt.get(clientId, now, now) as DbMembership | undefined
   
   return result ? mapDbMembership(result) : null
+}
+
+export function getLatestMembershipEnd(clientId: string): string | null {
+  const db = getDatabase()
+  const row = db.prepare(`
+    SELECT end_date as endDate FROM memberships
+    WHERE client_id = ? AND status IN ('active','scheduled','frozen')
+    ORDER BY end_date DESC LIMIT 1
+  `).get(clientId) as { endDate: string } | undefined
+  return row?.endDate ?? null
+}
+
+export function activateScheduledMemberships(): number {
+  const db = getDatabase()
+  const now = todayKey()
+  // Solo activa la siguiente programada por cliente si hoy ya alcanzó su inicio
+  // y no tiene una activa vigente (evita solapar dos activas).
+  const scheduled = db.prepare(`
+    SELECT id, client_id as clientId, start_date as startDate FROM memberships
+    WHERE status = 'scheduled' AND substr(start_date, 1, 10) <= ?
+    ORDER BY start_date ASC
+  `).all(now) as Array<{ id: string; clientId: string; startDate: string }>
+
+  let activated = 0
+  for (const row of scheduled) {
+    const hasActive = db.prepare(`
+      SELECT id FROM memberships
+      WHERE client_id = ? AND status = 'active' AND substr(start_date, 1, 10) <= ? AND end_date >= ?
+      LIMIT 1
+    `).get(row.clientId, now, now) as { id: string } | undefined
+    if (hasActive) continue
+    // También respeta congeladas (no activar si está congelado)
+    const hasFrozen = db.prepare(`SELECT id FROM memberships WHERE client_id = ? AND status = 'frozen' LIMIT 1`).get(row.clientId) as { id: string } | undefined
+    if (hasFrozen) continue
+    const res = db.prepare(`UPDATE memberships SET status = 'active', updated_at = ? WHERE id = ? AND status = 'scheduled'`).run(formatISO(new Date()), row.id)
+    if (res.changes > 0) {
+      activated++
+      // Al activar, el cliente pasa a activo si estaba vencido
+      const m = getMembershipById(row.id)
+      if (m) updateClientStatus(row.clientId, 'active')
+    }
+  }
+  if (activated > 0) {
+    clearQueryCache()
+    log.info(`Activated ${activated} scheduled membership(s)`)
+  }
+  return activated
 }
 
 export function createMembership(clientId: string, planId: string, startDate?: string): Membership | null {
@@ -183,15 +222,38 @@ export function createMembership(clientId: string, planId: string, startDate?: s
   }
 
   const existingMembership = getActiveOrFrozenMembership(clientId)
-  // La membresía vigente NO bloquea la creación si vence HOY (su último día):
-  // se permite renovar durante el último día de vigencia. Solo bloquea si se
-  // extiende más allá de hoy.
-  if (existingMembership && existingMembership.endDate.slice(0, 10) > todayKey()) {
-    log.error(`Cannot create membership: Client ${clientId} already has an active or frozen membership`)
+  const latestEnd = getLatestMembershipEnd(clientId)
+  const hasFutureActive = !!latestEnd && latestEnd.slice(0, 10) >= todayKey()
+  const hasFrozen = existingMembership?.status === 'frozen'
+
+  // Si está congelada, mantener bloqueo duro (descongelar primero)
+  if (hasFrozen) {
+    log.error(`Cannot create membership: Client ${clientId} has a frozen membership`)
     return null
   }
-  
-  const actualStartDate = startDate ? parseISO(startDate) : new Date()
+
+  // Si vence HOY se permite renovar; si se extiende más allá de hoy, en lugar
+  // de bloquear, se encola como 'scheduled' para el día siguiente (o la fecha
+  // solicitada si es más lejana, permitiendo huecos no consecutivos).
+  let actualStartDate: Date
+  let willBeScheduled = false
+  if (hasFutureActive && latestEnd) {
+    willBeScheduled = true
+    const nextDay = addDays(startOfDay(parseISO(latestEnd)), 1)
+    if (startDate) {
+      const requested = parseISO(startDate)
+      if (!isNaN(requested.getTime())) {
+        // Permitir hueco: si piden más adelante, respetar; si piden antes/solapado, encadenar
+        actualStartDate = requested > nextDay ? requested : nextDay
+      } else {
+        actualStartDate = nextDay
+      }
+    } else {
+      actualStartDate = nextDay
+    }
+  } else {
+    actualStartDate = startDate ? parseISO(startDate) : new Date()
+  }
   // La membresía es válida durante TODOS los días completos de su duración:
   // vence al final (23:59:59) del último día, no a la misma hora de compra.
   // Así, una membresía de 1 día es válida durante todo el día y cualquier
@@ -217,7 +279,7 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     planName: plan.name,
     startDate: formatISO(actualStartDate),
     endDate: formatISO(endDate),
-    status: formatISO(endDate).slice(0, 10) >= todayKey() ? 'active' : 'expired',
+    status: willBeScheduled ? 'scheduled' : (formatISO(endDate).slice(0, 10) >= todayKey() ? 'active' : 'expired'),
     createdAt: formatISO(now),
     frozenAt: null,
     freezeReason: null,
@@ -408,20 +470,19 @@ export function autoUnfreezeDueMemberships(): number {
 
 export function getActiveMembership(clientId: string): Membership | null {
   const db = getDatabase()
-  // Día-consciente: válida hasta el final del día de vencimiento (ver
-  // getActiveOrFrozenMembership). Evita denegar el acceso a mitad de día.
   const now = todayKey()
   
   const stmt = db.prepare(`
     SELECT * FROM memberships 
     WHERE client_id = ? 
       AND status = 'active' 
+      AND substr(start_date, 1, 10) <= ?
       AND end_date >= ?
     ORDER BY end_date DESC
     LIMIT 1
   `)
   
-  const result = stmt.get(clientId, now) as DbMembership | undefined
+  const result = stmt.get(clientId, now, now) as DbMembership | undefined
   
   return result ? mapDbMembership(result) : null
 }
@@ -438,6 +499,133 @@ export function getClientMemberships(clientId: string): Membership[] {
   const results = stmt.all(clientId) as unknown as DbMembership[]
   
   return results.map(mapDbMembership)
+}
+
+export function getMembershipById(id: string): Membership | null {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM memberships WHERE id = ?').get(id) as DbMembership | undefined
+  return row ? mapDbMembership(row) : null
+}
+
+export function updateMembership(
+  id: string,
+  data: Partial<{ planId: string; startDate: string; endDate: string; status: MembershipStatus }>
+): Membership | null {
+  const db = getDatabase()
+  const existing = db.prepare('SELECT * FROM memberships WHERE id = ?').get(id) as DbMembership | undefined
+  if (!existing) {
+    log.error(`Cannot update membership: ${id} not found`)
+    return null
+  }
+  if (existing.status !== 'active' && existing.status !== 'scheduled') {
+    log.error(`Cannot update membership ${id}: only active/scheduled memberships can be edited (status: ${existing.status})`)
+    return null
+  }
+
+  // Resolver plan y nombre si cambia planId — igual que en creación, el
+  // vencimiento se calcula a partir del plan y la fecha de inicio.
+  let newPlanId = existing.plan_id
+  let newPlanName = existing.plan_name
+  let newDurationDays: number | null = null
+  if (data.planId !== undefined) {
+    const plan = getPlanById(data.planId)
+    if (!plan) {
+      log.error(`Cannot update membership: plan ${data.planId} not found`)
+      return null
+    }
+    newPlanId = plan.id
+    newPlanName = plan.name
+    newDurationDays = Math.max(1, plan.durationDays)
+  }
+
+  // Fechas: si el caller envía startDate/endDate las re-parseamos; si solo
+  // cambia el plan, recalculamos endDate a partir del nuevo duration.
+  let newStartDateIso = existing.start_date
+  let newEndDateIso = existing.end_date
+
+  if (data.startDate !== undefined) {
+    const parsed = parseISO(data.startDate)
+    if (Number.isNaN(parsed.getTime())) {
+      log.error(`Cannot update membership: invalid startDate ${data.startDate}`)
+      return null
+    }
+    newStartDateIso = formatISO(parsed)
+  }
+
+  if (data.endDate !== undefined) {
+    const parsed = parseISO(data.endDate)
+    if (Number.isNaN(parsed.getTime())) {
+      log.error(`Cannot update membership: invalid endDate ${data.endDate}`)
+      return null
+    }
+    // El vencimiento es hasta el final del día indicado.
+    newEndDateIso = formatISO(endOfDay(parsed))
+  } else if (newDurationDays !== null || data.startDate !== undefined) {
+    // Recalcular vencimiento desde el (nuevo) inicio + duración del plan.
+    const startForCalc = parseISO(newStartDateIso)
+    const duration = newDurationDays ?? Math.max(1, (getPlanById(newPlanId)?.durationDays ?? 30))
+    newEndDateIso = formatISO(endOfDay(addDays(startOfDay(startForCalc), duration - 1)))
+  }
+
+  // Estado: si el caller lo especifica se respeta; si no, se recalcula
+  // día-consciente. Las programadas se mantienen programadas hasta que
+  // activateScheduledMemberships las promueva (start <= today y sin activa).
+  let newStatus: MembershipStatus
+  if (data.status !== undefined) {
+    newStatus = data.status as MembershipStatus
+  } else if (existing.status === 'scheduled') {
+    if (newEndDateIso.slice(0, 10) < todayKey()) newStatus = 'expired'
+    else if (newStartDateIso.slice(0, 10) > todayKey()) newStatus = 'scheduled'
+    else {
+      // Inicio ya llegó: si no hay otra activa vigente, puede pasar a activa
+      const hasActive = db.prepare(
+        `SELECT id FROM memberships WHERE client_id = ? AND id != ? AND status = 'active' AND substr(start_date, 1, 10) <= ? AND end_date >= ? LIMIT 1`
+      ).get(existing.client_id, id, todayKey(), todayKey()) as { id: string } | undefined
+      newStatus = hasActive ? 'scheduled' : 'active'
+    }
+  } else {
+    // Para activas, también validar que el inicio no sea futuro: si start > hoy, queda programada
+    if (newStartDateIso.slice(0, 10) > todayKey()) newStatus = 'scheduled'
+    else newStatus = newEndDateIso.slice(0, 10) >= todayKey() ? 'active' : 'expired'
+  }
+
+  // No permitir solapamiento con otra membresía activa del mismo cliente
+  // (mismo guard que en createMembership, pero ignorando la propia fila).
+  if (newStatus === 'active') {
+    const other = db.prepare(`
+      SELECT id, end_date FROM memberships
+      WHERE client_id = ? AND id != ? AND status = 'active' AND substr(start_date, 1, 10) <= ? AND end_date >= ?
+      LIMIT 1
+    `).get(existing.client_id, id, todayKey(), todayKey()) as { id: string } | undefined
+    if (other) {
+      log.warn(`Cannot update membership ${id}: client already has another active membership ${other.id}`)
+      // No bloqueamos duro para permitir correcciones: solo advertimos y
+      // dejamos que el caller decida. Para edición administrativa se permite.
+    }
+  }
+
+  const nowIso = formatISO(new Date())
+  db.prepare(`
+    UPDATE memberships
+    SET plan_id = ?, plan_name = ?, start_date = ?, end_date = ?, status = ?, updated_at = ?
+    WHERE id = ?
+  `).run(newPlanId, newPlanName, newStartDateIso, newEndDateIso, newStatus, nowIso, id)
+
+  // Sincronizar estado del cliente si la membresía editada es la vigente.
+  const activeOrFrozen = getActiveOrFrozenMembership(existing.client_id)
+  if (activeOrFrozen && activeOrFrozen.id === id) {
+    if (newStatus === 'active') updateClientStatus(existing.client_id, 'active')
+    else if (newStatus === 'expired') {
+      const stillActive = getActiveOrFrozenMembership(existing.client_id)
+      if (!stillActive) updateClientStatus(existing.client_id, 'expired')
+    }
+  } else if (newStatus === 'active') {
+    // Si la membresía editada pasó a ser la vigente, activar cliente.
+    updateClientStatus(existing.client_id, 'active')
+  }
+
+  clearQueryCache()
+  return getMembershipById(id)
 }
 
 export function updateExpiredMemberships(): number {
@@ -475,9 +663,10 @@ export function updateExpiredMemberships(): number {
   })
 
   const changes = expiredOp()
+  const activated = activateScheduledMemberships()
   clearQueryCache()
-  log.info(`Updated ${changes} expired memberships`)
-  return changes
+  log.info(`Updated ${changes} expired memberships, activated ${activated} scheduled`)
+  return changes + activated
 }
 
 export interface DbFreezeHistory {

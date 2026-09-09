@@ -330,20 +330,23 @@ export function PaymentsPage(): JSX.Element {
             <h3 className="headline-md" style={{ paddingLeft: 4 }}>
               Transacciones Recientes
             </h3>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div className="tabs" style={{ borderBottom: 'none' }}>
+            <div
+              style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
+            >
+              <div
+                className="tabs"
+                style={{
+                  borderBottom: 'none',
+                  marginBottom: 0,
+                  alignSelf: 'center',
+                  flexShrink: 0,
+                }}
+              >
                 {(['today', 'week', 'month', 'all'] as const).map((range) => (
                   <div
                     key={range}
                     className={`tab ${dateRange === range ? 'active' : ''}`}
                     onClick={() => setDateRange(range)}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: 13,
-                      borderRadius: 8,
-                      borderBottom:
-                        dateRange === range ? '2px solid var(--color-primary-container)' : 'none',
-                    }}
                   >
                     {range === 'today'
                       ? 'Hoy'
@@ -359,7 +362,14 @@ export function PaymentsPage(): JSX.Element {
                 className="form-select"
                 value={filterMethod}
                 onChange={(e) => setFilterMethod(e.target.value)}
-                style={{ width: 140 }}
+                style={{
+                  width: 140,
+                  height: 38,
+                  padding: '8px 36px 8px 12px',
+                  fontSize: 13,
+                  borderRadius: 9999,
+                  alignSelf: 'center',
+                }}
               >
                 <option value="all">Todos los métodos</option>
                 {paymentMethods.map((pm) => (
@@ -375,7 +385,14 @@ export function PaymentsPage(): JSX.Element {
                   const raw = e.target.value.replace(/^0+(?=\d)/, '')
                   setSelectedYear(raw === '' ? new Date().getFullYear() : Number(raw))
                 }}
-                style={{ width: 110 }}
+                style={{
+                  width: 110,
+                  height: 38,
+                  padding: '8px 36px 8px 12px',
+                  fontSize: 13,
+                  borderRadius: 9999,
+                  alignSelf: 'center',
+                }}
               >
                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 4 + i).map(
                   (year) => (

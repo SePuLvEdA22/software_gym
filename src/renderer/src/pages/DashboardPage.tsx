@@ -340,7 +340,7 @@ export function DashboardPage(): JSX.Element {
         navigate('/payments')
         break
       case 'open-door':
-        await window.electronAPI.door.open()
+        await window.electronAPI.door.open('manual')
         break
     }
   }

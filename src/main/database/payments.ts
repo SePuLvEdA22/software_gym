@@ -3,7 +3,7 @@ import { Membership, Payment, PaymentMethod, PageResponse } from '../../shared/t
 import { v4 as uuidv4 } from 'uuid'
 import { formatISO } from 'date-fns'
 import { getPlanById } from './plans'
-import { getActiveOrFrozenMembership, createMembership, todayKey } from './memberships'
+import { getActiveOrFrozenMembership, createMembership } from './memberships'
 
 export interface DbPayment {
   id: string
@@ -53,15 +53,8 @@ export function createMembershipWithPayment(
     }
 
     const existing = getActiveOrFrozenMembership(clientId)
-    if (existing) {
-      // Renovar es válido en el último día de vigencia (vence hoy): la membresía
-      // sigue operativa hoy, pero ya se puede pagar la siguiente.
-      if (existing.status === 'active' && existing.endDate.slice(0, 10) > todayKey()) {
-        return { membership: null, payment: null, error: 'El cliente ya tiene una membresía activa. No puede renovar hasta que venza.' }
-      }
-      if (existing.status === 'frozen') {
-        return { membership: null, payment: null, error: 'El cliente tiene una membresía congelada. Descongélela primero.' }
-      }
+    if (existing?.status === 'frozen') {
+      return { membership: null, payment: null, error: 'El cliente tiene una membresía congelada. Descongélela primero.' }
     }
 
     const membership = createMembership(clientId, planId, startDate)
@@ -176,7 +169,7 @@ export function getPaymentsByDateRange(startDate: string, endDate: string, page 
     params.push(method)
   }
   
-  const countRow = db.prepare(`SELECT COUNT(*) as total FROM payments WHERE date >= ? AND date <= ?${methodClause}`).get(...params) as { total: number }
+  const countRow = db.prepare(`SELECT COUNT(*) as total FROM payments p WHERE p.date >= ? AND p.date <= ?${methodClause}`).get(...params) as { total: number }
   const total = countRow.total
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, totalPages)

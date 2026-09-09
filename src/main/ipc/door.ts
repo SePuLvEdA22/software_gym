@@ -4,11 +4,14 @@ import { openDoor, getDoorStatus, testDoorConnection } from '../door/controller'
 import { getDoorConfig, updateDoorConfig, persistDoorConfig } from '../door/config'
 import { sanitizeError } from '../helpers'
 import { requirePermission } from './helpers'
+import type { DoorEventTrigger } from '../../shared/types'
 
 export function registerDoorHandlers(): void {
-  ipcMain.handle('door:open', async () => {
+  ipcMain.handle('door:open', async (_, trigger?: DoorEventTrigger) => {
     try {
-      const result = await openDoor()
+      const resolvedTrigger: DoorEventTrigger =
+        trigger === 'manual' ? 'manual' : 'access_code'
+      const result = await openDoor(resolvedTrigger)
       return { success: true, data: result }
     } catch (error) {
       log.error('Error opening door:', error)

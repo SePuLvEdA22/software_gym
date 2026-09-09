@@ -111,6 +111,7 @@ export function ClientsPage(): JSX.Element {
   useFormSaved('renew', handleFormSaved)
   useFormSaved('freeze', handleFormSaved)
   useFormSaved('abono', handleFormSaved)
+  useFormSaved('editMembership', handleFormSaved)
 
   const handleClientSelect = (client: Client) => {
     setSelectedClient(client)

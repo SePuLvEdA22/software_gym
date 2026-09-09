@@ -14,6 +14,9 @@ import { m012AddIndexesAndThumbnails } from './012-add-indexes-and-thumbnails'
 import { m013BackfillUserPermissions } from './013-backfill-user-permissions'
 import { m014FreezeHistoryUnfrozenBy } from './014-freeze-history-unfrozen-by'
 import { m015CleanOrphanClientData } from './015-clean-orphan-client-data'
+import { m016AddMembershipUpdatedAt } from './016-add-membership-updated-at'
+import { m017AddScheduledMemberships } from './017-add-scheduled-memberships'
+import { m018FixFutureActiveToScheduled } from './018-fix-future-active-to-scheduled'
 
 /**
  * Registro central de migraciones. El orden del array define el orden de
@@ -35,5 +38,8 @@ export const MIGRATIONS: Migration[] = [
   m012AddIndexesAndThumbnails,
   m013BackfillUserPermissions,
   m014FreezeHistoryUnfrozenBy,
-  m015CleanOrphanClientData
+  m015CleanOrphanClientData,
+  m016AddMembershipUpdatedAt,
+  m017AddScheduledMemberships,
+  m018FixFutureActiveToScheduled
 ]

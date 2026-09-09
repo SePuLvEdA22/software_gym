@@ -37,6 +37,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { id: 'memberships.view', label: 'Ver membresías' },
       { id: 'memberships.create', label: 'Crear membresías' },
+      { id: 'memberships.edit', label: 'Editar membresías' },
       { id: 'memberships.freeze', label: 'Congelar/Descongelar' }
     ]
   },
@@ -108,7 +109,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
     'dashboard.view',
     'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
     'payments.view', 'payments.create',
-    'memberships.view', 'memberships.create', 'memberships.freeze',
+    'memberships.view', 'memberships.create', 'memberships.edit', 'memberships.freeze',
     'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
     'whatsapp.view',
     'logs.view',
