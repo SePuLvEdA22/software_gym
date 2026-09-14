@@ -226,18 +226,35 @@ export function getAllClients(
   page = 1,
   pageSize = 50,
   status?: ClientStatus,
-  sortBy: 'name' | 'recent' = 'name'
+  sortBy: 'name' | 'recent' = 'name',
+  hasDebt?: boolean
 ): { data: Client[]; total: number; page: number; totalPages: number } {
   const db = getDatabase()
-  
+
   let countQuery = 'SELECT COUNT(*) as total FROM clients WHERE 1=1'
   let query = 'SELECT * FROM clients WHERE 1=1'
   const params: string[] = []
-  
+
   if (status) {
     countQuery += ' AND status = ?'
     query += ' AND status = ?'
     params.push(status)
+  }
+
+  // Filtro aislado "Con adeudo": solo clientes con al menos una membresía
+  // active/frozen con saldo pendiente. Misma regla que getDebtors en
+  // memberships.ts (totalPaid < price - totalDiscount). No altera los
+  // demás filtros: se combina con status/sort/paginación existentes.
+  if (hasDebt) {
+    const debtClause = ` AND clients.id IN (
+      SELECT m.client_id FROM memberships m
+      JOIN membership_plans p ON p.id = m.plan_id
+      WHERE (m.status = 'active' OR m.status = 'frozen')
+        AND COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0)
+          < (p.price - COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0))
+    )`
+    countQuery += debtClause
+    query += debtClause
   }
   
   const { total } = db.prepare(countQuery).get(...params) as { total: number }

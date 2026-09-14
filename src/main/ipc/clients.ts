@@ -127,11 +127,11 @@ export function registerClientHandlers(): void {
     }
   })
 
-  ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent' }) => {
+  ipcMain.handle('client:getAll', async (_, options: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent'; hasDebt?: boolean }) => {
     const auth = requirePermission('clients.view')
     if (auth) return auth
     try {
-      const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status, options?.sortBy)
+      const result = getAllClients(options?.page || 1, options?.pageSize || 50, options?.status, options?.sortBy, options?.hasDebt)
       return { success: true, data: result }
     } catch (error) {
       log.error('Error getting all clients:', error)

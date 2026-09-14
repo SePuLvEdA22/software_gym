@@ -18,6 +18,12 @@ export function ClientsPage(): JSX.Element {
     'bodyfitgym-clients-status',
     'all',
   )
+  // Filtro aislado "Con adeudo": no modifica los filtros de estado existentes,
+  // se combina con ellos y se persiste en clave propia.
+  const [filterDebt, setFilterDebt] = usePersistentState<boolean>(
+    'bodyfitgym-clients-debt',
+    false,
+  )
   // 'recent' ordena por fecha de registro DESC: los clientes recién creados salen de primero.
   // Se persiste en localStorage (igual que el tema) para que sobreviva al cierre/reinicio.
   const [sortBy, setSortBy] = useState<'name' | 'recent'>(() => {
@@ -42,12 +48,13 @@ export function ClientsPage(): JSX.Element {
       page,
       pageSize,
       sortBy,
+      hasDebt: filterDebt ? true : undefined,
     })
     if (result.success && result.data) {
       setClients(result.data.data)
       setTotalPages(result.data.totalPages)
     }
-  }, [filterStatus, page, pageSize, sortBy, setClients])
+  }, [filterStatus, filterDebt, page, pageSize, sortBy, setClients])
 
   const loadDebtors = useCallback(async () => {
     try {
@@ -172,6 +179,11 @@ export function ClientsPage(): JSX.Element {
     setPage(1)
   }
 
+  const handleDebtToggle = () => {
+    setFilterDebt((prev) => !prev)
+    setPage(1)
+  }
+
   const handleSortToggle = () => {
     setSortBy((prev) => {
       const next = prev === 'recent' ? 'name' : 'recent'
@@ -241,6 +253,13 @@ export function ClientsPage(): JSX.Element {
               {pill.label}
             </button>
           ))}
+          <button
+            className={`filter-pill${filterDebt ? ' active' : ''}`}
+            onClick={handleDebtToggle}
+            title="Mostrar solo clientes con adeudo pendiente"
+          >
+            Con adeudo
+          </button>
         </div>
 
         {/* Separador visual + orden por recientes (independiente de los filtros de estado) */}
@@ -276,9 +295,11 @@ export function ClientsPage(): JSX.Element {
             <div className="empty-state-icon">
               <Icons.Users />
             </div>
-            <h3>No hay clientes registrados</h3>
+            <h3>{filterDebt ? 'No hay clientes con adeudo' : 'No hay clientes registrados'}</h3>
             <p style={{ marginTop: 8, color: 'var(--color-secondary)' }}>
-              Click en "Nuevo Cliente" para registrar el primero
+              {filterDebt
+                ? 'Desactiva el filtro "Con adeudo" para ver el resto del directorio'
+                : 'Click en "Nuevo Cliente" para registrar el primero'}
             </p>
           </div>
         ) : (

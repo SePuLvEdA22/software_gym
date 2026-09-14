@@ -56,7 +56,7 @@ const electronAPI = {
       ipcRenderer.invoke('client:getByAccessCode', code),
     getByDocumentId: (docId: string): Promise<IpcResult<Client | null>> =>
       ipcRenderer.invoke('client:getByDocumentId', docId),
-    getAll: (options?: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent' }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
+    getAll: (options?: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent'; hasDebt?: boolean }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
       ipcRenderer.invoke('client:getAll', options),
     search: (query: string): Promise<IpcResult<Client[]>> =>
       ipcRenderer.invoke('client:search', query),
