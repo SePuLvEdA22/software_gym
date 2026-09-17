@@ -20,13 +20,15 @@ import {
   getInactiveClients,
   getClientDebt,
   getDebtors,
-  getFreezeHistory
+  getFreezeHistory,
+  updateMembership
 } from '../../main/database/memberships'
 import {
   createMembershipWithPayment,
   recordPayment,
   getClientPayments,
-  getPaymentsByDateRange
+  getPaymentsByDateRange,
+  getMembershipPayments
 } from '../../main/database/payments'
 import { getEffectivePrice, createPromotion, getActivePromotionForPlan, getAllPromotions } from '../../main/database/promotions'
 import { getTodayAccessCount } from '../../main/database/accessLogs'
@@ -591,6 +593,68 @@ describe('Memberships Database', () => {
       updateExpiredMemberships()
       const memberships = getClientMemberships(c.id)
       expect(memberships[0].status).toBe('frozen')
+    })
+  })
+
+  describe('Cambio de plan: ajuste automático del pago', () => {
+    it('debería_ajustar_pago_cuando_cambia_a_plan_mas_barato', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `ADJ-${Date.now()}`, accessCode: `AJ${Date.now()}` })
+      const monthly = createPlan({ name: 'Plan Mensual 50k', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const fortnight = createPlan({ name: 'Plan 15 días', type: 'biweekly', price: 30000, durationDays: 15, description: '' })
+      const { membership } = createMembershipWithPayment(c.id, monthly.id, 50000, 'cash')
+      expect(membership).not.toBeNull()
+
+      const updated = updateMembership(membership!.id, { planId: fortnight.id }, { reason: 'Corrección test' })
+      expect(updated).not.toBeNull()
+      expect(updated!.planId).toBe(fortnight.id)
+
+      const payments = getMembershipPayments(membership!.id)
+      expect(payments).toHaveLength(1)
+      expect(payments[0].amount).toBe(30000)
+      expect(payments[0].description).toContain(fortnight.name)
+    })
+
+    it('debería_no_tocar_pagos_cuando_no_cambia_plan', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `NOADJ-${Date.now()}`, accessCode: `NA${Date.now()}` })
+      const plan = createPlan({ name: 'Plan Sin Cambio', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
+      expect(membership).not.toBeNull()
+
+      const updated = updateMembership(membership!.id, { status: 'active' })
+      expect(updated).not.toBeNull()
+
+      const payments = getMembershipPayments(membership!.id)
+      expect(payments).toHaveLength(1)
+      expect(payments[0].amount).toBe(50000)
+    })
+
+    it('debería_no_ajustar_cuando_hay_multiples_pagos', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `MULTI-${Date.now()}`, accessCode: `MU${Date.now()}` })
+      const monthly = createPlan({ name: 'Plan Multi Mensual', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const daily = createPlan({ name: 'Plan Diario', type: 'daily', price: 5000, durationDays: 1, description: '' })
+      const { membership } = createMembershipWithPayment(c.id, monthly.id, 30000, 'cash')
+      expect(membership).not.toBeNull()
+      recordPayment(c.id, 20000, 'cash', 'Abono', membership!.id)
+
+      const updated = updateMembership(membership!.id, { planId: daily.id })
+      expect(updated).not.toBeNull()
+
+      const payments = getMembershipPayments(membership!.id)
+      expect(payments).toHaveLength(2)
+      expect(payments.map(p => p.amount).sort((a, b) => a - b)).toEqual([20000, 30000])
+    })
+
+    it('debería_cambiar_plan_sin_fallar_cuando_no_hay_pagos', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `NOPAY-${Date.now()}`, accessCode: `NP${Date.now()}` })
+      const monthly = createPlan({ name: 'Plan Sin Pago M', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const daily = createPlan({ name: 'Plan Sin Pago D', type: 'daily', price: 5000, durationDays: 1, description: '' })
+      const m = createMembership(c.id, monthly.id)
+      expect(m).not.toBeNull()
+
+      const updated = updateMembership(m!.id, { planId: daily.id })
+      expect(updated).not.toBeNull()
+      expect(updated!.planId).toBe(daily.id)
+      expect(getMembershipPayments(m!.id)).toHaveLength(0)
     })
   })
 })

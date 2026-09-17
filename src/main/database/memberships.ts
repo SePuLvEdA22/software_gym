@@ -509,7 +509,8 @@ export function getMembershipById(id: string): Membership | null {
 
 export function updateMembership(
   id: string,
-  data: Partial<{ planId: string; startDate: string; endDate: string; status: MembershipStatus }>
+  data: Partial<{ planId: string; startDate: string; endDate: string; status: MembershipStatus }>,
+  opts?: { reason?: string }
 ): Membership | null {
   const db = getDatabase()
   const existing = db.prepare('SELECT * FROM memberships WHERE id = ?').get(id) as DbMembership | undefined
@@ -527,6 +528,9 @@ export function updateMembership(
   let newPlanId = existing.plan_id
   let newPlanName = existing.plan_name
   let newDurationDays: number | null = null
+  let planChanged = false
+  let oldPlanPrice: number | null = null
+  let newPlanPrice: number | null = null
   if (data.planId !== undefined) {
     const plan = getPlanById(data.planId)
     if (!plan) {
@@ -536,6 +540,11 @@ export function updateMembership(
     newPlanId = plan.id
     newPlanName = plan.name
     newDurationDays = Math.max(1, plan.durationDays)
+    newPlanPrice = plan.price
+    if (newPlanId !== existing.plan_id) {
+      planChanged = true
+      oldPlanPrice = getPlanById(existing.plan_id)?.price ?? null
+    }
   }
 
   // Fechas: si el caller envía startDate/endDate las re-parseamos; si solo
@@ -605,11 +614,47 @@ export function updateMembership(
   }
 
   const nowIso = formatISO(new Date())
-  db.prepare(`
-    UPDATE memberships
-    SET plan_id = ?, plan_name = ?, start_date = ?, end_date = ?, status = ?, updated_at = ?
-    WHERE id = ?
-  `).run(newPlanId, newPlanName, newStartDateIso, newEndDateIso, newStatus, nowIso, id)
+  // Actualizar membresía y —si cambió el plan— ajustar el pago ligado en la
+  // misma transacción: si la membresía pasó de $50k (mensual) a un plan más
+  // barato, el pago snapshot quedaba en $50k y el valor nunca cambiaba.
+  const persistOp = db.transaction(() => {
+    db.prepare(`
+      UPDATE memberships
+      SET plan_id = ?, plan_name = ?, start_date = ?, end_date = ?, status = ?, updated_at = ?
+      WHERE id = ?
+    `).run(newPlanId, newPlanName, newStartDateIso, newEndDateIso, newStatus, nowIso, id)
+
+    if (planChanged && newPlanPrice !== null) {
+      // Consulta directa (sin importar payments.ts: import circular —
+      // payments.ts importa createMembership desde este módulo).
+      const linked = db.prepare(
+        'SELECT id, amount, notes, description FROM payments WHERE membership_id = ? ORDER BY date ASC'
+      ).all(id) as Array<{ id: string; amount: number; notes: string | null; description: string | null }>
+      if (linked.length === 1 && linked[0].amount !== newPlanPrice) {
+        const p = linked[0]
+        const reasonSuffix = opts?.reason ? ` Motivo: ${opts.reason}` : ''
+        const adjustNote = `Ajuste auto por cambio de plan: ${existing.plan_name} → ${newPlanName}.${reasonSuffix}`
+        const newNotes = p.notes ? `${p.notes} | ${adjustNote}` : adjustNote
+        db.prepare(
+          'UPDATE payments SET amount = ?, description = ?, notes = ? WHERE id = ?'
+        ).run(newPlanPrice, `Pago membresía ${newPlanName}`, newNotes, p.id)
+        log.info(
+          `Adjusted payment ${p.id} for membership ${id}: amount ${p.amount} → ${newPlanPrice} (plan ${existing.plan_id} → ${newPlanId})`
+        )
+      } else if (linked.length === 0) {
+        log.info(`Plan changed for membership ${id} with no linked payments: nothing to adjust`)
+      } else if (linked.length > 1) {
+        // Con abonos parciales no se reescribe a ciegas: se deja intacto y el
+        // IPC lo reporta como warning para ajuste manual.
+        log.warn(
+          `Plan changed for membership ${id} with ${linked.length} linked payments: skipping automatic adjustment (manual review required)`
+        )
+      } else if (oldPlanPrice === null) {
+        log.warn(`Plan changed for membership ${id} but old plan price unknown: payment left intact`)
+      }
+    }
+  })
+  persistOp()
 
   // Sincronizar estado del cliente si la membresía editada es la vigente.
   const activeOrFrozen = getActiveOrFrozenMembership(existing.client_id)

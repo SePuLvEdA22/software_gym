@@ -284,17 +284,31 @@ export function registerMembershipHandlers(): void {
       const oldMembership = getMembershipById(membershipId)
       if (!oldMembership) return { success: false, error: 'Membresía no encontrada' }
       if (oldMembership.status !== 'active' && oldMembership.status !== 'scheduled') return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
-      const updated = updateMembership(membershipId, membershipData as never)
+      // Snapshot de pagos antes del cambio para reportar el ajuste automático.
+      const paymentsBefore = getMembershipPayments(membershipId)
+      const oldAmount = paymentsBefore.length === 1 ? paymentsBefore[0].amount : null
+      const updated = updateMembership(membershipId, membershipData as never, { reason })
       if (updated) {
         const clientName = clientLabel(updated.clientId)
+        // Detectar ajuste automático o caso multi-pago que requiere revisión.
+        let paymentAdjusted: { paymentId: string; oldAmount: number; newAmount: number } | undefined
+        let paymentWarning: string | undefined
+        const paymentsAfter = getMembershipPayments(membershipId)
+        if (membershipData.planId !== undefined && membershipData.planId !== oldMembership.planId) {
+          if (paymentsBefore.length === 1 && paymentsAfter.length === 1 && paymentsAfter[0].amount !== oldAmount) {
+            paymentAdjusted = { paymentId: paymentsAfter[0].id, oldAmount: oldAmount as number, newAmount: paymentsAfter[0].amount }
+          } else if (paymentsBefore.length > 1) {
+            paymentWarning = `La membresía tiene ${paymentsBefore.length} pagos ligados: el valor no se ajustó automáticamente, revísalo manualmente.`
+          }
+        }
         logChange('memberships', membershipId, 'update',
-          { ...oldMembership, clientName },
-          { ...updated, clientName, reason: reason || null }
+          { ...oldMembership, clientName, paymentAmount: oldAmount },
+          { ...updated, clientName, reason: reason || null, paymentAmount: paymentsAfter.length === 1 ? paymentsAfter[0].amount : undefined, paymentAdjusted: paymentAdjusted || null }
         )
+        return { success: !!updated, data: updated, paymentAdjusted, paymentWarning }
       } else {
         return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
       }
-      return { success: !!updated, data: updated }
     } catch (error) {
       log.error('Error updating membership:', error)
       return { success: false, error: sanitizeError(error) }

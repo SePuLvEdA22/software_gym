@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { Client, Membership, MembershipPlan, MembershipStatus } from '@shared/types'
 import { DatePicker } from '@/components/DatePicker'
+import { formatCurrency } from '@/utils/format'
 import { format, parseISO, formatISO } from 'date-fns'
 import { addDays, startOfDay, endOfDay } from 'date-fns'
 import { toErrorMessage } from '../../../../shared/errors'
@@ -54,6 +55,10 @@ export function EditMembershipModal({
   const [autoCalculated, setAutoCalculated] = useState(false)
 
   const selectedPlan = plans.find((p) => p.id === planId)
+  const currentPlan = plans.find((p) => p.id === membership.planId)
+  const planChanged = planId !== membership.planId && !!selectedPlan
+  const priceDiff =
+    planChanged && currentPlan && selectedPlan ? selectedPlan.price - currentPlan.price : null
 
   // Si cambia el plan, recalcular vencimiento desde startKey (como en creación)
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -112,7 +117,18 @@ export function EditMembershipModal({
 
       const result = await window.electronAPI.membership.update(membership.id, payload)
       if (result.success && result.data) {
-        showToast('success', 'Membresía actualizada', 'Guardado')
+        if (result.paymentAdjusted) {
+          showToast(
+            'success',
+            `Membresía actualizada. Pago ajustado: ${formatCurrency(result.paymentAdjusted.oldAmount)} → ${formatCurrency(result.paymentAdjusted.newAmount)}`,
+            'Guardado'
+          )
+        } else {
+          showToast('success', 'Membresía actualizada', 'Guardado')
+        }
+        if (result.paymentWarning) {
+          showToast('warning', result.paymentWarning, 'Revisar pagos')
+        }
         onSuccess()
         onClose()
       } else {
@@ -146,11 +162,25 @@ export function EditMembershipModal({
             <option value="">Seleccione un plan</option>
             {plans.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} - {p.durationDays} días
+                {p.name} - {formatCurrency(p.price)} - {p.durationDays} días
               </option>
             ))}
           </select>
-          {selectedPlan && <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>Duración del plan: {selectedPlan.durationDays} días</div>}
+          {selectedPlan && <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>Duración del plan: {selectedPlan.durationDays} días • Valor: {formatCurrency(selectedPlan.price)}</div>}
+          {planChanged && priceDiff !== null && (
+            <div className="alert alert-warning" style={{ marginTop: 8, marginBottom: 0, padding: '8px 12px' }}>
+              <Icons.Bell />
+              <div>
+                <strong>
+                  {currentPlan ? `${formatCurrency(currentPlan.price)} → ${formatCurrency(selectedPlan!.price)}` : `Nuevo valor: ${formatCurrency(selectedPlan!.price)}`}
+                  {priceDiff !== 0 && (
+                    <> ({priceDiff > 0 ? '+' : ''}{formatCurrency(priceDiff)})</>
+                  )}
+                </strong>
+                <div style={{ fontSize: 12 }}>El pago ligado se ajustará automáticamente al nuevo valor al guardar.</div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="form-row">

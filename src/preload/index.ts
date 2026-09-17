@@ -102,7 +102,7 @@ const electronAPI = {
       ipcRenderer.invoke('membership:getByClient', clientId),
     getById: (membershipId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:getById', membershipId),
-    update: (membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }): Promise<IpcResult<Membership | null>> =>
+    update: (membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }): Promise<IpcResult<Membership | null> & { paymentAdjusted?: { paymentId: string; oldAmount: number; newAmount: number }; paymentWarning?: string }> =>
       ipcRenderer.invoke('membership:update', membershipId, data),
     freeze: (membershipId: string, reason?: string, plannedDays?: number): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:freeze', membershipId, reason, plannedDays),
