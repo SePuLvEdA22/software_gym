@@ -128,7 +128,9 @@ const electronAPI = {
     getByDateRange: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number; method?: string }): Promise<IpcResult<PageResponse<Payment>>> =>
       ipcRenderer.invoke('payment:getByDateRange', startDate, endDate, options),
     getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
-      ipcRenderer.invoke('payment:getByMembership', membershipId)
+      ipcRenderer.invoke('payment:getByMembership', membershipId),
+    updateMethod: (paymentId: string, method: PaymentMethod): Promise<IpcResult<Payment>> =>
+      ipcRenderer.invoke('payment:updateMethod', paymentId, method)
   },
 
   access: {

@@ -28,7 +28,9 @@ import {
   recordPayment,
   getClientPayments,
   getPaymentsByDateRange,
-  getMembershipPayments
+  getMembershipPayments,
+  getPaymentById,
+  updatePaymentMethod
 } from '../../main/database/payments'
 import { getEffectivePrice, createPromotion, getActivePromotionForPlan, getAllPromotions } from '../../main/database/promotions'
 import { getTodayAccessCount } from '../../main/database/accessLogs'
@@ -350,6 +352,30 @@ describe('Memberships Database', () => {
       const result = getPaymentsByDateRange(start, end, 1, 50)
       expect(result.data.length).toBeGreaterThan(0)
       expect(result.total).toBeGreaterThan(0)
+    })
+
+    it('should update only the payment method', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `UPM-${Date.now()}`, accessCode: `UM${Date.now()}` })
+      const payment = recordPayment(c.id, 50000, 'cash', 'Pago para cambio de método')
+      const updated = updatePaymentMethod(payment.id, 'nequi')
+      expect(updated).not.toBeNull()
+      expect(updated!.method).toBe('nequi')
+      // El resto del pago queda intacto.
+      expect(updated!.amount).toBe(50000)
+      expect(updated!.id).toBe(payment.id)
+      expect(getPaymentById(payment.id)!.method).toBe('nequi')
+    })
+
+    it('should reject an invalid payment method', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `UPI-${Date.now()}`, accessCode: `UI${Date.now()}` })
+      const payment = recordPayment(c.id, 50000, 'cash', 'Pago método inválido')
+      // @ts-expect-error método inválido a propósito
+      expect(updatePaymentMethod(payment.id, 'cheque')).toBeNull()
+      expect(getPaymentById(payment.id)!.method).toBe('cash')
+    })
+
+    it('should return null for non-existent payment', () => {
+      expect(updatePaymentMethod('00000000-0000-0000-0000-000000000000', 'card')).toBeNull()
     })
   })
 

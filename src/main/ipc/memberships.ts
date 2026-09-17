@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import { RecordPaymentSchema, UpdateMembershipSchema } from '../../shared/schemas'
+import { PaymentMethodSchema, RecordPaymentSchema, UpdateMembershipSchema } from '../../shared/schemas'
 import { getAllPlans, getPlanById, createPlan, updatePlan, deletePlan } from '../database/plans'
 import {
   createMembership,
@@ -17,7 +17,9 @@ import {
   getClientPayments,
   getPaymentsByDateRange,
   createMembershipWithPayment,
-  getMembershipPayments
+  getMembershipPayments,
+  getPaymentById,
+  updatePaymentMethod
 } from '../database/payments'
 import { getEffectivePrice } from '../database/promotions'
 import { getClientById } from '../database/clients'
@@ -236,6 +238,27 @@ export function registerMembershipHandlers(): void {
       return { success: true, data: getMembershipPayments(membershipId) }
     } catch (error) {
       log.error('Error getting membership payments:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('payment:updateMethod', async (_, paymentId: string, method: string) => {
+    const auth = requirePermission('payments.create')
+    if (auth) return auth
+    try {
+      const parsed = PaymentMethodSchema.safeParse(method)
+      if (!parsed.success) return { success: false, error: 'Método de pago inválido' }
+      const oldPayment = getPaymentById(paymentId)
+      if (!oldPayment) return { success: false, error: 'Pago no encontrado' }
+      const updated = updatePaymentMethod(paymentId, parsed.data)
+      if (!updated) return { success: false, error: 'No se pudo actualizar el método de pago' }
+      logChange('payments', paymentId, 'update',
+        { method: oldPayment.method, amount: oldPayment.amount, membershipId: oldPayment.membershipId },
+        { method: updated.method, amount: updated.amount, membershipId: updated.membershipId }
+      )
+      return { success: true, data: updated }
+    } catch (error) {
+      log.error('Error updating payment method:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })

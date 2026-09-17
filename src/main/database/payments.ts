@@ -91,6 +91,36 @@ export function getMembershipPayments(membershipId: string): Payment[] {
   return results.map(mapDbPayment)
 }
 
+const VALID_PAYMENT_METHODS: PaymentMethod[] = ['cash', 'transfer', 'card', 'nequi', 'daviplata']
+
+export function getPaymentById(paymentId: string): Payment | null {
+  const db = getDatabase()
+  const row = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
+    | DbPayment
+    | undefined
+  return row ? mapDbPayment(row) : null
+}
+
+/**
+ * Actualiza únicamente el método de pago de un pago existente.
+ * No toca monto, descuento, fechas ni membresía ligada.
+ * Retorna el pago actualizado o null si no existe / método inválido.
+ */
+export function updatePaymentMethod(paymentId: string, method: PaymentMethod): Payment | null {
+  if (!VALID_PAYMENT_METHODS.includes(method)) return null
+  const db = getDatabase()
+  const existing = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
+    | DbPayment
+    | undefined
+  if (!existing) return null
+  if (existing.method === method) return mapDbPayment(existing)
+  db.prepare('UPDATE payments SET method = ? WHERE id = ?').run(method, paymentId)
+  const updated = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
+    | DbPayment
+    | undefined
+  return updated ? mapDbPayment(updated) : null
+}
+
 export function recordPayment(
   clientId: string,
   amount: number,
