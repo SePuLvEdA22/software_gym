@@ -10,6 +10,8 @@ export const m017AddScheduledMemberships: Migration = {
     }
     try {
       db.exec(`CREATE INDEX IF NOT EXISTS idx_memberships_start_date ON memberships(start_date)`)
-    } catch {}
+    } catch {
+      // best-effort, no crítico si falla
+    }
   }
 }
