@@ -18,6 +18,7 @@ import {
   getPaymentsByDateRange,
   createMembershipWithPayment,
   getMembershipPayments,
+  getMembershipPaymentMethods,
   getPaymentById,
   updatePaymentMethod
 } from '../database/payments'
@@ -30,7 +31,7 @@ import {
   sendPaymentConfirmation
 } from '../whatsapp/index'
 import { sanitizeError } from '../helpers'
-import { requirePermission, requireRole, validateOrThrow } from './helpers'
+import { requireAnyPermission, requirePermission, requireRole, validateOrThrow } from './helpers'
 
 /** Nombre legible del dueño de la membresía para el historial de cambios. */
 function clientLabel(clientId?: string | null): string | null {
@@ -242,8 +243,23 @@ export function registerMembershipHandlers(): void {
     }
   })
 
+  ipcMain.handle('payment:getMethodsByMembership', async (_, membershipId: string) => {
+    // Vista ciega a montos: solo id + método, para roles con
+    // `payments.edit_method` pero sin `payments.view` (p. ej. entrenador).
+    const auth = requireAnyPermission(['payments.edit_method', 'payments.create'])
+    if (auth) return auth
+    try {
+      return { success: true, data: getMembershipPaymentMethods(membershipId) }
+    } catch (error) {
+      log.error('Error getting membership payment methods:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
   ipcMain.handle('payment:updateMethod', async (_, paymentId: string, method: string) => {
-    const auth = requirePermission('payments.create')
+    // Transición: acepta el nuevo `payments.edit_method` o el anterior
+    // `payments.create` para no romper instalaciones sin migrar.
+    const auth = requireAnyPermission(['payments.edit_method', 'payments.create'])
     if (auth) return auth
     try {
       const parsed = PaymentMethodSchema.safeParse(method)

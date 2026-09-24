@@ -30,3 +30,17 @@ export function requirePermission(permission: string): { success: false; error: 
   }
   return null
 }
+
+/**
+ * Acepta cualquiera de los permisos indicados (transición para
+ * `payments.edit_method`: usuarios con el nuevo permiso o con el
+ * anterior `payments.create` pueden corregir el método de pago).
+ */
+export function requireAnyPermission(permissions: string[]): { success: false; error: string } | null {
+  const user = getSessionUser()
+  if (!user) return { success: false, error: 'No autenticado' }
+  if (user.role === 'admin') return null
+  const granted = user.permissions ?? []
+  if (permissions.some((p) => granted.includes(p))) return null
+  return { success: false, error: 'No autorizado' }
+}

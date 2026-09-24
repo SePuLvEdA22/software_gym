@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icons } from '@/components/Icons'
 import { useAppStore } from '@/store/appStore'
 import { Payment, PaymentMethod } from '@shared/types'
+import { hasAnyPermission } from '@shared/permissions'
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 
@@ -29,17 +30,28 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editMethod, setEditMethod] = useState<PaymentMethod>('cash')
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [canEditMethod, setCanEditMethod] = useState(false)
 
   const loadPayments = async () => {
     const result = await window.electronAPI.payment.getByMembership(membershipId)
     if (result.success && result.data) {
       setPayments(result.data)
+    } else {
+      showToast('error', result.error || 'No se pudieron cargar los pagos', 'Error')
     }
     setLoading(false)
   }
 
   useEffect(() => {
     loadPayments()
+    window.electronAPI.auth
+      .checkSession()
+      .then((r) => {
+        if (r.success && r.data) {
+          setCanEditMethod(hasAnyPermission(r.data, ['payments.edit_method', 'payments.create']))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const startEditing = (payment: Payment) => {
@@ -186,7 +198,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                             <Icons.Close />
                           </button>
                         </div>
-                      ) : (
+                      ) : canEditMethod ? (
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
@@ -196,6 +208,8 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                         >
                           <Icons.Edit />
                         </button>
+                      ) : (
+                        <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>—</span>
                       )}
                     </td>
                   </tr>

@@ -66,6 +66,9 @@ export function EditMembershipModal({
   const [saving, setSaving] = useState(false)
   const [autoCalculated, setAutoCalculated] = useState(false)
   const [linkedPayments, setLinkedPayments] = useState<Payment[]>([])
+  const [linkedMethods, setLinkedMethods] = useState<{ id: string; method: PaymentMethod }[]>([])
+  const [blindMode, setBlindMode] = useState(false)
+  const [paymentsError, setPaymentsError] = useState<string | null>(null)
   const [paymentsLoading, setPaymentsLoading] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
 
@@ -76,26 +79,48 @@ export function EditMembershipModal({
     planChanged && currentPlan && selectedPlan ? selectedPlan.price - currentPlan.price : null
   // Solo se permite editar el método aquí cuando hay un único pago ligado;
   // con varios pagos (cuotas/abonos) se edita desde el historial de pagos.
-  const singlePayment = linkedPayments.length === 1 ? linkedPayments[0] : null
+  // En modo ciego (sin payments.view) se usa la vista mínima id+método,
+  // sin montos ni fechas, para roles con payments.edit_method.
+  const singlePayment: { id: string; method: PaymentMethod } | null =
+    !blindMode && linkedPayments.length === 1
+      ? linkedPayments[0]
+      : blindMode && linkedMethods.length === 1
+        ? linkedMethods[0]
+        : null
+  const linkedCount = blindMode ? linkedMethods.length : linkedPayments.length
   const methodChanged =
     !!singlePayment && !!paymentMethod && paymentMethod !== singlePayment.method
 
   // Cargar pagos ligados para mostrar/editar el método de pago.
+  // Intenta la vista completa (payments.view) y cae a la mínima
+  // (payments.edit_method, ciega a montos) si no hay permiso de ver.
   useEffect(() => {
     let cancelled = false
-    window.electronAPI.payment
-      .getByMembership(membership.id)
-      .then((result) => {
+    const load = async () => {
+      try {
+        const result = await window.electronAPI.payment.getByMembership(membership.id)
         if (cancelled) return
         if (result.success && result.data) {
           setLinkedPayments(result.data)
           if (result.data.length === 1) setPaymentMethod(result.data[0].method)
+          return
         }
-      })
-      .catch(() => {})
-      .finally(() => {
+        const minimal = await window.electronAPI.payment.getMethodsByMembership(membership.id)
+        if (cancelled) return
+        if (minimal.success && minimal.data) {
+          setBlindMode(true)
+          setLinkedMethods(minimal.data)
+          if (minimal.data.length === 1) setPaymentMethod(minimal.data[0].method)
+        } else {
+          setPaymentsError(minimal.error || result.error || 'No se pudieron cargar los pagos')
+        }
+      } catch {
+        if (!cancelled) setPaymentsError('No se pudieron cargar los pagos')
+      } finally {
         if (!cancelled) setPaymentsLoading(false)
-      })
+      }
+    }
+    load()
     return () => {
       cancelled = true
     }
@@ -375,6 +400,8 @@ export function EditMembershipModal({
             <select className="form-select" disabled value="">
               <option value="">Cargando pagos...</option>
             </select>
+          ) : paymentsError ? (
+            <div style={{ fontSize: 12, color: 'var(--color-error)' }}>{paymentsError}</div>
           ) : singlePayment ? (
             <>
               <select
@@ -388,16 +415,22 @@ export function EditMembershipModal({
                   </option>
                 ))}
               </select>
-              <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
-                Pago de {formatCurrency(singlePayment.amount)} •{' '}
-                {format(parseISO(singlePayment.date), 'dd/MM/yyyy')}
-              </div>
+              {!blindMode && 'amount' in singlePayment && 'date' in singlePayment ? (
+                <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+                  Pago de {formatCurrency((singlePayment as Payment).amount)} •{' '}
+                  {format(parseISO((singlePayment as Payment).date), 'dd/MM/yyyy')}
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+                  Pago ligado (montos ocultos por tu rol)
+                </div>
+              )}
             </>
-          ) : linkedPayments.length > 1 ? (
+          ) : linkedCount > 1 ? (
             <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
-              Esta membresía tiene {linkedPayments.length} pagos ligados (
-              {linkedPayments.map((p) => getMethodLabel(p.method)).join(', ')}). Modifica el
-              método de cada pago desde el historial de pagos.
+              Esta membresía tiene {linkedCount} pagos ligados
+              {!blindMode && ` (${linkedPayments.map((p) => getMethodLabel(p.method)).join(', ')})`}.
+              Modifica el método de cada pago desde el historial de pagos.
             </div>
           ) : (
             <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>

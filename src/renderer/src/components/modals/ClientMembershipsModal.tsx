@@ -7,6 +7,7 @@ import { FreezeHistoryModal } from '@/components/modals/FreezeHistoryModal'
 import { RoutinesModal } from '@/components/modals/RoutinesModal'
 import { getMembershipStatusBadge } from '@/components/StatusBadges'
 import { Client, Membership, ClientDebt } from '@shared/types'
+import { hasPermission } from '@shared/permissions'
 import { format, parseISO } from 'date-fns'
 
 interface ClientMembershipsModalProps {
@@ -23,6 +24,7 @@ export function ClientMembershipsModal({
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [debts, setDebts] = useState<ClientDebt[]>([])
   const [loading, setLoading] = useState(true)
+  const [canViewPayments, setCanViewPayments] = useState(false)
 
   const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
   const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(
@@ -38,6 +40,8 @@ export function ClientMembershipsModal({
     const result = await window.electronAPI.membership.getByClient(client.id)
     if (result.success && result.data) {
       setMemberships(result.data)
+    } else if (!result.success) {
+      showToast('error', result.error || 'No se pudieron cargar las membresías', 'Error')
     }
     const debtResult = await window.electronAPI.client.getDebt(client.id)
     if (debtResult.success && debtResult.data) {
@@ -48,6 +52,12 @@ export function ClientMembershipsModal({
 
   useEffect(() => {
     loadData()
+    window.electronAPI.auth
+      .checkSession()
+      .then((r) => {
+        if (r.success && r.data) setCanViewPayments(hasPermission(r.data, 'payments.view'))
+      })
+      .catch(() => {})
   }, [loadData])
 
   useFormSaved('renew', () => loadData())
@@ -280,23 +290,25 @@ export function ClientMembershipsModal({
                                 <Icons.Plus />
                               </button>
                             )}
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => {
-                                setSelectedMembershipForPayments(membership.id)
-                                setShowPaymentHistoryModal(true)
-                              }}
-                              title="Ver pagos"
-                              style={{
-                                minWidth: 36,
-                                minHeight: 36,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <Icons.Search />
-                            </button>
+                            {canViewPayments && (
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => {
+                                  setSelectedMembershipForPayments(membership.id)
+                                  setShowPaymentHistoryModal(true)
+                                }}
+                                title="Ver pagos"
+                                style={{
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Icons.Search />
+                              </button>
+                            )}
                             {membership.status === 'frozen' && (
                               <button
                                 className="btn btn-secondary btn-sm"

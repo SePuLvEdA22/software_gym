@@ -129,6 +129,8 @@ const electronAPI = {
       ipcRenderer.invoke('payment:getByDateRange', startDate, endDate, options),
     getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByMembership', membershipId),
+    getMethodsByMembership: (membershipId: string): Promise<IpcResult<{ id: string; method: PaymentMethod }[]>> =>
+      ipcRenderer.invoke('payment:getMethodsByMembership', membershipId),
     updateMethod: (paymentId: string, method: PaymentMethod): Promise<IpcResult<Payment>> =>
       ipcRenderer.invoke('payment:updateMethod', paymentId, method)
   },

@@ -91,6 +91,21 @@ export function getMembershipPayments(membershipId: string): Payment[] {
   return results.map(mapDbPayment)
 }
 
+/**
+ * Vista mínima y ciega a montos para el permiso `payments.edit_method`.
+ * Retorna solo id + método, sin amount/discount/notes/date, para que un
+ * rol (p. ej. entrenador) pueda corregir el método sin ver los pagos.
+ */
+export function getMembershipPaymentMethods(
+  membershipId: string
+): { id: string; method: PaymentMethod }[] {
+  const db = getDatabase()
+  const rows = db.prepare('SELECT id, method FROM payments WHERE membership_id = ? ORDER BY date DESC').all(
+    membershipId
+  ) as unknown as { id: string; method: string }[]
+  return rows.map((r) => ({ id: r.id, method: r.method as PaymentMethod }))
+}
+
 const VALID_PAYMENT_METHODS: PaymentMethod[] = ['cash', 'transfer', 'card', 'nequi', 'daviplata']
 
 export function getPaymentById(paymentId: string): Payment | null {

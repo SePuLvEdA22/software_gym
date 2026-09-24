@@ -29,7 +29,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Pagos',
     permissions: [
       { id: 'payments.view', label: 'Ver pagos' },
-      { id: 'payments.create', label: 'Registrar pagos' }
+      { id: 'payments.create', label: 'Registrar pagos' },
+      { id: 'payments.edit_method', label: 'Editar método de pago' }
     ]
   },
   {
@@ -108,7 +109,7 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
   reception: [
     'dashboard.view',
     'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
-    'payments.view', 'payments.create',
+    'payments.view', 'payments.create', 'payments.edit_method',
     'memberships.view', 'memberships.create', 'memberships.edit', 'memberships.freeze',
     'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
     'whatsapp.view',
@@ -118,13 +119,14 @@ export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
   trainer: [
     'clients.view',
     'memberships.view',
+    'payments.edit_method',
     'tracking.view', 'tracking.edit',
     'logs.view'
   ],
   accounting: [
     'dashboard.view',
     'clients.view',
-    'payments.view', 'payments.create',
+    'payments.view', 'payments.create', 'payments.edit_method',
     'memberships.view',
     'inventory.view',
     'reports.view', 'reports.export',
