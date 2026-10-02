@@ -2,10 +2,20 @@ import { useEffect, useState } from 'react'
 import { usePersistentState } from '@/hooks/usePersistentState'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
+import { MonthPicker } from '@/components/MonthPicker'
 import { Pagination } from '@/components/Pagination'
 import { Payment, PaymentMethod, RevenueByPeriod } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
-import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns'
+import {
+  format,
+  parseISO,
+  startOfDay,
+  endOfDay,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  addMonths,
+} from 'date-fns'
 
 const paymentMethods: { value: PaymentMethod; label: string; color: string }[] = [
   { value: 'cash', label: 'Efectivo', color: '#4ade80' },
@@ -60,6 +70,10 @@ export function PaymentsPage(): JSX.Element {
     'bodyfitgym-payments-year',
     new Date().getFullYear(),
   )
+  const [selectedMonth, setSelectedMonth] = usePersistentState<string>(
+    'bodyfitgym-payments-month',
+    format(new Date(), 'yyyy-MM'),
+  )
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [pageSize] = useState(50)
@@ -78,29 +92,38 @@ export function PaymentsPage(): JSX.Element {
 
   const [loading, setLoading] = useState(true)
 
-  const loadPayments = async () => {
-    setLoading(true)
-    let startDate: Date
-    let endDate: Date
-
+  const getRangeDates = (): { startDate: Date; endDate: Date } => {
     const now = new Date()
     switch (dateRange) {
       case 'today':
-        startDate = startOfDay(now)
-        endDate = endOfDay(now)
-        break
+        return { startDate: startOfDay(now), endDate: endOfDay(now) }
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        endDate = endOfDay(now)
-        break
-      case 'month':
-        startDate = startOfMonth(now)
-        endDate = endOfMonth(now)
-        break
+        // Últimos 7 días (ventana móvil): puede mezclar mes anterior, es lo esperado.
+        return {
+          startDate: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+          endDate: endOfDay(now),
+        }
+      case 'month': {
+        // Mes visible seleccionado, de primero a último día.
+        const [y, m] = selectedMonth.split('-').map(Number)
+        const ref = new Date(y || now.getFullYear(), (m || now.getMonth() + 1) - 1, 1)
+        return { startDate: startOfMonth(ref), endDate: endOfMonth(ref) }
+      }
       default:
-        startDate = new Date(0)
-        endDate = new Date()
+        return { startDate: new Date(0), endDate: new Date() }
     }
+  }
+
+  const shiftMonth = (delta: number): void => {
+    const [y, m] = selectedMonth.split('-').map(Number)
+    const ref = new Date(y, m - 1, 1)
+    const next = delta < 0 ? subMonths(ref, 1) : addMonths(ref, 1)
+    setSelectedMonth(format(next, 'yyyy-MM'))
+  }
+
+  const loadPayments = async () => {
+    setLoading(true)
+    const { startDate, endDate } = getRangeDates()
 
     const methodParam = filterMethod === 'all' ? undefined : filterMethod
     const result = await window.electronAPI.payment.getByDateRange(
@@ -110,26 +133,22 @@ export function PaymentsPage(): JSX.Element {
     )
 
     if (result.success && result.data) {
-      const paymentsData = result.data.data
       setTotalPages(result.data.totalPages)
-      setPayments(paymentsData)
+      setPayments(result.data.data)
+    }
 
-      const total = paymentsData.reduce((sum: number, p: Payment) => sum + p.amount, 0)
-      const totalDiscount = paymentsData.reduce(
-        (sum: number, p: Payment) => sum + (p.discount || 0),
-        0,
-      )
-      const byMethod: { [key: string]: number } = {}
-
-      for (const payment of paymentsData) {
-        byMethod[payment.method] = (byMethod[payment.method] || 0) + payment.amount
-      }
-
+    // Totales reales del rango completo (no solo la página visible).
+    const summaryResult = await window.electronAPI.payment.getSummary(
+      startDate.toISOString(),
+      endDate.toISOString(),
+      methodParam,
+    )
+    if (summaryResult.success && summaryResult.data) {
       setSummary({
-        total,
-        count: paymentsData.length,
-        totalDiscount,
-        byMethod,
+        total: summaryResult.data.total,
+        count: summaryResult.data.count,
+        totalDiscount: summaryResult.data.totalDiscount,
+        byMethod: summaryResult.data.byMethod,
       })
     }
 
@@ -150,11 +169,11 @@ export function PaymentsPage(): JSX.Element {
 
   useEffect(() => {
     setPage(1)
-  }, [filterMethod, dateRange, selectedYear])
+  }, [filterMethod, dateRange, selectedYear, selectedMonth])
 
   useEffect(() => {
     loadPayments()
-  }, [filterMethod, dateRange, selectedYear, page])
+  }, [filterMethod, dateRange, selectedYear, selectedMonth, page])
 
   if (loading) {
     return (
@@ -185,7 +204,11 @@ export function PaymentsPage(): JSX.Element {
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           onClick={async () => {
             if (window.electronAPI?.system?.exportCsv) {
-              const result = await window.electronAPI.system.exportCsv('payments')
+              const { startDate, endDate } = getRangeDates()
+              const result = await window.electronAPI.system.exportCsv('payments', {
+                from: startDate.toISOString(),
+                to: endDate.toISOString(),
+              })
               if (result.success) showToast('success', `Exportado: ${result.data}`, 'Exportado')
             }
           }}
@@ -330,9 +353,7 @@ export function PaymentsPage(): JSX.Element {
             <h3 className="headline-md" style={{ paddingLeft: 4 }}>
               Transacciones Recientes
             </h3>
-            <div
-              style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
-            >
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div
                 className="tabs"
                 style={{
@@ -402,6 +423,32 @@ export function PaymentsPage(): JSX.Element {
                   ),
                 )}
               </select>
+              {dateRange === 'month' && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', alignSelf: 'center' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => shiftMonth(-1)}
+                    title="Mes anterior"
+                    style={{ height: 38, minWidth: 38 }}
+                  >
+                    ‹
+                  </button>
+                  <MonthPicker
+                    value={selectedMonth}
+                    max={format(new Date(), 'yyyy-MM')}
+                    onChange={setSelectedMonth}
+                  />
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => shiftMonth(1)}
+                    title="Mes siguiente"
+                    disabled={selectedMonth >= format(new Date(), 'yyyy-MM')}
+                    style={{ height: 38, minWidth: 38 }}
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={loadPayments}
@@ -506,7 +553,11 @@ export function PaymentsPage(): JSX.Element {
                 style={{ justifyContent: 'flex-start', gap: 8, width: '100%' }}
                 onClick={async () => {
                   if (window.electronAPI?.system?.exportCsv) {
-                    const result = await window.electronAPI.system.exportCsv('payments')
+                    const { startDate, endDate } = getRangeDates()
+                    const result = await window.electronAPI.system.exportCsv('payments', {
+                      from: startDate.toISOString(),
+                      to: endDate.toISOString(),
+                    })
                     if (result.success)
                       showToast('success', `Exportado: ${result.data}`, 'Exportado')
                   }

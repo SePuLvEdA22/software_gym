@@ -1,6 +1,10 @@
 import { ipcMain } from 'electron'
 import log from 'electron-log'
-import { PaymentMethodSchema, RecordPaymentSchema, UpdateMembershipSchema } from '../../shared/schemas'
+import {
+  PaymentMethodSchema,
+  RecordPaymentSchema,
+  UpdateMembershipSchema,
+} from '../../shared/schemas'
 import { getAllPlans, getPlanById, createPlan, updatePlan, deletePlan } from '../database/plans'
 import {
   createMembership,
@@ -10,26 +14,23 @@ import {
   updateMembership,
   freezeMembership,
   unfreezeMembership,
-  getFreezeHistory
+  getFreezeHistory,
 } from '../database/memberships'
 import {
   recordPayment,
   getClientPayments,
   getPaymentsByDateRange,
+  getPaymentsSummary,
   createMembershipWithPayment,
   getMembershipPayments,
   getMembershipPaymentMethods,
   getPaymentById,
-  updatePaymentMethod
+  updatePaymentMethod,
 } from '../database/payments'
 import { getEffectivePrice } from '../database/promotions'
 import { getClientById } from '../database/clients'
 import { logChange } from '../database/users'
-import {
-  getWhatsappConfig,
-  sendWelcomeMessage,
-  sendPaymentConfirmation
-} from '../whatsapp/index'
+import { getWhatsappConfig, sendWelcomeMessage, sendPaymentConfirmation } from '../whatsapp/index'
 import { sanitizeError } from '../helpers'
 import { requireAnyPermission, requirePermission, requireRole, validateOrThrow } from './helpers'
 
@@ -80,7 +81,7 @@ export function registerMembershipHandlers(): void {
           planId,
           planName: membership.planName,
           startDate: membership.startDate,
-          endDate: membership.endDate
+          endDate: membership.endDate,
         })
       }
       return { success: !!membership, data: membership }
@@ -90,38 +91,52 @@ export function registerMembershipHandlers(): void {
     }
   })
 
-  ipcMain.handle('membership:createWithPayment', async (_, clientId, planId, amount, method, startDate, notes, discount) => {
-    const auth = requirePermission('memberships.create')
-    if (auth) return auth
-    try {
-      const result = createMembershipWithPayment(clientId, planId, amount, method, startDate, notes, discount)
-      
-      if (result.membership) {
-        logChange('memberships', result.membership.id, 'create', null, {
+  ipcMain.handle(
+    'membership:createWithPayment',
+    async (_, clientId, planId, amount, method, startDate, notes, discount) => {
+      const auth = requirePermission('memberships.create')
+      if (auth) return auth
+      try {
+        const result = createMembershipWithPayment(
           clientId,
-          clientName: clientLabel(clientId),
           planId,
-          planName: result.membership.planName,
-          startDate: result.membership.startDate,
-          endDate: result.membership.endDate,
           amount,
-          method
-        })
+          method,
+          startDate,
+          notes,
+          discount,
+        )
+
+        if (result.membership) {
+          logChange('memberships', result.membership.id, 'create', null, {
+            clientId,
+            clientName: clientLabel(clientId),
+            planId,
+            planName: result.membership.planName,
+            startDate: result.membership.startDate,
+            endDate: result.membership.endDate,
+            amount,
+            method,
+          })
+        }
+
+        // Auto-enviar mensajes WhatsApp si está habilitado
+        if (result.membership && getWhatsappConfig().enabled) {
+          sendWelcomeMessage(clientId).catch((err) => log.error('Error sending welcome:', err))
+          sendPaymentConfirmation(
+            clientId,
+            result.membership.planName,
+            result.membership.endDate,
+          ).catch((err) => log.error('Error sending payment confirmation:', err))
+        }
+
+        return { success: !!result.membership, data: result, error: result.error }
+      } catch (error) {
+        log.error('Error creating membership with payment:', error)
+        return { success: false, error: sanitizeError(error) }
       }
-      
-      // Auto-enviar mensajes WhatsApp si está habilitado
-      if (result.membership && getWhatsappConfig().enabled) {
-        sendWelcomeMessage(clientId).catch(err => log.error('Error sending welcome:', err))
-        sendPaymentConfirmation(clientId, result.membership.planName, result.membership.endDate)
-          .catch(err => log.error('Error sending payment confirmation:', err))
-      }
-      
-      return { success: !!result.membership, data: result, error: result.error }
-    } catch (error) {
-      log.error('Error creating membership with payment:', error)
-      return { success: false, error: sanitizeError(error) }
-    }
-  })
+    },
+  )
 
   ipcMain.handle('membership:getActive', async (_, clientId) => {
     const auth = requirePermission('memberships.view')
@@ -154,9 +169,17 @@ export function registerMembershipHandlers(): void {
       const membership = freezeMembership(membershipId, reason, plannedDays)
       if (membership) {
         const clientName = clientLabel(membership.clientId)
-        logChange('memberships', membershipId, 'update',
+        logChange(
+          'memberships',
+          membershipId,
+          'update',
           { status: 'active', clientName },
-          { status: 'frozen', reason: reason || null, plannedDays: plannedDays || null, clientName }
+          {
+            status: 'frozen',
+            reason: reason || null,
+            plannedDays: plannedDays || null,
+            clientName,
+          },
         )
       }
       return { success: !!membership, data: membership }
@@ -173,9 +196,12 @@ export function registerMembershipHandlers(): void {
       const membership = unfreezeMembership(membershipId)
       if (membership) {
         const clientName = clientLabel(membership.clientId)
-        logChange('memberships', membershipId, 'update',
+        logChange(
+          'memberships',
+          membershipId,
+          'update',
           { status: 'frozen', clientName },
-          { status: 'active', clientName }
+          { status: 'active', clientName },
         )
       }
       return { success: !!membership, data: membership }
@@ -185,49 +211,98 @@ export function registerMembershipHandlers(): void {
     }
   })
 
-  ipcMain.handle('payment:record', async (_, clientId, amount, method, description, membershipId, notes, discount) => {
-    const auth = requirePermission('payments.create')
-    if (auth) return auth
-    try {
-      validateOrThrow(RecordPaymentSchema, { clientId, amount, method, description, membershipId, notes, discount })
-      const payment = recordPayment(clientId, amount, method, description, membershipId, notes, discount)
-      
-      // Auto-enviar confirmación de pago si WhatsApp está habilitado
-      if (getWhatsappConfig().enabled && membershipId) {
-        const membership = getActiveMembership(clientId)
-        if (membership) {
-          sendPaymentConfirmation(clientId, membership.planName, membership.endDate)
-            .catch(err => log.error('Error sending payment confirmation:', err))
+  ipcMain.handle(
+    'payment:record',
+    async (_, clientId, amount, method, description, membershipId, notes, discount) => {
+      const auth = requirePermission('payments.create')
+      if (auth) return auth
+      try {
+        validateOrThrow(RecordPaymentSchema, {
+          clientId,
+          amount,
+          method,
+          description,
+          membershipId,
+          notes,
+          discount,
+        })
+        const payment = recordPayment(
+          clientId,
+          amount,
+          method,
+          description,
+          membershipId,
+          notes,
+          discount,
+        )
+
+        // Auto-enviar confirmación de pago si WhatsApp está habilitado
+        if (getWhatsappConfig().enabled && membershipId) {
+          const membership = getActiveMembership(clientId)
+          if (membership) {
+            sendPaymentConfirmation(clientId, membership.planName, membership.endDate).catch(
+              (err) => log.error('Error sending payment confirmation:', err),
+            )
+          }
         }
+
+        return { success: true, data: payment }
+      } catch (error) {
+        log.error('Error recording payment:', error)
+        return { success: false, error: sanitizeError(error) }
       }
-      
-      return { success: true, data: payment }
-    } catch (error) {
-      log.error('Error recording payment:', error)
-      return { success: false, error: sanitizeError(error) }
-    }
-  })
+    },
+  )
 
-  ipcMain.handle('payment:getByClient', async (_, clientId, options?: { page?: number; pageSize?: number }) => {
+  ipcMain.handle(
+    'payment:getByClient',
+    async (_, clientId, options?: { page?: number; pageSize?: number }) => {
+      const auth = requirePermission('payments.view')
+      if (auth) return auth
+      try {
+        const payments = getClientPayments(clientId, options?.page || 1, options?.pageSize || 50)
+        return { success: true, data: payments }
+      } catch (error) {
+        log.error('Error getting client payments:', error)
+        return { success: false, error: sanitizeError(error) }
+      }
+    },
+  )
+
+  ipcMain.handle(
+    'payment:getByDateRange',
+    async (
+      _,
+      startDate,
+      endDate,
+      options?: { page?: number; pageSize?: number; method?: string },
+    ) => {
+      const auth = requirePermission('payments.view')
+      if (auth) return auth
+      try {
+        const payments = getPaymentsByDateRange(
+          startDate,
+          endDate,
+          options?.page || 1,
+          options?.pageSize || 50,
+          options?.method,
+        )
+        return { success: true, data: payments }
+      } catch (error) {
+        log.error('Error getting payments by date:', error)
+        return { success: false, error: sanitizeError(error) }
+      }
+    },
+  )
+
+  ipcMain.handle('payment:getSummary', async (_, startDate, endDate, method?: string) => {
     const auth = requirePermission('payments.view')
     if (auth) return auth
     try {
-      const payments = getClientPayments(clientId, options?.page || 1, options?.pageSize || 50)
-      return { success: true, data: payments }
+      const summary = getPaymentsSummary(startDate, endDate, method)
+      return { success: true, data: summary }
     } catch (error) {
-      log.error('Error getting client payments:', error)
-      return { success: false, error: sanitizeError(error) }
-    }
-  })
-
-  ipcMain.handle('payment:getByDateRange', async (_, startDate, endDate, options?: { page?: number; pageSize?: number; method?: string }) => {
-    const auth = requirePermission('payments.view')
-    if (auth) return auth
-    try {
-      const payments = getPaymentsByDateRange(startDate, endDate, options?.page || 1, options?.pageSize || 50, options?.method)
-      return { success: true, data: payments }
-    } catch (error) {
-      log.error('Error getting payments by date:', error)
+      log.error('Error getting payments summary:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })
@@ -268,9 +343,16 @@ export function registerMembershipHandlers(): void {
       if (!oldPayment) return { success: false, error: 'Pago no encontrado' }
       const updated = updatePaymentMethod(paymentId, parsed.data)
       if (!updated) return { success: false, error: 'No se pudo actualizar el método de pago' }
-      logChange('payments', paymentId, 'update',
-        { method: oldPayment.method, amount: oldPayment.amount, membershipId: oldPayment.membershipId },
-        { method: updated.method, amount: updated.amount, membershipId: updated.membershipId }
+      logChange(
+        'payments',
+        paymentId,
+        'update',
+        {
+          method: oldPayment.method,
+          amount: oldPayment.amount,
+          membershipId: oldPayment.membershipId,
+        },
+        { method: updated.method, amount: updated.amount, membershipId: updated.membershipId },
       )
       return { success: true, data: updated }
     } catch (error) {
@@ -314,45 +396,80 @@ export function registerMembershipHandlers(): void {
     }
   })
 
-  ipcMain.handle('membership:update', async (_, membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }) => {
-    const auth = requirePermission('memberships.edit')
-    if (auth) return auth
-    try {
-      const { reason, ...membershipData } = data
-      validateOrThrow(UpdateMembershipSchema, membershipData as never)
-      const oldMembership = getMembershipById(membershipId)
-      if (!oldMembership) return { success: false, error: 'Membresía no encontrada' }
-      if (oldMembership.status !== 'active' && oldMembership.status !== 'scheduled') return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
-      // Snapshot de pagos antes del cambio para reportar el ajuste automático.
-      const paymentsBefore = getMembershipPayments(membershipId)
-      const oldAmount = paymentsBefore.length === 1 ? paymentsBefore[0].amount : null
-      const updated = updateMembership(membershipId, membershipData as never, { reason })
-      if (updated) {
-        const clientName = clientLabel(updated.clientId)
-        // Detectar ajuste automático o caso multi-pago que requiere revisión.
-        let paymentAdjusted: { paymentId: string; oldAmount: number; newAmount: number } | undefined
-        let paymentWarning: string | undefined
-        const paymentsAfter = getMembershipPayments(membershipId)
-        if (membershipData.planId !== undefined && membershipData.planId !== oldMembership.planId) {
-          if (paymentsBefore.length === 1 && paymentsAfter.length === 1 && paymentsAfter[0].amount !== oldAmount) {
-            paymentAdjusted = { paymentId: paymentsAfter[0].id, oldAmount: oldAmount as number, newAmount: paymentsAfter[0].amount }
-          } else if (paymentsBefore.length > 1) {
-            paymentWarning = `La membresía tiene ${paymentsBefore.length} pagos ligados: el valor no se ajustó automáticamente, revísalo manualmente.`
+  ipcMain.handle(
+    'membership:update',
+    async (
+      _,
+      membershipId: string,
+      data: {
+        planId?: string
+        startDate?: string
+        endDate?: string
+        status?: string
+        reason?: string
+      },
+    ) => {
+      const auth = requirePermission('memberships.edit')
+      if (auth) return auth
+      try {
+        const { reason, ...membershipData } = data
+        validateOrThrow(UpdateMembershipSchema, membershipData as never)
+        const oldMembership = getMembershipById(membershipId)
+        if (!oldMembership) return { success: false, error: 'Membresía no encontrada' }
+        if (oldMembership.status !== 'active' && oldMembership.status !== 'scheduled')
+          return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
+        // Snapshot de pagos antes del cambio para reportar el ajuste automático.
+        const paymentsBefore = getMembershipPayments(membershipId)
+        const oldAmount = paymentsBefore.length === 1 ? paymentsBefore[0].amount : null
+        const updated = updateMembership(membershipId, membershipData as never, { reason })
+        if (updated) {
+          const clientName = clientLabel(updated.clientId)
+          // Detectar ajuste automático o caso multi-pago que requiere revisión.
+          let paymentAdjusted:
+            { paymentId: string; oldAmount: number; newAmount: number } | undefined
+          let paymentWarning: string | undefined
+          const paymentsAfter = getMembershipPayments(membershipId)
+          if (
+            membershipData.planId !== undefined &&
+            membershipData.planId !== oldMembership.planId
+          ) {
+            if (
+              paymentsBefore.length === 1 &&
+              paymentsAfter.length === 1 &&
+              paymentsAfter[0].amount !== oldAmount
+            ) {
+              paymentAdjusted = {
+                paymentId: paymentsAfter[0].id,
+                oldAmount: oldAmount as number,
+                newAmount: paymentsAfter[0].amount,
+              }
+            } else if (paymentsBefore.length > 1) {
+              paymentWarning = `La membresía tiene ${paymentsBefore.length} pagos ligados: el valor no se ajustó automáticamente, revísalo manualmente.`
+            }
           }
+          logChange(
+            'memberships',
+            membershipId,
+            'update',
+            { ...oldMembership, clientName, paymentAmount: oldAmount },
+            {
+              ...updated,
+              clientName,
+              reason: reason || null,
+              paymentAmount: paymentsAfter.length === 1 ? paymentsAfter[0].amount : undefined,
+              paymentAdjusted: paymentAdjusted || null,
+            },
+          )
+          return { success: !!updated, data: updated, paymentAdjusted, paymentWarning }
+        } else {
+          return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
         }
-        logChange('memberships', membershipId, 'update',
-          { ...oldMembership, clientName, paymentAmount: oldAmount },
-          { ...updated, clientName, reason: reason || null, paymentAmount: paymentsAfter.length === 1 ? paymentsAfter[0].amount : undefined, paymentAdjusted: paymentAdjusted || null }
-        )
-        return { success: !!updated, data: updated, paymentAdjusted, paymentWarning }
-      } else {
-        return { success: false, error: 'Solo se pueden editar membresías activas o programadas' }
+      } catch (error) {
+        log.error('Error updating membership:', error)
+        return { success: false, error: sanitizeError(error) }
       }
-    } catch (error) {
-      log.error('Error updating membership:', error)
-      return { success: false, error: sanitizeError(error) }
-    }
-  })
+    },
+  )
 
   ipcMain.handle('plans:create', async (_, data) => {
     const auth = requireRole('admin')

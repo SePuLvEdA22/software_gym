@@ -35,7 +35,7 @@ import {
   RoutineExercise,
   GymSettings,
   BackupConfig,
-  DoorEventTrigger
+  DoorEventTrigger,
 } from '../shared/types'
 
 interface IpcResult<T> {
@@ -56,26 +56,28 @@ const electronAPI = {
       ipcRenderer.invoke('client:getByAccessCode', code),
     getByDocumentId: (docId: string): Promise<IpcResult<Client | null>> =>
       ipcRenderer.invoke('client:getByDocumentId', docId),
-    getAll: (options?: { status?: ClientStatus; page?: number; pageSize?: number; sortBy?: 'name' | 'recent'; hasDebt?: boolean }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
+    getAll: (options?: {
+      status?: ClientStatus
+      page?: number
+      pageSize?: number
+      sortBy?: 'name' | 'recent'
+      hasDebt?: boolean
+    }): Promise<IpcResult<{ data: Client[]; total: number; page: number; totalPages: number }>> =>
       ipcRenderer.invoke('client:getAll', options),
     search: (query: string): Promise<IpcResult<Client[]>> =>
       ipcRenderer.invoke('client:search', query),
-    delete: (id: string): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('client:delete', id),
-    generateCode: (): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('client:generateCode'),
+    delete: (id: string): Promise<IpcResult<null>> => ipcRenderer.invoke('client:delete', id),
+    generateCode: (): Promise<IpcResult<string>> => ipcRenderer.invoke('client:generateCode'),
     getDebt: (clientId: string): Promise<IpcResult<ClientDebt[]>> =>
       ipcRenderer.invoke('client:getDebt', clientId),
-    getDebtors: (): Promise<IpcResult<DebtorSummary[]>> =>
-      ipcRenderer.invoke('client:getDebtors'),
+    getDebtors: (): Promise<IpcResult<DebtorSummary[]>> => ipcRenderer.invoke('client:getDebtors'),
     getFreezeHistory: (clientId: string): Promise<IpcResult<FreezeHistory[]>> =>
       ipcRenderer.invoke('client:getFreezeHistory', clientId),
     getAttendanceStats: (clientId: string): Promise<IpcResult<ClientAttendanceStats>> =>
       ipcRenderer.invoke('client:getAttendanceStats', clientId),
     getInactive: (daysThreshold?: number): Promise<IpcResult<InactiveClient[]>> =>
       ipcRenderer.invoke('client:getInactive', daysThreshold),
-    getNextNumber: (): Promise<IpcResult<number>> =>
-      ipcRenderer.invoke('client:getNextNumber')
+    getNextNumber: (): Promise<IpcResult<number>> => ipcRenderer.invoke('client:getNextNumber'),
   },
 
   plans: {
@@ -83,33 +85,73 @@ const electronAPI = {
       ipcRenderer.invoke('plans:getAll', activeOnly),
     getById: (id: string): Promise<IpcResult<MembershipPlan | null>> =>
       ipcRenderer.invoke('plans:getById', id),
-    create: (data: Omit<MembershipPlan, 'id' | 'createdAt' | 'isActive'>): Promise<IpcResult<MembershipPlan>> =>
-      ipcRenderer.invoke('plans:create', data),
-    update: (id: string, data: Partial<MembershipPlan>): Promise<IpcResult<MembershipPlan | null>> =>
-      ipcRenderer.invoke('plans:update', id, data),
-    delete: (id: string): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('plans:delete', id)
+    create: (
+      data: Omit<MembershipPlan, 'id' | 'createdAt' | 'isActive'>,
+    ): Promise<IpcResult<MembershipPlan>> => ipcRenderer.invoke('plans:create', data),
+    update: (
+      id: string,
+      data: Partial<MembershipPlan>,
+    ): Promise<IpcResult<MembershipPlan | null>> => ipcRenderer.invoke('plans:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> => ipcRenderer.invoke('plans:delete', id),
   },
 
   membership: {
-    create: (clientId: string, planId: string, startDate?: string): Promise<IpcResult<Membership | null>> =>
+    create: (
+      clientId: string,
+      planId: string,
+      startDate?: string,
+    ): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:create', clientId, planId, startDate),
-    createWithPayment: (clientId: string, planId: string, amount: number, method: PaymentMethod, startDate?: string, notes?: string, discount?: number): Promise<IpcResult<{ membership: Membership | null; payment: Payment | null }>> =>
-      ipcRenderer.invoke('membership:createWithPayment', clientId, planId, amount, method, startDate, notes, discount),
+    createWithPayment: (
+      clientId: string,
+      planId: string,
+      amount: number,
+      method: PaymentMethod,
+      startDate?: string,
+      notes?: string,
+      discount?: number,
+    ): Promise<IpcResult<{ membership: Membership | null; payment: Payment | null }>> =>
+      ipcRenderer.invoke(
+        'membership:createWithPayment',
+        clientId,
+        planId,
+        amount,
+        method,
+        startDate,
+        notes,
+        discount,
+      ),
     getActive: (clientId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:getActive', clientId),
     getByClient: (clientId: string): Promise<IpcResult<Membership[]>> =>
       ipcRenderer.invoke('membership:getByClient', clientId),
     getById: (membershipId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:getById', membershipId),
-    update: (membershipId: string, data: { planId?: string; startDate?: string; endDate?: string; status?: string; reason?: string }): Promise<IpcResult<Membership | null> & { paymentAdjusted?: { paymentId: string; oldAmount: number; newAmount: number }; paymentWarning?: string }> =>
-      ipcRenderer.invoke('membership:update', membershipId, data),
-    freeze: (membershipId: string, reason?: string, plannedDays?: number): Promise<IpcResult<Membership | null>> =>
+    update: (
+      membershipId: string,
+      data: {
+        planId?: string
+        startDate?: string
+        endDate?: string
+        status?: string
+        reason?: string
+      },
+    ): Promise<
+      IpcResult<Membership | null> & {
+        paymentAdjusted?: { paymentId: string; oldAmount: number; newAmount: number }
+        paymentWarning?: string
+      }
+    > => ipcRenderer.invoke('membership:update', membershipId, data),
+    freeze: (
+      membershipId: string,
+      reason?: string,
+      plannedDays?: number,
+    ): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:freeze', membershipId, reason, plannedDays),
     unfreeze: (membershipId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:unfreeze', membershipId),
     getFreezeHistory: (membershipId: string): Promise<IpcResult<FreezeHistory[]>> =>
-      ipcRenderer.invoke('membership:getFreezeHistory', membershipId)
+      ipcRenderer.invoke('membership:getFreezeHistory', membershipId),
   },
 
   payment: {
@@ -120,71 +162,152 @@ const electronAPI = {
       description: string,
       membershipId?: string,
       notes?: string,
-      discount?: number
+      discount?: number,
     ): Promise<IpcResult<Payment>> =>
-      ipcRenderer.invoke('payment:record', clientId, amount, method, description, membershipId, notes, discount),
-    getByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<Payment>>> =>
+      ipcRenderer.invoke(
+        'payment:record',
+        clientId,
+        amount,
+        method,
+        description,
+        membershipId,
+        notes,
+        discount,
+      ),
+    getByClient: (
+      clientId: string,
+      options?: { page?: number; pageSize?: number },
+    ): Promise<IpcResult<PageResponse<Payment>>> =>
       ipcRenderer.invoke('payment:getByClient', clientId, options),
-    getByDateRange: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number; method?: string }): Promise<IpcResult<PageResponse<Payment>>> =>
+    getByDateRange: (
+      startDate: string,
+      endDate: string,
+      options?: { page?: number; pageSize?: number; method?: string },
+    ): Promise<IpcResult<PageResponse<Payment>>> =>
       ipcRenderer.invoke('payment:getByDateRange', startDate, endDate, options),
+    getSummary: (
+      startDate: string,
+      endDate: string,
+      method?: string,
+    ): Promise<
+      IpcResult<{
+        total: number
+        count: number
+        totalDiscount: number
+        byMethod: { [key: string]: number }
+      }>
+    > => ipcRenderer.invoke('payment:getSummary', startDate, endDate, method),
     getByMembership: (membershipId: string): Promise<IpcResult<Payment[]>> =>
       ipcRenderer.invoke('payment:getByMembership', membershipId),
-    getMethodsByMembership: (membershipId: string): Promise<IpcResult<{ id: string; method: PaymentMethod }[]>> =>
+    getMethodsByMembership: (
+      membershipId: string,
+    ): Promise<IpcResult<{ id: string; method: PaymentMethod }[]>> =>
       ipcRenderer.invoke('payment:getMethodsByMembership', membershipId),
     updateMethod: (paymentId: string, method: PaymentMethod): Promise<IpcResult<Payment>> =>
-      ipcRenderer.invoke('payment:updateMethod', paymentId, method)
+      ipcRenderer.invoke('payment:updateMethod', paymentId, method),
   },
 
   access: {
     validate: (accessCode: string): Promise<IpcResult<AccessValidation>> =>
       ipcRenderer.invoke('access:validate', accessCode),
-    getLogs: (options?: { page?: number; pageSize?: number; result?: string }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+    getLogs: (options?: {
+      page?: number
+      pageSize?: number
+      result?: string
+    }): Promise<IpcResult<PageResponse<AccessLog>>> =>
       ipcRenderer.invoke('access:getLogs', options),
-    getLogsByDate: (startDate: string, endDate: string, options?: { page?: number; pageSize?: number; result?: string }): Promise<IpcResult<PageResponse<AccessLog>>> =>
+    getLogsByDate: (
+      startDate: string,
+      endDate: string,
+      options?: { page?: number; pageSize?: number; result?: string },
+    ): Promise<IpcResult<PageResponse<AccessLog>>> =>
       ipcRenderer.invoke('access:getLogsByDate', startDate, endDate, options),
-    getLogsByClient: (clientId: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<AccessLog>>> =>
-      ipcRenderer.invoke('access:getLogsByClient', clientId, options)
+    getLogsByClient: (
+      clientId: string,
+      options?: { page?: number; pageSize?: number },
+    ): Promise<IpcResult<PageResponse<AccessLog>>> =>
+      ipcRenderer.invoke('access:getLogsByClient', clientId, options),
   },
 
   dashboard: {
     getMetrics: (period?: 'day' | 'week' | 'month'): Promise<IpcResult<DashboardMetrics>> =>
       ipcRenderer.invoke('dashboard:getMetrics', period),
-    getRevenueByMonth: (months?: number): Promise<IpcResult<{ month: string; revenue: number }[]>> =>
+    getRevenueByMonth: (
+      months?: number,
+    ): Promise<IpcResult<{ month: string; revenue: number }[]>> =>
       ipcRenderer.invoke('dashboard:getRevenueByMonth', months),
     getClientsByStatus: (): Promise<IpcResult<{ [key: string]: number }>> =>
       ipcRenderer.invoke('dashboard:getClientsByStatus'),
-    getExpiringSoon: (days: number): Promise<IpcResult<{ clientId: string; clientName: string; planName: string; endDate: string; daysLeft: number }[]>> =>
-      ipcRenderer.invoke('dashboard:getExpiringSoon', days),
-    getBirthdays: (): Promise<IpcResult<{ clientId: string; clientName: string; birthDate: string; day: number }[]>> =>
-      ipcRenderer.invoke('dashboard:getBirthdays'),
+    getExpiringSoon: (
+      days: number,
+    ): Promise<
+      IpcResult<
+        {
+          clientId: string
+          clientName: string
+          planName: string
+          endDate: string
+          daysLeft: number
+        }[]
+      >
+    > => ipcRenderer.invoke('dashboard:getExpiringSoon', days),
+    getBirthdays: (): Promise<
+      IpcResult<{ clientId: string; clientName: string; birthDate: string; day: number }[]>
+    > => ipcRenderer.invoke('dashboard:getBirthdays'),
     getRevenueByYear: (year: number): Promise<IpcResult<number>> =>
       ipcRenderer.invoke('dashboard:getRevenueByYear', year),
-    getRevenueByTimeOfDay: (startDate: string, endDate: string): Promise<IpcResult<RevenueByPeriod>> =>
-      ipcRenderer.invoke('dashboard:getRevenueByTimeOfDay', startDate, endDate)
+    getRevenueByTimeOfDay: (
+      startDate: string,
+      endDate: string,
+    ): Promise<IpcResult<RevenueByPeriod>> =>
+      ipcRenderer.invoke('dashboard:getRevenueByTimeOfDay', startDate, endDate),
   },
 
   auth: {
-    login: (username: string, password: string): Promise<IpcResult<{ user: User; mustChangePassword?: boolean }>> =>
+    login: (
+      username: string,
+      password: string,
+    ): Promise<IpcResult<{ user: User; mustChangePassword?: boolean }>> =>
       ipcRenderer.invoke('auth:login', username, password),
-    logout: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('auth:logout'),
-    checkSession: (): Promise<IpcResult<User | null>> =>
-      ipcRenderer.invoke('auth:checkSession')
+    logout: (): Promise<IpcResult<null>> => ipcRenderer.invoke('auth:logout'),
+    checkSession: (): Promise<IpcResult<User | null>> => ipcRenderer.invoke('auth:checkSession'),
   },
 
   user: {
-    getAll: (options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<User>>> =>
-      ipcRenderer.invoke('user:getAll', options),
+    getAll: (options?: {
+      page?: number
+      pageSize?: number
+    }): Promise<IpcResult<PageResponse<User>>> => ipcRenderer.invoke('user:getAll', options),
     getById: (id: string): Promise<IpcResult<User | null>> =>
       ipcRenderer.invoke('user:getById', id),
-    create: (data: { username: string; fullName: string; password: string; role: UserRole; permissions?: string[] }): Promise<IpcResult<{ user: User }>> =>
-      ipcRenderer.invoke('user:create', data),
-    update: (id: string, data: Partial<{ username: string; fullName: string; role: UserRole; permissions: string[]; isActive: boolean; password: string }>): Promise<IpcResult<{ user: User }>> =>
-      ipcRenderer.invoke('user:update', id, data),
-    delete: (id: string): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('user:delete', id),
-    getChangeLogs: (options?: { page?: number; pageSize?: number; tableName?: string; action?: string; from?: string; to?: string }): Promise<IpcResult<PageResponse<ChangeLog>>> =>
-      ipcRenderer.invoke('user:getChangeLogs', options)
+    create: (data: {
+      username: string
+      fullName: string
+      password: string
+      role: UserRole
+      permissions?: string[]
+    }): Promise<IpcResult<{ user: User }>> => ipcRenderer.invoke('user:create', data),
+    update: (
+      id: string,
+      data: Partial<{
+        username: string
+        fullName: string
+        role: UserRole
+        permissions: string[]
+        isActive: boolean
+        password: string
+      }>,
+    ): Promise<IpcResult<{ user: User }>> => ipcRenderer.invoke('user:update', id, data),
+    delete: (id: string): Promise<IpcResult<boolean>> => ipcRenderer.invoke('user:delete', id),
+    getChangeLogs: (options?: {
+      page?: number
+      pageSize?: number
+      tableName?: string
+      action?: string
+      from?: string
+      to?: string
+    }): Promise<IpcResult<PageResponse<ChangeLog>>> =>
+      ipcRenderer.invoke('user:getChangeLogs', options),
   },
 
   door: {
@@ -192,31 +315,38 @@ const electronAPI = {
       ipcRenderer.invoke('door:open', trigger),
     getStatus: (): Promise<IpcResult<{ status: string; mockMode: boolean }>> =>
       ipcRenderer.invoke('door:getStatus'),
-    getConfig: (): Promise<IpcResult<DoorConfig>> =>
-      ipcRenderer.invoke('door:getConfig'),
+    getConfig: (): Promise<IpcResult<DoorConfig>> => ipcRenderer.invoke('door:getConfig'),
     saveConfig: (config: Partial<DoorConfig> | Partial<WhatsappConfig>): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('door:saveConfig', config),
-    testConnection: (): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('door:testConnection')
+    testConnection: (): Promise<IpcResult<boolean>> => ipcRenderer.invoke('door:testConnection'),
   },
 
   whatsapp: {
-    getConfig: (): Promise<IpcResult<WhatsappConfig>> =>
-      ipcRenderer.invoke('whatsapp:getConfig'),
+    getConfig: (): Promise<IpcResult<WhatsappConfig>> => ipcRenderer.invoke('whatsapp:getConfig'),
     saveConfig: (config: Partial<DoorConfig> | Partial<WhatsappConfig>): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('whatsapp:saveConfig', config),
     sendWelcome: (clientId: string): Promise<IpcResult<{ success: boolean }>> =>
       ipcRenderer.invoke('whatsapp:sendWelcome', clientId),
-    sendPaymentConfirmation: (clientId: string, planName: string, endDate: string): Promise<IpcResult<{ success: boolean }>> =>
+    sendPaymentConfirmation: (
+      clientId: string,
+      planName: string,
+      endDate: string,
+    ): Promise<IpcResult<{ success: boolean }>> =>
       ipcRenderer.invoke('whatsapp:sendPaymentConfirmation', clientId, planName, endDate),
-    getHistory: (options?: { clientId?: string; page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<WhatsappMessage>>> =>
+    getHistory: (options?: {
+      clientId?: string
+      page?: number
+      pageSize?: number
+    }): Promise<IpcResult<PageResponse<WhatsappMessage>>> =>
       ipcRenderer.invoke('whatsapp:getHistory', options),
     checkReminders: (): Promise<IpcResult<{ sent: number }>> =>
       ipcRenderer.invoke('whatsapp:checkReminders'),
-    sendExpiryReminderToClient: (clientId: string): Promise<IpcResult<{ success: boolean; message?: string }>> =>
+    sendExpiryReminderToClient: (
+      clientId: string,
+    ): Promise<IpcResult<{ success: boolean; message?: string }>> =>
       ipcRenderer.invoke('whatsapp:sendExpiryReminderToClient', clientId),
     sendTestMessage: (phone: string): Promise<IpcResult<{ success: boolean; message?: string }>> =>
-      ipcRenderer.invoke('whatsapp:sendTestMessage', phone)
+      ipcRenderer.invoke('whatsapp:sendTestMessage', phone),
   },
 
   promotion: {
@@ -224,26 +354,33 @@ const electronAPI = {
       ipcRenderer.invoke('promotion:getAll', activeOnly),
     getById: (id: string): Promise<IpcResult<Promotion | null>> =>
       ipcRenderer.invoke('promotion:getById', id),
-    create: (data: Omit<Promotion, 'id' | 'createdAt' | 'isActive'>): Promise<IpcResult<Promotion>> =>
-      ipcRenderer.invoke('promotion:create', data),
+    create: (
+      data: Omit<Promotion, 'id' | 'createdAt' | 'isActive'>,
+    ): Promise<IpcResult<Promotion>> => ipcRenderer.invoke('promotion:create', data),
     update: (id: string, data: Partial<Promotion>): Promise<IpcResult<Promotion | null>> =>
       ipcRenderer.invoke('promotion:update', id, data),
-    delete: (id: string): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('promotion:delete', id),
-    getEffectivePrice: (planId: string): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
-      ipcRenderer.invoke('membership:getEffectivePrice', planId)
+    delete: (id: string): Promise<IpcResult<boolean>> => ipcRenderer.invoke('promotion:delete', id),
+    getEffectivePrice: (
+      planId: string,
+    ): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
+      ipcRenderer.invoke('membership:getEffectivePrice', planId),
   },
 
   kiosk: {
     // Canales públicos del kiosco (sin sesión): solo auto-renovación.
-    getRenewalInfo: (clientId: string): Promise<IpcResult<{
-      client: Client
-      memberships: Membership[]
-      activeMembership: Membership | null
-      plans: MembershipPlan[]
-    }>> =>
-      ipcRenderer.invoke('kiosk:getRenewalInfo', clientId),
-    getEffectivePrice: (planId: string): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
+    getRenewalInfo: (
+      clientId: string,
+    ): Promise<
+      IpcResult<{
+        client: Client
+        memberships: Membership[]
+        activeMembership: Membership | null
+        plans: MembershipPlan[]
+      }>
+    > => ipcRenderer.invoke('kiosk:getRenewalInfo', clientId),
+    getEffectivePrice: (
+      planId: string,
+    ): Promise<IpcResult<{ price: number; discount: number; promotionName: string | null }>> =>
       ipcRenderer.invoke('kiosk:getEffectivePrice', planId),
     createRenewal: (
       clientId: string,
@@ -252,78 +389,135 @@ const electronAPI = {
       method: string,
       startDateIso?: string,
       notes?: string,
-      discount?: number
+      discount?: number,
     ): Promise<IpcResult<{ membership?: { planName: string; endDate: string } }>> =>
-      ipcRenderer.invoke('kiosk:createRenewal', clientId, planId, amount, method, startDateIso, notes, discount)
+      ipcRenderer.invoke(
+        'kiosk:createRenewal',
+        clientId,
+        planId,
+        amount,
+        method,
+        startDateIso,
+        notes,
+        discount,
+      ),
   },
 
   backup: {
-    getConfig: (): Promise<IpcResult<BackupConfig>> =>
-      ipcRenderer.invoke('backup:getConfig'),
+    getConfig: (): Promise<IpcResult<BackupConfig>> => ipcRenderer.invoke('backup:getConfig'),
     setConfig: (config: { enabled: boolean; retention: number }): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('backup:setConfig', config),
-    runNow: (): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('backup:runNow')
+    runNow: (): Promise<IpcResult<string>> => ipcRenderer.invoke('backup:runNow'),
   },
 
   system: {
-    updateExpired: (): Promise<IpcResult<number>> =>
-      ipcRenderer.invoke('system:updateExpired'),
+    updateExpired: (): Promise<IpcResult<number>> => ipcRenderer.invoke('system:updateExpired'),
     backupDb: (): Promise<IpcResult<{ filePath: string; photoCount: number }>> =>
       ipcRenderer.invoke('system:backupDb'),
-    restoreDb: (): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('system:restoreDb'),
-    exportCsv: (type: string, filters?: { from?: string; to?: string }): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('system:exportCsv', type, filters),
-    getAutoStart: (): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('system:get-auto-start'),
+    restoreDb: (): Promise<IpcResult<boolean>> => ipcRenderer.invoke('system:restoreDb'),
+    exportCsv: (
+      type: string,
+      filters?: { from?: string; to?: string },
+    ): Promise<IpcResult<string>> => ipcRenderer.invoke('system:exportCsv', type, filters),
+    getAutoStart: (): Promise<IpcResult<boolean>> => ipcRenderer.invoke('system:get-auto-start'),
     setAutoStart: (enabled: boolean): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:set-auto-start', enabled),
-    getAppVersion: (): Promise<IpcResult<string>> =>
-      ipcRenderer.invoke('system:get-app-version'),
+    getAppVersion: (): Promise<IpcResult<string>> => ipcRenderer.invoke('system:get-app-version'),
     restartReminderInterval: (): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:restartReminderInterval'),
-    updateAdmin: (data: { username?: string; currentPassword: string; newPassword?: string }): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('system:updateAdmin', data),
-    migrateLegacy: (): Promise<IpcResult<{ success: boolean; tablesImported: Record<string, number>; totalRecords: number; errors: string[]; photosExported: number; backupPath?: string }>> =>
-      ipcRenderer.invoke('system:migrateLegacy'),
-    onMigrationProgress: (callback: (progress: { phase: string; table?: string; current?: number; message: string }) => void): () => void => {
-      const handler = (_: IpcRendererEvent, progress: { phase: string; table?: string; current?: number; message: string }) => callback(progress)
+    updateAdmin: (data: {
+      username?: string
+      currentPassword: string
+      newPassword?: string
+    }): Promise<IpcResult<null>> => ipcRenderer.invoke('system:updateAdmin', data),
+    migrateLegacy: (): Promise<
+      IpcResult<{
+        success: boolean
+        tablesImported: Record<string, number>
+        totalRecords: number
+        errors: string[]
+        photosExported: number
+        backupPath?: string
+      }>
+    > => ipcRenderer.invoke('system:migrateLegacy'),
+    onMigrationProgress: (
+      callback: (progress: {
+        phase: string
+        table?: string
+        current?: number
+        message: string
+      }) => void,
+    ): (() => void) => {
+      const handler = (
+        _: IpcRendererEvent,
+        progress: { phase: string; table?: string; current?: number; message: string },
+      ) => callback(progress)
       ipcRenderer.on('migration:progress', handler)
       return () => ipcRenderer.removeListener('migration:progress', handler)
-    }
+    },
   },
 
   inventory: {
-    getAllProducts: (activeOnly = true, options?: { page?: number; pageSize?: number; search?: string; category?: string }): Promise<IpcResult<PageResponse<Product>>> =>
+    getAllProducts: (
+      activeOnly = true,
+      options?: { page?: number; pageSize?: number; search?: string; category?: string },
+    ): Promise<IpcResult<PageResponse<Product>>> =>
       ipcRenderer.invoke('inventory:getAllProducts', activeOnly, options),
     getProductById: (id: string): Promise<IpcResult<Product | null>> =>
       ipcRenderer.invoke('inventory:getProductById', id),
-    createProduct: (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<IpcResult<Product>> =>
-      ipcRenderer.invoke('inventory:createProduct', data),
+    createProduct: (
+      data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>,
+    ): Promise<IpcResult<Product>> => ipcRenderer.invoke('inventory:createProduct', data),
     updateProduct: (id: string, data: Partial<Product>): Promise<IpcResult<Product | null>> =>
       ipcRenderer.invoke('inventory:updateProduct', id, data),
     deleteProduct: (id: string): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('inventory:deleteProduct', id),
-    registerMovement: (productId: string, type: 'in' | 'out', quantity: number, price: number, description: string): Promise<IpcResult<InventoryMovement | null>> =>
-      ipcRenderer.invoke('inventory:registerMovement', productId, type, quantity, price, description),
-    getMovements: (productId?: string, options?: { page?: number; pageSize?: number }): Promise<IpcResult<PageResponse<InventoryMovement>>> =>
+    registerMovement: (
+      productId: string,
+      type: 'in' | 'out',
+      quantity: number,
+      price: number,
+      description: string,
+    ): Promise<IpcResult<InventoryMovement | null>> =>
+      ipcRenderer.invoke(
+        'inventory:registerMovement',
+        productId,
+        type,
+        quantity,
+        price,
+        description,
+      ),
+    getMovements: (
+      productId?: string,
+      options?: { page?: number; pageSize?: number },
+    ): Promise<IpcResult<PageResponse<InventoryMovement>>> =>
       ipcRenderer.invoke('inventory:getMovements', productId, options),
     getLowStock: (threshold?: number): Promise<IpcResult<Product[]>> =>
       ipcRenderer.invoke('inventory:getLowStock', threshold),
     getSalesSummary: (period?: 'day' | 'week' | 'month'): Promise<IpcResult<SalesSummary>> =>
-      ipcRenderer.invoke('inventory:getSalesSummary', period)
+      ipcRenderer.invoke('inventory:getSalesSummary', period),
   },
 
   bodyTracking: {
     getMeasurements: (clientId: string, limit?: number): Promise<IpcResult<BodyMeasurement[]>> =>
       ipcRenderer.invoke('bodyTracking:getMeasurements', clientId, limit),
-    saveMeasurement: (clientId: string, data: { date: string; notes?: string } & Partial<BodyMeasurement>): Promise<IpcResult<BodyMeasurement>> =>
+    saveMeasurement: (
+      clientId: string,
+      data: { date: string; notes?: string } & Partial<BodyMeasurement>,
+    ): Promise<IpcResult<BodyMeasurement>> =>
       ipcRenderer.invoke('bodyTracking:saveMeasurement', clientId, data),
     getGoals: (clientId: string): Promise<IpcResult<ClientGoal[]>> =>
       ipcRenderer.invoke('bodyTracking:getGoals', clientId),
-    saveGoal: (clientId: string, data: { goal: 'lose_weight' | 'gain_muscle' | 'define' | 'maintain'; startDate: string; targetDate?: string; notes?: string }): Promise<IpcResult<ClientGoal>> =>
-      ipcRenderer.invoke('bodyTracking:saveGoal', clientId, data)
+    saveGoal: (
+      clientId: string,
+      data: {
+        goal: 'lose_weight' | 'gain_muscle' | 'define' | 'maintain'
+        startDate: string
+        targetDate?: string
+        notes?: string
+      },
+    ): Promise<IpcResult<ClientGoal>> =>
+      ipcRenderer.invoke('bodyTracking:saveGoal', clientId, data),
   },
 
   messageTemplates: {
@@ -331,34 +525,57 @@ const electronAPI = {
       ipcRenderer.invoke('messageTemplates:getAll'),
     getById: (id: string): Promise<IpcResult<MessageTemplate | null>> =>
       ipcRenderer.invoke('messageTemplates:getById', id),
-    create: (data: { name: string; type: 'email' | 'whatsapp'; subject: string; content: string; variables?: string[] }): Promise<IpcResult<MessageTemplate>> =>
-      ipcRenderer.invoke('messageTemplates:create', data),
-    update: (id: string, data: { name: string; type: 'email' | 'whatsapp'; subject: string; content: string; variables?: string[] }): Promise<IpcResult<MessageTemplate | null>> =>
+    create: (data: {
+      name: string
+      type: 'email' | 'whatsapp'
+      subject: string
+      content: string
+      variables?: string[]
+    }): Promise<IpcResult<MessageTemplate>> => ipcRenderer.invoke('messageTemplates:create', data),
+    update: (
+      id: string,
+      data: {
+        name: string
+        type: 'email' | 'whatsapp'
+        subject: string
+        content: string
+        variables?: string[]
+      },
+    ): Promise<IpcResult<MessageTemplate | null>> =>
       ipcRenderer.invoke('messageTemplates:update', id, data),
     delete: (id: string): Promise<IpcResult<boolean>> =>
       ipcRenderer.invoke('messageTemplates:delete', id),
-    sendToClient: (templateId: string, clientId: string): Promise<IpcResult<{ sent: boolean; message?: string }>> =>
+    sendToClient: (
+      templateId: string,
+      clientId: string,
+    ): Promise<IpcResult<{ sent: boolean; message?: string }>> =>
       ipcRenderer.invoke('messageTemplates:sendToClient', templateId, clientId),
     sendToAll: (templateId: string): Promise<IpcResult<{ sent: number; failed: number }>> =>
       ipcRenderer.invoke('messageTemplates:sendToAll', templateId),
-    sendToExpiring: (templateId: string, days: number): Promise<IpcResult<{ sent: number; failed: number }>> =>
-      ipcRenderer.invoke('messageTemplates:sendToExpiring', templateId, days)
+    sendToExpiring: (
+      templateId: string,
+      days: number,
+    ): Promise<IpcResult<{ sent: number; failed: number }>> =>
+      ipcRenderer.invoke('messageTemplates:sendToExpiring', templateId, days),
   },
 
   routine: {
     getByClient: (clientId: string): Promise<IpcResult<ClientRoutine[]>> =>
       ipcRenderer.invoke('routine:getByClient', clientId),
-    save: (clientId: string, dayOfWeek: number, exercises: RoutineExercise[]): Promise<IpcResult<ClientRoutine>> =>
+    save: (
+      clientId: string,
+      dayOfWeek: number,
+      exercises: RoutineExercise[],
+    ): Promise<IpcResult<ClientRoutine>> =>
       ipcRenderer.invoke('routine:save', clientId, dayOfWeek, exercises),
     delete: (clientId: string, dayOfWeek: number): Promise<IpcResult<boolean>> =>
-      ipcRenderer.invoke('routine:delete', clientId, dayOfWeek)
+      ipcRenderer.invoke('routine:delete', clientId, dayOfWeek),
   },
 
   gym: {
-    getSettings: (): Promise<IpcResult<GymSettings>> =>
-      ipcRenderer.invoke('gym:getSettings'),
+    getSettings: (): Promise<IpcResult<GymSettings>> => ipcRenderer.invoke('gym:getSettings'),
     saveSettings: (settings: Partial<GymSettings>): Promise<IpcResult<GymSettings>> =>
-      ipcRenderer.invoke('gym:saveSettings', settings)
+      ipcRenderer.invoke('gym:saveSettings', settings),
   },
 
   window: {
@@ -387,63 +604,58 @@ const electronAPI = {
       ipcRenderer.on(`form:saved:${type}`, handler)
       return () => ipcRenderer.removeListener(`form:saved:${type}`, handler)
     },
-    minimize: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('window:minimize-admin'),
-    maximize: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('window:maximize-admin'),
-    onNavigatePayments: (callback: (data: { clientId: string }) => void): () => void => {
+    minimize: (): Promise<IpcResult<null>> => ipcRenderer.invoke('window:minimize-admin'),
+    maximize: (): Promise<IpcResult<null>> => ipcRenderer.invoke('window:maximize-admin'),
+    onNavigatePayments: (callback: (data: { clientId: string }) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, data: { clientId: string }) => callback(data)
       ipcRenderer.on('navigate:payments', handler)
       return () => ipcRenderer.removeListener('navigate:payments', handler)
-    }
+    },
   },
 
   clientForm: {
-    onSaved: (callback: () => void): () => void => {
+    onSaved: (callback: () => void): (() => void) => {
       const handler = () => callback()
       ipcRenderer.on('clientForm:saved', handler)
       return () => ipcRenderer.removeListener('clientForm:saved', handler)
-    }
+    },
   },
 
   update: {
-    check: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('update:check'),
-    download: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('update:download'),
-    install: (): Promise<IpcResult<null>> =>
-      ipcRenderer.invoke('update:install'),
-    onChecking: (callback: () => void): () => void => {
+    check: (): Promise<IpcResult<null>> => ipcRenderer.invoke('update:check'),
+    download: (): Promise<IpcResult<null>> => ipcRenderer.invoke('update:download'),
+    install: (): Promise<IpcResult<null>> => ipcRenderer.invoke('update:install'),
+    onChecking: (callback: () => void): (() => void) => {
       const handler = () => callback()
       ipcRenderer.on('update:checking', handler)
       return () => ipcRenderer.removeListener('update:checking', handler)
     },
-    onAvailable: (callback: (info: UpdateInfo) => void): () => void => {
+    onAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:available', handler)
       return () => ipcRenderer.removeListener('update:available', handler)
     },
-    onNotAvailable: (callback: (info: UpdateInfo) => void): () => void => {
+    onNotAvailable: (callback: (info: UpdateInfo) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:not-available', handler)
       return () => ipcRenderer.removeListener('update:not-available', handler)
     },
-    onError: (callback: (error: string) => void): () => void => {
+    onError: (callback: (error: string) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, error: string) => callback(error)
       ipcRenderer.on('update:error', handler)
       return () => ipcRenderer.removeListener('update:error', handler)
     },
-    onDownloadProgress: (callback: (progress: ProgressInfo) => void): () => void => {
+    onDownloadProgress: (callback: (progress: ProgressInfo) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, progress: ProgressInfo) => callback(progress)
       ipcRenderer.on('update:download-progress', handler)
       return () => ipcRenderer.removeListener('update:download-progress', handler)
     },
-    onDownloaded: (callback: (info: UpdateInfo) => void): () => void => {
+    onDownloaded: (callback: (info: UpdateInfo) => void): (() => void) => {
       const handler = (_: IpcRendererEvent, info: UpdateInfo) => callback(info)
       ipcRenderer.on('update:downloaded', handler)
       return () => ipcRenderer.removeListener('update:downloaded', handler)
-    }
-  }
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronAPI)

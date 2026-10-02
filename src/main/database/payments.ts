@@ -31,7 +31,7 @@ function mapDbPayment(dbPayment: DbPayment): Payment {
     description: dbPayment.description,
     date: dbPayment.date,
     notes: dbPayment.notes,
-    createdAt: dbPayment.created_at
+    createdAt: dbPayment.created_at,
   }
 }
 
@@ -42,7 +42,7 @@ export function createMembershipWithPayment(
   method: PaymentMethod,
   startDate?: string,
   notes?: string,
-  discount?: number
+  discount?: number,
 ): { membership: Membership | null; payment: Payment | null; error?: string } {
   const db = getDatabase()
 
@@ -54,7 +54,11 @@ export function createMembershipWithPayment(
 
     const existing = getActiveOrFrozenMembership(clientId)
     if (existing?.status === 'frozen') {
-      return { membership: null, payment: null, error: 'El cliente tiene una membresía congelada. Descongélela primero.' }
+      return {
+        membership: null,
+        payment: null,
+        error: 'El cliente tiene una membresía congelada. Descongélela primero.',
+      }
     }
 
     const membership = createMembership(clientId, planId, startDate)
@@ -70,7 +74,7 @@ export function createMembershipWithPayment(
       paymentDesc,
       membership.id,
       notes,
-      discount
+      discount,
     )
 
     return { membership, payment }
@@ -81,13 +85,17 @@ export function createMembershipWithPayment(
 
 export function getMembershipPayments(membershipId: string): Payment[] {
   const db = getDatabase()
-  const results = db.prepare(`
+  const results = db
+    .prepare(
+      `
     SELECT p.*, c.full_name as client_name
     FROM payments p
     LEFT JOIN clients c ON c.id = p.client_id
     WHERE p.membership_id = ?
     ORDER BY p.date DESC
-  `).all(membershipId) as unknown as DbPayment[]
+  `,
+    )
+    .all(membershipId) as unknown as DbPayment[]
   return results.map(mapDbPayment)
 }
 
@@ -97,12 +105,12 @@ export function getMembershipPayments(membershipId: string): Payment[] {
  * rol (p. ej. entrenador) pueda corregir el método sin ver los pagos.
  */
 export function getMembershipPaymentMethods(
-  membershipId: string
+  membershipId: string,
 ): { id: string; method: PaymentMethod }[] {
   const db = getDatabase()
-  const rows = db.prepare('SELECT id, method FROM payments WHERE membership_id = ? ORDER BY date DESC').all(
-    membershipId
-  ) as unknown as { id: string; method: string }[]
+  const rows = db
+    .prepare('SELECT id, method FROM payments WHERE membership_id = ? ORDER BY date DESC')
+    .all(membershipId) as unknown as { id: string; method: string }[]
   return rows.map((r) => ({ id: r.id, method: r.method as PaymentMethod }))
 }
 
@@ -111,8 +119,7 @@ const VALID_PAYMENT_METHODS: PaymentMethod[] = ['cash', 'transfer', 'card', 'neq
 export function getPaymentById(paymentId: string): Payment | null {
   const db = getDatabase()
   const row = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
-    | DbPayment
-    | undefined
+    DbPayment | undefined
   return row ? mapDbPayment(row) : null
 }
 
@@ -125,14 +132,12 @@ export function updatePaymentMethod(paymentId: string, method: PaymentMethod): P
   if (!VALID_PAYMENT_METHODS.includes(method)) return null
   const db = getDatabase()
   const existing = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
-    | DbPayment
-    | undefined
+    DbPayment | undefined
   if (!existing) return null
   if (existing.method === method) return mapDbPayment(existing)
   db.prepare('UPDATE payments SET method = ? WHERE id = ?').run(method, paymentId)
   const updated = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
-    | DbPayment
-    | undefined
+    DbPayment | undefined
   return updated ? mapDbPayment(updated) : null
 }
 
@@ -143,10 +148,10 @@ export function recordPayment(
   description: string,
   membershipId?: string,
   notes?: string,
-  discount?: number
+  discount?: number,
 ): Payment {
   const db = getDatabase()
-  
+
   const payment: Payment = {
     id: uuidv4(),
     clientId,
@@ -157,14 +162,14 @@ export function recordPayment(
     description,
     date: formatISO(new Date()),
     notes: notes || '',
-    createdAt: formatISO(new Date())
+    createdAt: formatISO(new Date()),
   }
-  
+
   const stmt = db.prepare(`
     INSERT INTO payments (id, client_id, membership_id, amount, discount, method, description, date, notes, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
-  
+
   stmt.run(
     payment.id,
     payment.clientId,
@@ -175,16 +180,22 @@ export function recordPayment(
     payment.description,
     payment.date,
     payment.notes,
-    payment.createdAt
+    payment.createdAt,
   )
-  
+
   return payment
 }
 
-export function getClientPayments(clientId: string, page = 1, pageSize = 50): PageResponse<Payment> {
+export function getClientPayments(
+  clientId: string,
+  page = 1,
+  pageSize = 50,
+): PageResponse<Payment> {
   const db = getDatabase()
-  
-  const countRow = db.prepare('SELECT COUNT(*) as total FROM payments WHERE client_id = ?').get(clientId) as { total: number }
+
+  const countRow = db
+    .prepare('SELECT COUNT(*) as total FROM payments WHERE client_id = ?')
+    .get(clientId) as { total: number }
   const total = countRow.total
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, totalPages)
@@ -198,23 +209,75 @@ export function getClientPayments(clientId: string, page = 1, pageSize = 50): Pa
     ORDER BY p.date DESC
     LIMIT ? OFFSET ?
   `)
-  
+
   const results = stmt.all(clientId, pageSize, offset) as unknown as DbPayment[]
-  
+
   return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
 
-export function getPaymentsByDateRange(startDate: string, endDate: string, page = 1, pageSize = 50, method?: string): PageResponse<Payment> {
+export interface PaymentsSummary {
+  total: number
+  count: number
+  totalDiscount: number
+  byMethod: { [key: string]: number }
+}
+
+export function getPaymentsSummary(
+  startDate: string,
+  endDate: string,
+  method?: string,
+): PaymentsSummary {
   const db = getDatabase()
-  
+
+  const params: (string | number)[] = [startDate, endDate]
+  let methodClause = ''
+  if (method) {
+    methodClause = ' AND method = ?'
+    params.push(method)
+  }
+
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total, COALESCE(SUM(discount), 0) as totalDiscount
+       FROM payments WHERE date >= ? AND date <= ?${methodClause}`,
+    )
+    .get(...params) as { count: number; total: number; totalDiscount: number }
+
+  const methodRows = db
+    .prepare(
+      `SELECT method, COALESCE(SUM(amount), 0) as total
+       FROM payments WHERE date >= ? AND date <= ?${methodClause}
+       GROUP BY method`,
+    )
+    .all(...params) as { method: string; total: number }[]
+
+  const byMethod: { [key: string]: number } = {}
+  for (const r of methodRows) byMethod[r.method] = r.total
+
+  return { total: row.total, count: row.count, totalDiscount: row.totalDiscount, byMethod }
+}
+
+export function getPaymentsByDateRange(
+  startDate: string,
+  endDate: string,
+  page = 1,
+  pageSize = 50,
+  method?: string,
+): PageResponse<Payment> {
+  const db = getDatabase()
+
   const params: (string | number)[] = [startDate, endDate]
   let methodClause = ''
   if (method) {
     methodClause = ' AND p.method = ?'
     params.push(method)
   }
-  
-  const countRow = db.prepare(`SELECT COUNT(*) as total FROM payments p WHERE p.date >= ? AND p.date <= ?${methodClause}`).get(...params) as { total: number }
+
+  const countRow = db
+    .prepare(
+      `SELECT COUNT(*) as total FROM payments p WHERE p.date >= ? AND p.date <= ?${methodClause}`,
+    )
+    .get(...params) as { total: number }
   const total = countRow.total
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const safePage = Math.min(page, totalPages)
@@ -228,8 +291,8 @@ export function getPaymentsByDateRange(startDate: string, endDate: string, page 
     ORDER BY p.date DESC
     LIMIT ? OFFSET ?
   `)
-  
+
   const results = stmt.all(...params, pageSize, offset) as unknown as DbPayment[]
-  
+
   return { data: results.map(mapDbPayment), total, page: safePage, totalPages }
 }
