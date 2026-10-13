@@ -176,4 +176,40 @@ describe('PaymentsPage — resumen de facturación', () => {
     expect(await screen.findByRole('dialog', { name: /Selector de mes/i })).toBeInTheDocument()
     expect(screen.getByText('Este mes')).toBeInTheDocument()
   })
+
+  it('en modo Día muestra DatePicker y pide el rango de ese día', async () => {
+    const mock = installDefaults([payment({ id: 'p1' })])
+    const user = userEvent.setup()
+    render(
+      <>
+        <ToastContainer />
+        <PaymentsPage />
+      </>,
+    )
+
+    await screen.findByText('Juan Pérez')
+    mock.payment.getByDateRange.mockClear()
+
+    // Cambia a la pestaña Día
+    await user.click(screen.getByText('Día', { selector: '.tab' }))
+
+    // Aparece el DatePicker de día específico
+    expect(screen.getByPlaceholderText('Seleccionar día')).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(mock.payment.getByDateRange).toHaveBeenCalled()
+    })
+    const [startIso, endIso] = mock.payment.getByDateRange.mock.calls.at(-1) as unknown as [
+      string,
+      string,
+    ]
+    const start = new Date(startIso)
+    const end = new Date(endIso)
+    // Mismo día calendario y rango 00:00-23:59 local
+    expect(start.toDateString()).toBe(end.toDateString())
+    expect(start.getHours()).toBe(0)
+    expect(start.getMinutes()).toBe(0)
+    expect(end.getHours()).toBe(23)
+    expect(end.getMinutes()).toBe(59)
+  })
 })

@@ -3,6 +3,7 @@ import { usePersistentState } from '@/hooks/usePersistentState'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { MonthPicker } from '@/components/MonthPicker'
+import { DatePicker, todayLocalKey } from '@/components/DatePicker'
 import { Pagination } from '@/components/Pagination'
 import { Payment, PaymentMethod, RevenueByPeriod } from '../../../shared/types'
 import { formatCurrency } from '@/utils/format'
@@ -62,7 +63,7 @@ export function PaymentsPage(): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
   const [payments, setPayments] = useState<Payment[]>([])
   const [filterMethod, setFilterMethod] = usePersistentState('bodyfitgym-payments-method', 'all')
-  const [dateRange, setDateRange] = usePersistentState<'today' | 'week' | 'month' | 'all'>(
+  const [dateRange, setDateRange] = usePersistentState<'today' | 'week' | 'month' | 'day' | 'all'>(
     'bodyfitgym-payments-daterange',
     'month',
   )
@@ -73,6 +74,10 @@ export function PaymentsPage(): JSX.Element {
   const [selectedMonth, setSelectedMonth] = usePersistentState<string>(
     'bodyfitgym-payments-month',
     format(new Date(), 'yyyy-MM'),
+  )
+  const [selectedDay, setSelectedDay] = usePersistentState<string>(
+    'bodyfitgym-payments-day',
+    todayLocalKey(),
   )
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -108,6 +113,14 @@ export function PaymentsPage(): JSX.Element {
         const [y, m] = selectedMonth.split('-').map(Number)
         const ref = new Date(y || now.getFullYear(), (m || now.getMonth() + 1) - 1, 1)
         return { startDate: startOfMonth(ref), endDate: endOfMonth(ref) }
+      }
+      case 'day': {
+        // Día específico seleccionado (fecha calendario local 00:00-23:59).
+        const m = selectedDay.match(/^(\d{4})-(\d{2})-(\d{2})/)
+        const ref = m
+          ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+          : now
+        return { startDate: startOfDay(ref), endDate: endOfDay(ref) }
       }
       default:
         return { startDate: new Date(0), endDate: new Date() }
@@ -169,11 +182,11 @@ export function PaymentsPage(): JSX.Element {
 
   useEffect(() => {
     setPage(1)
-  }, [filterMethod, dateRange, selectedYear, selectedMonth])
+  }, [filterMethod, dateRange, selectedYear, selectedMonth, selectedDay])
 
   useEffect(() => {
     loadPayments()
-  }, [filterMethod, dateRange, selectedYear, selectedMonth, page])
+  }, [filterMethod, dateRange, selectedYear, selectedMonth, selectedDay, page])
 
   if (loading) {
     return (
@@ -363,7 +376,7 @@ export function PaymentsPage(): JSX.Element {
                   flexShrink: 0,
                 }}
               >
-                {(['today', 'week', 'month', 'all'] as const).map((range) => (
+                {(['today', 'week', 'month', 'day', 'all'] as const).map((range) => (
                   <div
                     key={range}
                     className={`tab ${dateRange === range ? 'active' : ''}`}
@@ -375,7 +388,9 @@ export function PaymentsPage(): JSX.Element {
                         ? 'Semana'
                         : range === 'month'
                           ? 'Mes'
-                          : 'Todo'}
+                          : range === 'day'
+                            ? 'Día'
+                            : 'Todo'}
                   </div>
                 ))}
               </div>
@@ -423,6 +438,16 @@ export function PaymentsPage(): JSX.Element {
                   ),
                 )}
               </select>
+              {dateRange === 'day' && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', alignSelf: 'center' }}>
+                  <DatePicker
+                    value={selectedDay}
+                    max={todayLocalKey()}
+                    onChange={setSelectedDay}
+                    placeholder="Seleccionar día"
+                  />
+                </div>
+              )}
               {dateRange === 'month' && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', alignSelf: 'center' }}>
                   <button
