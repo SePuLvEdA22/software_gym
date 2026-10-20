@@ -419,6 +419,8 @@ const electronAPI = {
       type: string,
       filters?: { from?: string; to?: string },
     ): Promise<IpcResult<string>> => ipcRenderer.invoke('system:exportCsv', type, filters),
+    exportDailyCash: (dayKey: string): Promise<IpcResult<string>> =>
+      ipcRenderer.invoke('system:exportDailyCash', dayKey),
     getAutoStart: (): Promise<IpcResult<boolean>> => ipcRenderer.invoke('system:get-auto-start'),
     setAutoStart: (enabled: boolean): Promise<IpcResult<null>> =>
       ipcRenderer.invoke('system:set-auto-start', enabled),

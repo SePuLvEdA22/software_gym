@@ -212,6 +212,7 @@ export function PaymentsPage(): JSX.Element {
             Monitoree pagos, ingresos y transacciones de membresías
           </p>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
         <button
           className="btn btn-primary"
           style={{ display: 'flex', alignItems: 'center', gap: 8 }}
@@ -229,6 +230,21 @@ export function PaymentsPage(): JSX.Element {
           <Icons.Download />
           Exportar Reporte
         </button>
+        <button
+          className="btn btn-secondary"
+          style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          onClick={async () => {
+            // Con el filtro "día" se cierra ese día; con cualquier otro filtro, hoy.
+            const day = dateRange === 'day' ? selectedDay : todayLocalKey()
+            const result = await window.electronAPI.system.exportDailyCash(day)
+            if (result.success) showToast('success', `Guardado: ${result.data}`, 'Cierre de caja')
+            else if (result.error !== 'Cancelado') showToast('error', result.error || 'Error', 'Cierre de caja')
+          }}
+        >
+          <Icons.Download />
+          Cierre de caja (PDF)
+        </button>
+        </div>
       </div>
 
       <div className="grid grid-4">

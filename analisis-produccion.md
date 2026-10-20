@@ -134,22 +134,22 @@ BodyFitGym es una aplicación de escritorio **completa en funcionalidad** constr
 ## 6. Checklist de Preparación para Producción
 
 ### 🔴 Imprescindible (hacer antes de producir)
-- [ ] Agregar tests automatizados (Vitest)
-- [ ] Configurar GitHub Actions (build + test)
-- [ ] Agregar `electron-updater` para actualizaciones
-- [ ] Rate-limiting en login
-- [ ] Migrar fotos BLOB a archivos
-- [ ] Paginación en listados (clientes, pagos, logs)
-- [ ] UI de backup/restore
-- [ ] Agregar Sentry
+- [x] Agregar tests automatizados (Vitest)
+- [x] Configurar GitHub Actions (build + test)
+- [x] Agregar `electron-updater` para actualizaciones
+- [x] Rate-limiting en login
+- [x] Migrar fotos BLOB a archivos
+- [x] Paginación en listados (clientes, pagos, logs)
+- [x] UI de backup/restore
+- [x] Agregar Sentry
 
 ### 🟡 Muy recomendado (siguiente iteración)
-- [ ] ESLint + Prettier
-- [ ] Migrar a librería `serialport` para relé serie
-- [ ] Validación de datos en IPC (Zod)
-- [ ] .env.example
-- [ ] Reportes PDF básicos
-- [ ] Atajos de teclado
+- [x] ESLint + Prettier
+- [x] Migrar a librería `serialport` para relé serie
+- [x] Validación de datos en IPC (Zod)
+- [x] .env.example
+- [x] Reportes PDF básicos (cierre de caja diario)
+- [x] Atajos de teclado
 
 ### 🟢 Buen tener (futuro)
 - [ ] Modo claro / toggle de tema

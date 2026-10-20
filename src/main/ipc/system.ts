@@ -3,6 +3,7 @@ import { writeFileSync } from 'fs'
 import log from 'electron-log'
 import { restoreDatabase, getDatabase } from '../database/index'
 import { createFullBackup, restoreFullBackup } from '../fullBackup'
+import { getDailyCashData, buildDailyCashHtml, renderPdf } from '../dailyCash'
 import { autoUnfreezeDueMemberships, updateExpiredMemberships } from '../database/memberships'
 import {
   getSessionUser,
@@ -180,6 +181,28 @@ export function registerSystemHandlers(): void {
       return { success: true, data: filePath }
     } catch (error) {
       log.error('Export error:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
+
+  ipcMain.handle('system:exportDailyCash', async (_, dayKey: string) => {
+    const auth = requirePermission('reports.export')
+    if (auth) return auth
+    if (typeof dayKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) {
+      return { success: false, error: 'Fecha inválida' }
+    }
+    try {
+      const pdf = await renderPdf(buildDailyCashHtml(getDailyCashData(dayKey)))
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: 'Guardar cierre de caja',
+        defaultPath: `cierre-caja-${dayKey}.pdf`,
+        filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      })
+      if (canceled || !filePath) return { success: false, error: 'Cancelado' }
+      writeFileSync(filePath, pdf)
+      return { success: true, data: filePath }
+    } catch (error) {
+      log.error('Daily cash export error:', error)
       return { success: false, error: sanitizeError(error) }
     }
   })

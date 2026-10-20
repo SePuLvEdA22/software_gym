@@ -803,3 +803,25 @@ electron-builder reconstruye el modulo nativo para Electron durante build:win; l
 | src/__tests__/database/persistence.test.ts | Suite reescrita (4 garantias nuevas) |
 | scripts/smoke-native.cjs | Nuevo: smoke del modulo nativo en Electron |
 | package.json | +better-sqlite3; sql.js a devDeps |
+
+---
+
+## 28. Reporte PDF: cierre de caja diario (octubre 2026) 🧾
+
+### ¿Por qué?
+Pendiente del checklist de producción ("Reportes PDF básicos"). Recepción necesitaba un cierre del día imprimible.
+
+### Qué se hizo
+- Botón **Cierre de caja (PDF)** en Pagos: usa el día del filtro "día" o, con otro filtro, hoy.
+- Resumen (pagos de membresías + ventas de inventario + descuentos), pagos por método, detalle de pagos y ventas agrupadas por producto.
+- PDF generado con `webContents.printToPDF` de una ventana oculta (sin JS, sandbox); sin dependencias nuevas. Requiere permiso `reports.export`.
+- Los límites del día se calculan en el proceso main con `formatISO` local, el mismo formato con el que se guardan `payments.date` e `inventory_movements.timestamp` (incluye pagos de madrugada).
+
+### Archivos creados/modificados
+| Archivo | Acción |
+|---------|--------|
+| src/main/dailyCash.ts | Nuevo: datos, HTML y render a PDF |
+| src/main/ipc/system.ts | Handler `system:exportDailyCash` |
+| src/preload/index.ts | `system.exportDailyCash(dayKey)` |
+| src/renderer/src/pages/PaymentsPage.tsx | Botón de cierre de caja |
+| src/__tests__/database/dailyCash.test.ts | Nuevo: totales del día y escape de HTML |
