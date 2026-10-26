@@ -50,6 +50,14 @@ npm test
 npm run build:win
 ```
 
+### Desarrollo en macOS
+
+La app se distribuye solo para Windows, pero `npm run dev` funciona en macOS para desarrollar:
+
+- Si aparece `Error: Electron uninstall`, falta el binario de Electron: `node node_modules/electron/install.js`.
+- Cierra la app con **Cmd+Q**. Si queda un proceso colgado (ventana en blanco al volver a iniciar): `pkill -f "node_modules/electron/dist"`.
+- La puerta funciona en modo `mock` (sin hardware). Con una sola pantalla, el kiosco se abre desde Configuración > Pantalla Kiosco.
+
 ## Variables de Entorno
 
 Crear un archivo `.env` en la raíz del proyecto (opcional):
