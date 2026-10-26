@@ -141,6 +141,7 @@ ipcMain.handle('system:get-app-version', async () => {
 })
 
 if (!app.requestSingleInstanceLock()) {
+  log.warn('Ya hay otra instancia de BodyFitGym abierta; esta se cierra. Si no la ves, ciérrala (Cmd+Q / Administrador de tareas) y vuelve a iniciar.')
   app.quit()
 } else {
 app.whenReady().then(async () => {
@@ -285,11 +286,11 @@ app.whenReady().then(async () => {
 })
 }
 
+// La app es solo para Windows: también en macOS (desarrollo) cerrar todas las
+// ventanas termina el proceso, para no dejar una instancia viva sin base de datos.
 app.on('window-all-closed', () => {
   closeDatabase()
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  app.quit()
 })
 
 app.on('before-quit', () => {
