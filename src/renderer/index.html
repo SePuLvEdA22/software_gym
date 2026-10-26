@@ -103,7 +103,7 @@
         <h3>✅ Ejecución CORRECTA:</h3>
         <ol>
           <li>Cierra esta pestaña del navegador</li>
-          <li>Abre la TERMINAL en: <code>C:\Users\hjsan\Downloads\sft_gym</code></li>
+          <li>Abre la TERMINAL en la carpeta del proyecto</li>
           <li>Ejecuta: <code>npm run dev</code></li>
           <li>Electron abrirá la app automáticamente</li>
         </ol>
@@ -125,19 +125,7 @@
 
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
-    <script>
-      (function() {
-        if (!window.electronAPI) {
-          const el = document.getElementById('electron-not-found');
-          if (el) {
-            el.classList.add('visible');
-            const rootEl = document.getElementById('root');
-            if (rootEl) {
-              rootEl.style.display = 'none';
-            }
-          }
-        }
-      })();
-    </script>
+    <!-- Externo (no inline) para respetar el CSP script-src 'self' -->
+    <script src="./electron-check.js"></script>
   </body>
 </html>
