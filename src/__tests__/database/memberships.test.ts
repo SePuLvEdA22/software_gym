@@ -50,6 +50,8 @@ const sampleClientRaw: Omit<Client, 'id' | 'registrationDate'> = {
   emergencyContact: { name: '', phone: '', relationship: '', notes: '' },
 }
 
+// Contador para que clientes creados en el mismo milisegundo no repitan código
+let seq = 0
 let client: Client
 let planId: string
 
@@ -139,7 +141,7 @@ describe('Memberships Database', () => {
     let crudPlanId: string
 
     beforeEach(() => {
-      crudClient = createClient({ ...sampleClientRaw, documentId: `CRUD-${Date.now()}`, accessCode: `CR${Date.now()}` })
+      crudClient = createClient({ ...sampleClientRaw, documentId: `CRUD-${Date.now()}-${++seq}`, accessCode: `CR${Date.now()}${seq}` })
       const plan = createPlan({ name: 'CRUD Plan', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       crudPlanId = plan.id
     })
@@ -178,7 +180,7 @@ describe('Memberships Database', () => {
     let membershipId: string
 
     beforeEach(() => {
-      const c = createClient({ ...sampleClientRaw, documentId: `FREEZE-${Date.now()}`, accessCode: `FR${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `FREEZE-${Date.now()}-${++seq}`, accessCode: `FR${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Freeze Test Plan', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)
       membershipId = m!.id
@@ -203,7 +205,7 @@ describe('Memberships Database', () => {
 
   describe('Expiration: día final válido (fix membresía de 1 día)', () => {
     it('una membresía de 1 día creada hoy queda activa y válida todo el día', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `DAY1-${Date.now()}`, accessCode: `D1${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `DAY1-${Date.now()}-${++seq}`, accessCode: `D1${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan 1 Día', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)
 
@@ -225,7 +227,7 @@ describe('Memberships Database', () => {
     })
 
     it('una membresía cuyo vencimiento es HOY sigue siendo válida todo el día', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `LAST-${Date.now()}`, accessCode: `LT${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `LAST-${Date.now()}-${++seq}`, accessCode: `LT${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Último Día', type: 'weekly', price: 20000, durationDays: 7, description: '' })
       const m = createMembership(c.id, plan.id)
       if (!m) throw new Error('Membership not created')
@@ -244,7 +246,7 @@ describe('Memberships Database', () => {
     })
 
     it('una membresía vencida AYER sí se considera vencida', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `YEST-${Date.now()}`, accessCode: `YE${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `YEST-${Date.now()}-${++seq}`, accessCode: `YE${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Vencido Ayer', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)
       if (!m) throw new Error('Membership not created')
@@ -261,7 +263,7 @@ describe('Memberships Database', () => {
 
   describe('Renovación el último día de vigencia', () => {
     it('permite renovar cuando la membresía vence HOY (último día)', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `REN-${Date.now()}`, accessCode: `RN${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `REN-${Date.now()}-${++seq}`, accessCode: `RN${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Renovable', type: 'daily', price: 10000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)
       if (!m) throw new Error('Membership not created')
@@ -274,7 +276,7 @@ describe('Memberships Database', () => {
     })
 
     it('encola renovar cuando la membresía aún se extiende más allá de hoy', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `BLK-${Date.now()}`, accessCode: `BK${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `BLK-${Date.now()}-${++seq}`, accessCode: `BK${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan a Futuro', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const first = createMembership(c.id, plan.id)!
       expect(first.status).toBe('active')
@@ -293,7 +295,7 @@ describe('Memberships Database', () => {
 
   describe('Expiration', () => {
     it('should update expired memberships', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `EXP-${Date.now()}`, accessCode: `EX${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `EXP-${Date.now()}-${++seq}`, accessCode: `EX${Date.now()}${seq}` })
       const plan = createPlan({ name: '1-Day Plan', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)
       expect(m).not.toBeNull()
@@ -315,7 +317,7 @@ describe('Memberships Database', () => {
 
   describe('Payments', () => {
     it('should create membership with payment', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `PAY-${Date.now()}`, accessCode: `PA${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `PAY-${Date.now()}-${++seq}`, accessCode: `PA${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Pay Plan', type: 'weekly', price: 30000, durationDays: 7, description: '' })
       const result = createMembershipWithPayment(c.id, plan.id, 30000, 'cash')
       expect(result).not.toBeNull()
@@ -325,7 +327,7 @@ describe('Memberships Database', () => {
     })
 
     it('should record a standalone payment', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `STD-${Date.now()}`, accessCode: `ST${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `STD-${Date.now()}-${++seq}`, accessCode: `ST${Date.now()}${seq}` })
       const payment = recordPayment(c.id, 50000, 'nequi', 'Pago independiente')
       expect(payment).not.toBeNull()
       expect(payment!.amount).toBe(50000)
@@ -333,7 +335,7 @@ describe('Memberships Database', () => {
     })
 
     it('should get client payments with pagination', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `PG-${Date.now()}`, accessCode: `PG${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `PG-${Date.now()}-${++seq}`, accessCode: `PG${Date.now()}${seq}` })
       for (let i = 0; i < 12; i++) {
         recordPayment(c.id, 10000, 'cash', `Pago ${i}`)
       }
@@ -355,7 +357,7 @@ describe('Memberships Database', () => {
     })
 
     it('should update only the payment method', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `UPM-${Date.now()}`, accessCode: `UM${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `UPM-${Date.now()}-${++seq}`, accessCode: `UM${Date.now()}${seq}` })
       const payment = recordPayment(c.id, 50000, 'cash', 'Pago para cambio de método')
       const updated = updatePaymentMethod(payment.id, 'nequi')
       expect(updated).not.toBeNull()
@@ -367,7 +369,7 @@ describe('Memberships Database', () => {
     })
 
     it('should reject an invalid payment method', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `UPI-${Date.now()}`, accessCode: `UI${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `UPI-${Date.now()}-${++seq}`, accessCode: `UI${Date.now()}${seq}` })
       const payment = recordPayment(c.id, 50000, 'cash', 'Pago método inválido')
       // @ts-expect-error método inválido a propósito
       expect(updatePaymentMethod(payment.id, 'cheque')).toBeNull()
@@ -465,7 +467,7 @@ describe('Memberships Database', () => {
 
     it('should detect client debt', () => {
       const plan = createPlan({ name: 'Expensive Plan', type: 'monthly', price: 200000, durationDays: 30, description: '' })
-      const c = createClient({ ...sampleClientRaw, documentId: `DEBT-${Date.now()}`, accessCode: `DE${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `DEBT-${Date.now()}-${++seq}`, accessCode: `DE${Date.now()}${seq}` })
       createMembership(c.id, plan.id)
       const debts = getClientDebt(c.id)
       expect(debts.length).toBeGreaterThanOrEqual(1)
@@ -487,7 +489,7 @@ describe('Memberships Database', () => {
 
   describe('Casos borde: congelación, renovación y fechas', () => {
     it('NO permite congelar una membresía que ya no está activa', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `FZNACT-${Date.now()}`, accessCode: `FZ${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `FZNACT-${Date.now()}-${++seq}`, accessCode: `FZ${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan No Activo', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, plan.id)!
       // Forzar vencimiento ayer y marcar como vencida
@@ -501,7 +503,7 @@ describe('Memberships Database', () => {
     })
 
     it('NO permite congelar dos veces la misma membresía', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `FRZ2-${Date.now()}`, accessCode: `F2${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `FRZ2-${Date.now()}-${++seq}`, accessCode: `F2${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Doble Freeze', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)!
 
@@ -511,7 +513,7 @@ describe('Memberships Database', () => {
     })
 
     it('al descongelar se extiende la fecha de vencimiento por los días congelados', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `UNF-${Date.now()}`, accessCode: `UF${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `UNF-${Date.now()}-${++seq}`, accessCode: `UF${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Extiende', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)!
       const originalEnd = m.endDate
@@ -529,7 +531,7 @@ describe('Memberships Database', () => {
     })
 
     it('al descongelar se registra unfrozen_at y actual_days en el historial', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `HIST-${Date.now()}`, accessCode: `HS${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `HIST-${Date.now()}-${++seq}`, accessCode: `HS${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Historial', type: 'weekly', price: 20000, durationDays: 7, description: '' })
       const m = createMembership(c.id, plan.id)!
 
@@ -547,7 +549,7 @@ describe('Memberships Database', () => {
     })
 
     it('bloquea renovar mientras la membresía está congelada', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `RENFZ-${Date.now()}`, accessCode: `RF${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `RENFZ-${Date.now()}-${++seq}`, accessCode: `RF${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Congelado R', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)!
       freezeMembership(m.id, 'Vacaciones', 10)
@@ -558,7 +560,7 @@ describe('Memberships Database', () => {
     })
 
     it('NO crea membresía para un cliente suspendido', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `SUSP-${Date.now()}`, accessCode: `SP${Date.now()}`, status: 'suspended' })
+      const c = createClient({ ...sampleClientRaw, documentId: `SUSP-${Date.now()}-${++seq}`, accessCode: `SP${Date.now()}${seq}`, status: 'suspended' })
       const plan = createPlan({ name: 'Plan Suspendido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)
       expect(m).toBeNull()
@@ -569,7 +571,7 @@ describe('Memberships Database', () => {
       // retroactivo nacía con status 'expired' y aun así se registraba el cobro
       // (el cliente pagaba por algo que ya no servía). Ahora la membresía no se
       // crea y el pago no se registra.
-      const c = createClient({ ...sampleClientRaw, documentId: `BACK-${Date.now()}`, accessCode: `BK${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `BACK-${Date.now()}-${++seq}`, accessCode: `BK${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Pase Retroactivo', type: 'daily', price: 10000, durationDays: 1, description: '' })
       const tenDaysAgo = formatISO(new Date(Date.now() - 10 * 86400000))
 
@@ -584,7 +586,7 @@ describe('Memberships Database', () => {
     it('un startDate retroactivo SÍ es válido cuando el plan aún cubre hoy', () => {
       // Con planes largos el retroactivo es legítimo: cubre días pasados y se
       // extiende hasta el futuro, por lo que la membresía sigue teniendo valor.
-      const c = createClient({ ...sampleClientRaw, documentId: `BACKOK-${Date.now()}`, accessCode: `BO${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `BACKOK-${Date.now()}-${++seq}`, accessCode: `BO${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Retroactivo Válido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const fiveDaysAgo = formatISO(new Date(Date.now() - 5 * 86400000))
 
@@ -600,7 +602,7 @@ describe('Memberships Database', () => {
       // nominal ya pasó, sigue congelada (se extiende al descongelar). Ni
       // getActiveOrFrozenMembership ni updateExpiredMemberships deben tratarla
       // como vencida.
-      const c = createClient({ ...sampleClientRaw, documentId: `FZEXP-${Date.now()}`, accessCode: `FE${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `FZEXP-${Date.now()}-${++seq}`, accessCode: `FE${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Congelado Vencido', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const m = createMembership(c.id, plan.id)!
       freezeMembership(m.id, 'Ausencia', 10)
@@ -624,7 +626,7 @@ describe('Memberships Database', () => {
 
   describe('Cambio de plan: ajuste automático del pago', () => {
     it('debería_ajustar_pago_cuando_cambia_a_plan_mas_barato', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `ADJ-${Date.now()}`, accessCode: `AJ${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `ADJ-${Date.now()}-${++seq}`, accessCode: `AJ${Date.now()}${seq}` })
       const monthly = createPlan({ name: 'Plan Mensual 50k', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const fortnight = createPlan({ name: 'Plan 15 días', type: 'biweekly', price: 30000, durationDays: 15, description: '' })
       const { membership } = createMembershipWithPayment(c.id, monthly.id, 50000, 'cash')
@@ -641,7 +643,7 @@ describe('Memberships Database', () => {
     })
 
     it('debería_no_tocar_pagos_cuando_no_cambia_plan', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `NOADJ-${Date.now()}`, accessCode: `NA${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `NOADJ-${Date.now()}-${++seq}`, accessCode: `NA${Date.now()}${seq}` })
       const plan = createPlan({ name: 'Plan Sin Cambio', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const { membership } = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
       expect(membership).not.toBeNull()
@@ -655,7 +657,7 @@ describe('Memberships Database', () => {
     })
 
     it('debería_no_ajustar_cuando_hay_multiples_pagos', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `MULTI-${Date.now()}`, accessCode: `MU${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `MULTI-${Date.now()}-${++seq}`, accessCode: `MU${Date.now()}${seq}` })
       const monthly = createPlan({ name: 'Plan Multi Mensual', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const daily = createPlan({ name: 'Plan Diario', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const { membership } = createMembershipWithPayment(c.id, monthly.id, 30000, 'cash')
@@ -671,7 +673,7 @@ describe('Memberships Database', () => {
     })
 
     it('debería_cambiar_plan_sin_fallar_cuando_no_hay_pagos', () => {
-      const c = createClient({ ...sampleClientRaw, documentId: `NOPAY-${Date.now()}`, accessCode: `NP${Date.now()}` })
+      const c = createClient({ ...sampleClientRaw, documentId: `NOPAY-${Date.now()}-${++seq}`, accessCode: `NP${Date.now()}${seq}` })
       const monthly = createPlan({ name: 'Plan Sin Pago M', type: 'monthly', price: 50000, durationDays: 30, description: '' })
       const daily = createPlan({ name: 'Plan Sin Pago D', type: 'daily', price: 5000, durationDays: 1, description: '' })
       const m = createMembership(c.id, monthly.id)
