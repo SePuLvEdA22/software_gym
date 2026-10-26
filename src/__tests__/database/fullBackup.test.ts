@@ -67,9 +67,9 @@ describe('Respaldo completo (BD + fotos)', () => {
     // Estado inicial: A y B con foto, C sin foto (solo estos 3 clientes).
     const photoA = await makePhotoBase64()
     const photoB = await makePhotoBase64()
-    const clientA = createClient(sampleClient({ fullName: 'A Con Foto', documentId: `A-${Date.now()}`, accessCode: `A${Date.now()}`.slice(-6), photo: photoA }))
-    const clientB = createClient(sampleClient({ fullName: 'B Con Foto', documentId: `B-${Date.now()}`, accessCode: `B${Date.now()}`.slice(-6), photo: photoB }))
-    const clientC = createClient(sampleClient({ fullName: 'C Sin Foto', documentId: `C-${Date.now()}`, accessCode: `C${Date.now()}`.slice(-6), photo: null }))
+    const clientA = createClient(sampleClient({ fullName: 'A Con Foto', documentId: `A-${Date.now()}`, accessCode: `A${String(Date.now()).slice(-6)}`, photo: photoA }))
+    const clientB = createClient(sampleClient({ fullName: 'B Con Foto', documentId: `B-${Date.now()}`, accessCode: `B${String(Date.now()).slice(-6)}`, photo: photoB }))
+    const clientC = createClient(sampleClient({ fullName: 'C Sin Foto', documentId: `C-${Date.now()}`, accessCode: `C${String(Date.now()).slice(-6)}`, photo: null }))
 
     const zipPath = join(tmpdir(), `bfg-full-${randomUUID()}.zip`)
     const created = await createFullBackup(zipPath)
@@ -84,7 +84,7 @@ describe('Respaldo completo (BD + fotos)', () => {
 
     // Tras el respaldo: se crea D con foto y se borra la foto de A.
     const photoD = await makePhotoBase64()
-    const clientD = createClient(sampleClient({ fullName: 'D Posterior', documentId: `D-${Date.now()}`, accessCode: `D${Date.now()}`.slice(-6), photo: photoD }))
+    const clientD = createClient(sampleClient({ fullName: 'D Posterior', documentId: `D-${Date.now()}`, accessCode: `D${String(Date.now()).slice(-6)}`, photo: photoD }))
     const photosDir = getPhotosDir()
     const aPhotoPath = join(photosDir, `${clientA.id}.jpg`)
     rmSync(aPhotoPath, { force: true })
