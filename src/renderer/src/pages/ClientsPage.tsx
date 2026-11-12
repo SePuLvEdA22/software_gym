@@ -144,15 +144,22 @@ export function ClientsPage(): JSX.Element {
     window.electronAPI.window.openClientForm(client.id)
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (client: Client) => {
     const ok = await confirm({
       title: 'Eliminar cliente',
-      message: '¿Está seguro de eliminar este cliente?',
+      // deleteClient borra en cascada: el usuario debe saber que los pagos salen de caja.
+      message: `¿Eliminar a ${client.fullName}? También se eliminarán sus membresías, pagos (dejan de contar en caja y reportes), medidas, rutinas y registros de acceso. Esta acción no se puede deshacer.`,
       variant: 'danger',
       confirmLabel: 'Eliminar',
     })
     if (!ok) return
-    await window.electronAPI.client.delete(id)
+    const id = client.id
+    const result = await window.electronAPI.client.delete(id)
+    if (!result.success) {
+      showToast('error', result.error || 'No se pudo eliminar el cliente', 'Error')
+      return
+    }
+    showToast('success', 'Cliente eliminado', 'Listo')
     removeClient(id)
     if (selectedClient?.id === id) {
       setSelectedClient(null)
@@ -392,7 +399,7 @@ export function ClientsPage(): JSX.Element {
                         </button>
                         <button
                           className="icon-btn danger"
-                          onClick={() => handleDelete(client.id)}
+                          onClick={() => handleDelete(client)}
                           title="Eliminar"
                         >
                           <Icons.Trash />
