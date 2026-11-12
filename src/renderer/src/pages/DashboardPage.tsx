@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { Icons } from '@/components/Icons'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
@@ -321,6 +321,20 @@ export function DashboardPage(): JSX.Element {
     setLocalLoading(false)
   }
 
+  // Desde la campana: "Membresías por vencer" lleva a esta tarjeta y la resalta.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const expiringRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (searchParams.get('focus') !== 'expiring') return
+    setSearchParams({}, { replace: true })
+    const el = expiringRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.remove('focus-flash')
+    void el.offsetWidth // reinicia la animación si ya estaba aplicada
+    el.classList.add('focus-flash')
+  }, [searchParams, setSearchParams])
+
   useEffect(() => {
     loadMetrics()
     const interval = setInterval(() => loadMetrics(dashboardPeriod), 30000)
@@ -465,7 +479,7 @@ export function DashboardPage(): JSX.Element {
 
       {/* Info Cards */}
       <div className="grid grid-3">
-        <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div ref={expiringRef} className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Bell style={{ color: 'var(--color-warning)' }} />
             <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 'var(--text-md)' }}>

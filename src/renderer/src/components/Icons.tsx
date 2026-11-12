@@ -89,6 +89,14 @@ export const Icons = {
     </svg>
   ),
   
+  More: (props: IconProps) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className={props.className} style={props.style}>
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  ),
+
   Trash: (props: IconProps) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className} style={props.style}>
       <polyline points="3 6 5 6 21 6" />

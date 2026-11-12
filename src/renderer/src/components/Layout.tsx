@@ -118,12 +118,15 @@ interface Notification {
   message: string
   count: number
   keys: string[]
+  /** Adónde lleva el aviso al hacer clic. */
+  path: string
 }
 
 export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps): JSX.Element {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState<Notification[]>([])
   // Avisos ya vistos (persisten entre reinicios). Solo guarda los vigentes al
   // abrir la campana, así un cliente que vuelve a quedar en deuda avisa otra vez.
@@ -146,6 +149,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
             count: expiring.length,
             // La fecha en la clave: si renueva y vuelve a estar por vencer, es un aviso nuevo.
             keys: expiring.map((e) => `exp:${e.clientId}:${e.endDate}`),
+            path: '/?focus=expiring',
           })
         }
       }
@@ -160,6 +164,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
             message: `Clientes con deuda pendiente`,
             count: debtors.length,
             keys: debtors.map((d) => `debt:${d.clientId}`),
+            path: '/clients?filter=debt',
           })
         }
       }
@@ -248,11 +253,13 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
                 </div>
               ) : (
                 notifications.map((n, i) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '12px 16px',
-                    borderBottom: i < notifications.length - 1 ? '1px solid var(--color-surface-container-highest)' : 'none'
-                  }}>
+                  <button
+                    key={i}
+                    type="button"
+                    className="notif-item"
+                    onClick={() => { setShowNotifications(false); navigate(n.path) }}
+                    style={{ borderBottom: i < notifications.length - 1 ? '1px solid var(--color-surface-container-highest)' : 'none' }}
+                  >
                     <span style={{
                       width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                       backgroundColor: n.type === 'error' ? 'var(--color-error)' :
@@ -261,7 +268,8 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
                     }} />
                     <span style={{ flex: 1, fontSize: 'var(--text-sm)' }}>{n.message}</span>
                     <span className="chip" style={{ fontSize: 'var(--text-xs)' }}>{n.count}</span>
-                  </div>
+                    <Icons.ChevronRight style={{ width: 16, height: 16, color: 'var(--color-on-surface-variant)' }} />
+                  </button>
                 ))
               )}
             </div>
