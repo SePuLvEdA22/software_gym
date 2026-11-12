@@ -100,6 +100,15 @@ export function ClientsPage(): JSX.Element {
     }
   }, [searchParams, setSearchParams])
 
+  // Desde la campana: "Clientes con deuda" abre la lista solo con deudores.
+  useEffect(() => {
+    if (searchParams.get('filter') !== 'debt') return
+    setSearchParams({}, { replace: true })
+    setFilterStatus('all')
+    setFilterDebt(true)
+    setPage(1)
+  }, [searchParams, setSearchParams, setFilterStatus, setFilterDebt])
+
   useEffect(() => {
     const unsubscribe = window.electronAPI.clientForm.onSaved(() => {
       loadClients()
