@@ -152,7 +152,8 @@ export interface PaidAmountChange {
 /**
  * Corrige cuánto se pagó realmente por una membresía (p. ej. se registró el
  * pago y el cliente no pagó, o pagó solo una parte). El total nunca puede
- * superar el valor de la membresía: precio del plan menos descuentos.
+ * superar el valor de la membresía: el precio con que se vendió menos
+ * descuentos.
  *
  * - Al bajar: descuenta de los pagos más recientes primero. Un pago que llega
  *   a 0 se borra, salvo que lleve descuento (se deja en 0 para conservarlo).
@@ -167,18 +168,19 @@ export function setMembershipPaidAmount(
 ): { ok: true; change: PaidAmountChange } | { ok: false; error: string } {
   const db = getDatabase()
   const m = db
-    .prepare('SELECT plan_id, plan_name FROM memberships WHERE id = ?')
-    .get(membershipId) as { plan_id: string; plan_name: string } | undefined
+    .prepare('SELECT plan_id, price FROM memberships WHERE id = ?')
+    .get(membershipId) as { plan_id: string; price: number | null } | undefined
   if (!m) return { ok: false, error: 'Membresía no encontrada' }
-  const plan = getPlanById(m.plan_id)
-  if (!plan) return { ok: false, error: 'Plan de la membresía no encontrado' }
+  // Valor con que se vendió; respaldo al plan solo para filas sin precio.
+  const price = m.price ?? getPlanById(m.plan_id)?.price
+  if (price == null) return { ok: false, error: 'No se pudo determinar el valor de la membresía' }
 
   const payments = db
     .prepare('SELECT id, amount, discount, notes FROM payments WHERE membership_id = ? ORDER BY date DESC, created_at DESC')
     .all(membershipId) as { id: string; amount: number; discount: number | null; notes: string | null }[]
   const oldTotal = payments.reduce((s, p) => s + p.amount, 0)
   const discounts = payments.reduce((s, p) => s + (p.discount || 0), 0)
-  const maxAllowed = Math.max(0, plan.price - discounts)
+  const maxAllowed = Math.max(0, price - discounts)
 
   if (!Number.isFinite(target) || target < 0) return { ok: false, error: 'El valor pagado no puede ser negativo' }
   if (target > maxAllowed)

@@ -37,6 +37,7 @@ import {
 import { getEffectivePrice, createPromotion, getActivePromotionForPlan, getAllPromotions } from '../../main/database/promotions'
 import { getTodayAccessCount } from '../../main/database/accessLogs'
 import type { Client } from '../../shared/types'
+import { m020AddMembershipPrice } from '../../main/database/migrations/020-add-membership-price'
 
 const sampleClientRaw: Omit<Client, 'id' | 'registrationDate'> = {
   fullName: 'Cliente Membresía',
@@ -777,6 +778,28 @@ describe('Memberships Database', () => {
       expect(kept.amount).toBe(0)
       expect(kept.discount).toBe(1000)
       expect(getClientDebt(c.id)[0].balance).toBe(3000)
+    })
+
+    it('debería_usar_el_valor_con_que_se_vendio_aunque_cambie_el_precio_del_plan', () => {
+      const { c, plan } = setup(4000)
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 4000, 'cash')
+      expect(getClientMemberships(c.id)[0].price).toBe(4000)
+
+      updatePlan(plan.id, { price: 6000 }) // el gimnasio sube el precio después
+      expect(getClientDebt(c.id)).toHaveLength(0) // sigue al día: pagó lo que costaba
+      expect(setMembershipPaidAmount(membership!.id, 4001).ok).toBe(false)
+      expect(setMembershipPaidAmount(membership!.id, 1000).ok).toBe(true)
+      expect(getClientDebt(c.id)[0].balance).toBe(3000)
+    })
+
+    it('debería_llenar_el_valor_de_membresias_existentes_con_la_migracion', () => {
+      const { c, plan } = setup(4000)
+      const m = createMembership(c.id, plan.id)
+      const db = getDatabase()
+      db.prepare('UPDATE memberships SET price = NULL WHERE id = ?').run(m!.id)
+      db.prepare("DELETE FROM _migrations WHERE name = '020_add_membership_price'").run()
+      m020AddMembershipPrice.run(db)
+      expect(getClientMemberships(c.id)[0].price).toBe(4000)
     })
 
     it('no_debería_subir_si_no_hay_pagos', () => {

@@ -95,11 +95,15 @@ export function EditMembershipModal({
   const methodChanged =
     !!singlePayment && !!paymentMethod && paymentMethod !== singlePayment.method
 
-  // Tope del valor pagado: precio del plan (el elegido, si se cambia) menos
-  // descuentos. El backend aplica la misma regla.
+  // Tope del valor pagado: el valor con que se vendió la membresía menos
+  // descuentos. Si se cambia de plan, se vende otro: toma el precio del nuevo.
+  // El backend aplica la misma regla.
   const totalPaid = linkedPayments.reduce((sum, p) => sum + p.amount, 0)
   const totalDiscount = linkedPayments.reduce((sum, p) => sum + (p.discount || 0), 0)
-  const maxPaid = Math.max(0, (selectedPlan?.price ?? currentPlan?.price ?? 0) - totalDiscount)
+  const membershipValue = planChanged
+    ? selectedPlan!.price
+    : (membership.price ?? currentPlan?.price ?? 0)
+  const maxPaid = Math.max(0, membershipValue - totalDiscount)
   const paidValue = Number(paidInput)
   const showPaidField = canEditPaid && !blindMode && !paymentsLoading && !paymentsError
   const paidChanged = showPaidField && paidInput.trim() !== '' && paidValue !== totalPaid

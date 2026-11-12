@@ -18,6 +18,7 @@ import { m016AddMembershipUpdatedAt } from './016-add-membership-updated-at'
 import { m017AddScheduledMemberships } from './017-add-scheduled-memberships'
 import { m018FixFutureActiveToScheduled } from './018-fix-future-active-to-scheduled'
 import { m019GrantEditPaymentMethod } from './019-grant-edit-payment-method'
+import { m020AddMembershipPrice } from './020-add-membership-price'
 
 /**
  * Registro central de migraciones. El orden del array define el orden de
@@ -43,5 +44,6 @@ export const MIGRATIONS: Migration[] = [
   m016AddMembershipUpdatedAt,
   m017AddScheduledMemberships,
   m018FixFutureActiveToScheduled,
-  m019GrantEditPaymentMethod
+  m019GrantEditPaymentMethod,
+  m020AddMembershipPrice
 ]

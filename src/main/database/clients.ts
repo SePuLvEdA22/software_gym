@@ -251,7 +251,7 @@ export function getAllClients(
       JOIN membership_plans p ON p.id = m.plan_id
       WHERE (m.status = 'active' OR m.status = 'frozen')
         AND COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0)
-          < (p.price - COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0))
+          < (COALESCE(m.price, p.price) - COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0))
     )`
     countQuery += debtClause
     query += debtClause
