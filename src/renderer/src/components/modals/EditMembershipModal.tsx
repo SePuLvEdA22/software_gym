@@ -7,6 +7,7 @@ import { formatCurrency } from '@/utils/format'
 import { format, parseISO, formatISO } from 'date-fns'
 import { addDays, startOfDay, endOfDay } from 'date-fns'
 import { toErrorMessage } from '../../../../shared/errors'
+import { hasPermission } from '@shared/permissions'
 
 interface EditMembershipModalProps {
   membership: Membership
@@ -71,6 +72,9 @@ export function EditMembershipModal({
   const [paymentsError, setPaymentsError] = useState<string | null>(null)
   const [paymentsLoading, setPaymentsLoading] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('')
+  // Corrección del valor pagado (permiso payments.edit, por defecto solo admin).
+  const [canEditPaid, setCanEditPaid] = useState(false)
+  const [paidInput, setPaidInput] = useState('')
 
   const selectedPlan = plans.find((p) => p.id === planId)
   const currentPlan = plans.find((p) => p.id === membership.planId)
@@ -91,6 +95,24 @@ export function EditMembershipModal({
   const methodChanged =
     !!singlePayment && !!paymentMethod && paymentMethod !== singlePayment.method
 
+  // Tope del valor pagado: precio del plan (el elegido, si se cambia) menos
+  // descuentos. El backend aplica la misma regla.
+  const totalPaid = linkedPayments.reduce((sum, p) => sum + p.amount, 0)
+  const totalDiscount = linkedPayments.reduce((sum, p) => sum + (p.discount || 0), 0)
+  const maxPaid = Math.max(0, (selectedPlan?.price ?? currentPlan?.price ?? 0) - totalDiscount)
+  const paidValue = Number(paidInput)
+  const showPaidField = canEditPaid && !blindMode && !paymentsLoading && !paymentsError
+  const paidChanged = showPaidField && paidInput.trim() !== '' && paidValue !== totalPaid
+  const paidError = !paidChanged
+    ? null
+    : !Number.isFinite(paidValue) || paidValue < 0
+      ? 'Ingresa un valor válido (0 o más).'
+      : paidValue > maxPaid
+        ? `No puede superar el valor de la membresía (${formatCurrency(maxPaid)}).`
+        : linkedPayments.length === 0
+          ? 'No hay pagos registrados. Para registrar dinero recibido usa Abono.'
+          : null
+
   // Cargar pagos ligados para mostrar/editar el método de pago.
   // Intenta la vista completa (payments.view) y cae a la mínima
   // (payments.edit_method, ciega a montos) si no hay permiso de ver.
@@ -102,6 +124,7 @@ export function EditMembershipModal({
         if (cancelled) return
         if (result.success && result.data) {
           setLinkedPayments(result.data)
+          setPaidInput(String(result.data.reduce((sum, p) => sum + p.amount, 0)))
           if (result.data.length === 1) setPaymentMethod(result.data[0].method)
           return
         }
@@ -121,6 +144,12 @@ export function EditMembershipModal({
       }
     }
     load()
+    window.electronAPI.auth
+      .checkSession()
+      .then((r) => {
+        if (!cancelled && r.success && r.data) setCanEditPaid(hasPermission(r.data, 'payments.edit'))
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
@@ -220,7 +249,13 @@ export function EditMembershipModal({
         Object.keys(payload).length > 0 &&
         !(Object.keys(payload).length === 1 && payload.reason)
 
-      if (!hasMembershipChanges && !methodChanged) {
+      if (paidError) {
+        showToast('warning', paidError, 'Valor pagado')
+        setSaving(false)
+        return
+      }
+
+      if (!hasMembershipChanges && !methodChanged && !paidChanged) {
         showToast('warning', 'No hay cambios para guardar', 'Validación')
         setSaving(false)
         return
@@ -266,6 +301,27 @@ export function EditMembershipModal({
           )
           return
         }
+      }
+
+      // Al final: si el plan cambió, el tope ya es el del plan nuevo.
+      if (paidChanged) {
+        const paidResult = await window.electronAPI.membership.setPaidAmount(
+          membership.id,
+          paidValue,
+          reason.trim() || undefined,
+        )
+        if (!paidResult.success || !paidResult.data) {
+          showToast('error', paidResult.error || 'No se pudo corregir el valor pagado', 'Error')
+          return
+        }
+        const pending = paidResult.data.maxAllowed - paidResult.data.newTotal
+        showToast(
+          'success',
+          paidValue === 0
+            ? `Pago anulado. Saldo pendiente: ${formatCurrency(pending)}`
+            : `Valor pagado: ${formatCurrency(paidResult.data.oldTotal)} → ${formatCurrency(paidResult.data.newTotal)}${pending > 0 ? ` • Saldo pendiente: ${formatCurrency(pending)}` : ''}`,
+          'Guardado',
+        )
       }
 
       onSuccess()
@@ -439,6 +495,53 @@ export function EditMembershipModal({
           )}
         </div>
 
+        {showPaidField && (
+          <div className="form-group">
+            <label className="form-label" htmlFor="paid-amount">
+              Valor pagado
+            </label>
+            <input
+              id="paid-amount"
+              type="number"
+              className="form-input"
+              min={0}
+              max={maxPaid}
+              step={1}
+              value={paidInput}
+              onChange={(e) => setPaidInput(e.target.value)}
+              disabled={linkedPayments.length === 0}
+              aria-invalid={!!paidError}
+            />
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
+              Valor de la membresía: {formatCurrency(maxPaid)}
+              {totalDiscount > 0 && ` (con ${formatCurrency(totalDiscount)} de descuento)`} • Pagado
+              hoy: {formatCurrency(totalPaid)}
+            </div>
+            {linkedPayments.length === 0 ? (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
+                Sin pagos registrados. Para registrar dinero recibido usa Abono.
+              </div>
+            ) : paidError ? (
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-error)', marginTop: 4 }}>
+                {paidError}
+              </div>
+            ) : paidChanged ? (
+              <div
+                className="alert alert-warning"
+                style={{ marginTop: 8, marginBottom: 0, padding: '8px 12px' }}
+              >
+                <Icons.Bell />
+                <div style={{ fontSize: 'var(--text-xs)' }}>
+                  {paidValue === 0
+                    ? 'Se anulará el pago: sale de caja y reportes.'
+                    : `Se ${paidValue < totalPaid ? 'restarán' : 'sumarán'} ${formatCurrency(Math.abs(paidValue - totalPaid))} ${paidValue < totalPaid ? 'de' : 'a'} los pagos registrados.`}{' '}
+                  Saldo pendiente: <strong>{formatCurrency(maxPaid - paidValue)}</strong>.
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <div className="form-group">
           <label className="form-label">Motivo de la corrección (para auditoría)</label>
           <textarea
@@ -461,7 +564,7 @@ export function EditMembershipModal({
         <button
           className="btn btn-primary"
           onClick={handleSave}
-          disabled={saving || !planId || !startKey || !endKey}
+          disabled={saving || !planId || !startKey || !endKey || !!paidError}
         >
           <Icons.Check />
           {saving ? 'Guardando...' : 'Guardar cambios'}

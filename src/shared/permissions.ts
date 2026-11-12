@@ -30,7 +30,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: [
       { id: 'payments.view', label: 'Ver pagos' },
       { id: 'payments.create', label: 'Registrar pagos' },
-      { id: 'payments.edit_method', label: 'Editar método de pago' }
+      { id: 'payments.edit_method', label: 'Editar método de pago' },
+      { id: 'payments.edit', label: 'Corregir valor pagado de membresías' }
     ]
   },
   {
