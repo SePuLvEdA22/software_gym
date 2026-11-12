@@ -228,7 +228,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
                 minWidth: 18, height: 18,
                 borderRadius: 9, padding: '0 4px',
                 backgroundColor: 'var(--color-error)',
-                color: '#fff', fontSize: 11, fontWeight: 700,
+                color: 'var(--color-on-error)', fontSize: 'var(--text-xs)', fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 lineHeight: 1
               }}>
@@ -244,11 +244,11 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
               minWidth: 280, overflow: 'hidden',
               border: '1px solid var(--color-surface-container-highest)'
             }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-surface-container-highest)', fontSize: 14, fontWeight: 700 }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-surface-container-highest)', fontSize: 'var(--text-md)', fontWeight: 700 }}>
                 Notificaciones
               </div>
               {notifications.length === 0 ? (
-                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--color-on-surface-variant)', fontSize: 13 }}>
+                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)' }}>
                   No hay notificaciones
                 </div>
               ) : (
@@ -266,8 +266,8 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
                                        n.type === 'warning' ? 'var(--color-warning)' :
                                        'var(--color-info)'
                     }} />
-                    <span style={{ flex: 1, fontSize: 13 }}>{n.message}</span>
-                    <span className="chip" style={{ fontSize: 12 }}>{n.count}</span>
+                    <span style={{ flex: 1, fontSize: 'var(--text-sm)' }}>{n.message}</span>
+                    <span className="chip" style={{ fontSize: 'var(--text-xs)' }}>{n.count}</span>
                     <Icons.ChevronRight style={{ width: 16, height: 16, color: 'var(--color-on-surface-variant)' }} />
                   </button>
                 ))
@@ -296,11 +296,11 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
             overflow: 'hidden',
             border: '1px solid var(--color-surface-container-highest)'
           }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-surface-container-highest)', fontSize: 12, color: 'var(--color-on-surface-variant)' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--color-surface-container-highest)', fontSize: 'var(--text-xs)', color: 'var(--color-on-surface-variant)' }}>
               {currentUser?.username}
             </div>
             <div
-              style={{ padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}
+              style={{ padding: '12px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-md)' }}
               onClick={() => { setShowMenu(false); onLogout?.() }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-surface-container)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

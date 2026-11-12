@@ -88,7 +88,7 @@ export function GymSettingsForm(): JSX.Element {
           onChange={(e) => setGymForm(prev => ({ ...prev, welcomeMessage: e.target.value }))}
           placeholder="Bienvenido, nos complace que seas parte de nuestro equipo."
         />
-        <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+        <p className="body-lg" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
           Se muestra en la pantalla de check-in del kiosco
         </p>
       </div>

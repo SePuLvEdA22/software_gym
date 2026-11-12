@@ -59,6 +59,9 @@
   --color-warning: #fbbf24;
   --color-warning-container: #78350f;
   --color-on-warning: #3b2500;
+  /* Acentos de gráficas y métodos de pago (tarjeta, Daviplata, ingresos tarde). */
+  --color-pink: #f472b6;
+  --color-violet: #a78bfa;
 }
 
 [data-theme='light'] {
@@ -99,9 +102,20 @@
   --color-warning: #C47A0B;
   --color-warning-container: #FEF3C7;
   --color-on-warning: #FFFFFF;
+  /* Versiones oscuras: los pastel del tema oscuro no se leen sobre fondo claro. */
+  --color-pink: #B02A6B;
+  --color-violet: #6B3FB8;
 }
 
 :root {
+  /* Escala tipográfica: usar estas variables en vez de tamaños sueltos. */
+  --text-xs: 12px;      /* etiquetas, insignias, notas */
+  --text-sm: 13px;      /* texto secundario */
+  --text-md: 14px;      /* texto normal */
+  --text-lg: 16px;      /* texto destacado */
+  --text-xl: 20px;      /* títulos de tarjeta */
+  --text-2xl: 28px;     /* cifras grandes, títulos principales */
+  --text-display: 48px; /* íconos decorativos */
   --spacing-xs: 4px;
   --spacing-sm: 12px;
   --spacing-md: 24px;

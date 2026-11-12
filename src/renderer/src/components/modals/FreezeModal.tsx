@@ -81,7 +81,7 @@ export function FreezeModal({
               placeholder="Dejar vacío si es indefinido"
               min={1}
             />
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               Los días se registrarán para seguimiento. Al descongelar se extenderá la membresía automáticamente.
             </div>
           </div>

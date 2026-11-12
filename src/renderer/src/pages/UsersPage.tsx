@@ -297,7 +297,7 @@ export function UsersPage(): JSX.Element {
                         ? <span className="badge badge-success">Activo</span>
                         : <span className="badge badge-error">Inactivo</span>}
                     </td>
-                    <td style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                    <td style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                       {user.lastLogin ? format(parseISO(user.lastLogin), 'dd/MM/yyyy HH:mm') : 'Nunca'}
                     </td>
                     <td>
@@ -367,7 +367,7 @@ export function UsersPage(): JSX.Element {
             {/* Filtro por días — presets + rango con DatePicker */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--color-secondary)', marginRight: 4, whiteSpace: 'nowrap' }}>Filtrar por días:</span>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)', marginRight: 4, whiteSpace: 'nowrap' }}>Filtrar por días:</span>
                 <button
                   className={`filter-pill${isAllActive ? ' active' : ''}`}
                   onClick={() => handleDatePreset('all')}
@@ -400,7 +400,7 @@ export function UsersPage(): JSX.Element {
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <DatePicker value={logFrom} onChange={handleLogFromChange} placeholder="Desde" max={logTo || undefined} clearable />
                 </div>
-                <span style={{ color: 'var(--color-secondary)', fontSize: 14 }}>—</span>
+                <span style={{ color: 'var(--color-secondary)', fontSize: 'var(--text-md)' }}>—</span>
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <DatePicker value={logTo} onChange={handleLogToChange} placeholder="Hasta" min={logFrom || undefined} clearable />
                 </div>
@@ -492,7 +492,7 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
             <Icons.ChevronRight />
           </span>
         </td>
-        <td style={{ fontSize: 13 }}>{format(parseISO(log.timestamp), 'dd/MM/yyyy HH:mm')}</td>
+        <td style={{ fontSize: 'var(--text-sm)' }}>{format(parseISO(log.timestamp), 'dd/MM/yyyy HH:mm')}</td>
         <td>{log.userName}</td>
         <td>{tableLabels[log.tableName] || log.tableName}</td>
         <td>
@@ -500,7 +500,7 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
             {actionLabels[log.action] || log.action}
           </span>
         </td>
-        <td style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--color-secondary)' }}>
+        <td style={{ fontSize: 'var(--text-xs)', fontFamily: 'monospace', color: 'var(--color-secondary)' }}>
           {log.recordId ? log.recordId.substring(0, 12) + '...' : '-'}
         </td>
       </tr>
@@ -508,21 +508,21 @@ function LogRow({ log, expanded, onToggle }: LogRowProps): JSX.Element {
         <tr>
           <td colSpan={6} style={{ backgroundColor: 'var(--color-surface-container-low)', padding: '16px 24px' }}>
             {contextClient && (
-              <p style={{ margin: '0 0 10px', fontSize: 13 }}>
+              <p style={{ margin: '0 0 10px', fontSize: 'var(--text-sm)' }}>
                 <strong>Cliente:</strong> {contextClient}
               </p>
             )}
             {rows.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-secondary)' }}>Sin detalle disponible</p>
+              <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>Sin detalle disponible</p>
             ) : (
               <div>
-                <p className="label-md" style={{ margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 11 }}>
+                <p className="label-md" style={{ margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 'var(--text-xs)' }}>
                   {log.action === 'create' ? 'Datos creados'
                     : log.action === 'delete' ? 'Datos eliminados'
                     : log.action === 'login' ? 'Registro de acceso'
                     : 'Cambios realizados'}
                 </p>
-                <table style={{ width: '100%', fontSize: 13 }}>
+                <table style={{ width: '100%', fontSize: 'var(--text-sm)' }}>
                   <thead>
                     <tr>
                       <th style={{ textAlign: 'left', padding: '4px 12px 4px 0', color: 'var(--color-secondary)', fontWeight: 600 }}>Campo</th>

@@ -603,7 +603,7 @@ export function InventoryPage(): JSX.Element {
               <div className="metric-card-label">Total Productos</div>
               <div className="metric-card-value">{totalCount}</div>
             </div>
-            <div className="metric-card" style={{ borderColor: 'rgba(255, 180, 171, 0.3)' }}>
+            <div className="metric-card" style={{ borderColor: 'color-mix(in srgb, var(--color-error) 30%, transparent)' }}>
               <div
                 className="metric-card-blur"
                 style={{
@@ -724,7 +724,7 @@ export function InventoryPage(): JSX.Element {
                           style={{
                             borderRadius: 9999,
                             padding: '2px 8px',
-                            fontSize: '10px',
+                            fontSize: 'var(--text-xs)',
                             lineHeight: 1.2,
                             whiteSpace: 'nowrap',
                           }}
@@ -836,7 +836,7 @@ export function InventoryPage(): JSX.Element {
               <tbody>
                 {movements.map((m) => (
                   <tr key={m.id}>
-                    <td style={{ fontSize: 13 }}>
+                    <td style={{ fontSize: 'var(--text-sm)' }}>
                       {format(parseISO(m.timestamp), 'dd/MM/yyyy HH:mm')}
                     </td>
                     <td>{m.productName}</td>
@@ -846,7 +846,7 @@ export function InventoryPage(): JSX.Element {
                         style={{
                           borderRadius: 9999,
                           padding: '2px 8px',
-                          fontSize: '10px',
+                          fontSize: 'var(--text-xs)',
                           lineHeight: 1.2,
                           whiteSpace: 'nowrap',
                         }}
@@ -858,7 +858,7 @@ export function InventoryPage(): JSX.Element {
                     <td
                       style={
                         m.type === 'in'
-                          ? { color: 'var(--color-on-surface-variant)', fontSize: 13 }
+                          ? { color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)' }
                           : undefined
                       }
                     >
@@ -867,16 +867,16 @@ export function InventoryPage(): JSX.Element {
                     <td
                       style={
                         m.type === 'in'
-                          ? { color: 'var(--color-on-surface-variant)', fontSize: 13 }
+                          ? { color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)' }
                           : undefined
                       }
                     >
                       {m.type === 'in' ? '—' : formatCurrency(m.total)}
                     </td>
-                    <td style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                    <td style={{ fontSize: 'var(--text-sm)', color: 'var(--color-on-surface-variant)' }}>
                       {m.description}
                     </td>
-                    <td style={{ fontSize: 13 }}>{m.userName}</td>
+                    <td style={{ fontSize: 'var(--text-sm)' }}>{m.userName}</td>
                   </tr>
                 ))}
               </tbody>

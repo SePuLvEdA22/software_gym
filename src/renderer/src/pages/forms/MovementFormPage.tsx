@@ -87,7 +87,7 @@ export function MovementFormPage(): JSX.Element {
       ) : (
         <form onSubmit={handleSubmit}>
           <div className="alert alert-info" style={{ marginBottom: 20 }}>
-            <span style={{ fontSize: 13 }}>
+            <span style={{ fontSize: 'var(--text-sm)' }}>
               <strong>{product.name}</strong> — Stock actual: <strong>{product.stock}</strong>
             </span>
           </div>

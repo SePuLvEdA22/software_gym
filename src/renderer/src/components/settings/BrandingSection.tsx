@@ -18,24 +18,26 @@ export function BrandingSection(): JSX.Element {
       </div>
       <div className="card-body" style={{ padding: 0 }}>
         <div className="glass-panel" style={{ padding: 20 }}>
-          <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Tema</h3>
+          <h3 className="headline-md" style={{ fontSize: 'var(--text-lg)', marginBottom: 16 }}>Tema</h3>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <button
               className={`btn ${theme === 'dark' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setTheme('dark')}
               style={{ flex: 1, justifyContent: 'center' }}
             >
-              🌙 Oscuro
+              <Icons.Moon />
+              Oscuro
             </button>
             <button
               className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setTheme('light')}
               style={{ flex: 1, justifyContent: 'center' }}
             >
-              ☀️ Claro
+              <Icons.Sun />
+              Claro
             </button>
           </div>
-          <p className="body-lg" style={{ color: 'var(--color-secondary)', marginTop: 12, fontSize: 13 }}>
+          <p className="body-lg" style={{ color: 'var(--color-secondary)', marginTop: 12, fontSize: 'var(--text-sm)' }}>
             Cambie entre temas oscuro y claro. Su preferencia se guarda automáticamente.
           </p>
         </div>

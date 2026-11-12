@@ -91,12 +91,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               borderRadius: '50%',
               objectFit: 'cover',
               border: '3px solid var(--color-primary-container)',
-              boxShadow: '0 0 20px rgba(255, 107, 0, 0.3)',
+              boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary-container) 30%, transparent)',
               marginBottom: 16,
             }}
           />
-          <h1 className="login-title" style={{ fontSize: 26, margin: 0 }}>BodyFitGym</h1>
-          <p className="login-subtitle" style={{ marginTop: 8, fontSize: 14 }}>
+          <h1 className="login-title" style={{ fontSize: 'var(--text-2xl)', margin: 0 }}>BodyFitGym</h1>
+          <p className="login-subtitle" style={{ marginTop: 8, fontSize: 'var(--text-md)' }}>
             {mustChangePassword ? 'Configuración de seguridad' : 'Sistema de Gestión'}
           </p>
         </div>
@@ -112,7 +112,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Nombre de usuario"
                 autoFocus
-                style={{ fontSize: 16, padding: '12px 16px' }}
+                style={{ fontSize: 'var(--text-lg)', padding: '12px 16px' }}
               />
             </div>
 
@@ -124,7 +124,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Contraseña"
-                style={{ fontSize: 16, padding: '12px 16px' }}
+                style={{ fontSize: 'var(--text-lg)', padding: '12px 16px' }}
               />
             </div>
 
@@ -132,11 +132,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <div
                 style={{
                   color: 'var(--color-error)',
-                  fontSize: 14,
+                  fontSize: 'var(--text-md)',
                   marginBottom: 16,
                   textAlign: 'center',
                   padding: 8,
-                  background: 'rgba(255,0,0,0.1)',
+                  background: 'color-mix(in srgb, var(--color-error) 12%, transparent)',
                   borderRadius: 8,
                 }}
               >
@@ -148,7 +148,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               type="submit"
               className="btn btn-primary login-glass-btn"
               disabled={loading}
-              style={{ width: '100%', padding: '12px', fontSize: 16 }}
+              style={{ width: '100%', padding: '12px', fontSize: 'var(--text-lg)' }}
             >
               {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             </button>
@@ -157,17 +157,17 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
           <form onSubmit={handleChangePassword}>
             <div
               style={{
-                color: 'var(--color-warning, #ffb300)',
-                fontSize: 13,
+                color: 'var(--color-warning)',
+                fontSize: 'var(--text-sm)',
                 marginBottom: 20,
                 textAlign: 'center',
                 padding: 10,
-                background: 'rgba(255, 179, 0, 0.1)',
+                background: 'color-mix(in srgb, var(--color-warning) 12%, transparent)',
                 borderRadius: 8,
                 lineHeight: 1.5,
               }}
             >
-              ⚠️ Por seguridad, debe cambiar la contraseña por defecto del administrador antes de
+              Por seguridad, debe cambiar la contraseña por defecto del administrador antes de
               continuar.
             </div>
 
@@ -180,7 +180,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Mínimo 4 caracteres"
                 autoFocus
-                style={{ fontSize: 16, padding: '12px 16px' }}
+                style={{ fontSize: 'var(--text-lg)', padding: '12px 16px' }}
               />
             </div>
 
@@ -192,7 +192,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita la contraseña"
-                style={{ fontSize: 16, padding: '12px 16px' }}
+                style={{ fontSize: 'var(--text-lg)', padding: '12px 16px' }}
               />
             </div>
 
@@ -200,11 +200,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               <div
                 style={{
                   color: 'var(--color-error)',
-                  fontSize: 14,
+                  fontSize: 'var(--text-md)',
                   marginBottom: 16,
                   textAlign: 'center',
                   padding: 8,
-                  background: 'rgba(255,0,0,0.1)',
+                  background: 'color-mix(in srgb, var(--color-error) 12%, transparent)',
                   borderRadius: 8,
                 }}
               >
@@ -216,7 +216,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               type="submit"
               className="btn btn-primary login-glass-btn"
               disabled={changing}
-              style={{ width: '100%', padding: '12px', fontSize: 16 }}
+              style={{ width: '100%', padding: '12px', fontSize: 'var(--text-lg)' }}
             >
               {changing ? 'Guardando...' : 'Cambiar Contraseña y Entrar'}
             </button>

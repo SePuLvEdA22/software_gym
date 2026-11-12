@@ -101,25 +101,25 @@ export function WhatsappPage(): JSX.Element {
       <div className="grid grid-4" style={{ gap: 16 }}>
         <div className="kpi-card">
           <p className="kpi-label">Total Mensajes</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>
+          <p className="kpi-value" style={{ fontSize: 'var(--text-2xl)' }}>
             {messages.length}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Enviados</p>
-          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 'var(--text-2xl)' }}>
             {sentCount}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Fallidos</p>
-          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 'var(--text-2xl)' }}>
             {failedCount}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Pendientes</p>
-          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 'var(--text-2xl)' }}>
             {pendingCount}
           </p>
         </div>
@@ -137,7 +137,7 @@ export function WhatsappPage(): JSX.Element {
           }}
         >
           <h3
-            style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ fontSize: 'var(--text-lg)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
           >
             <Icons.Bell />
             Notificaciones Enviadas
@@ -202,17 +202,17 @@ export function WhatsappPage(): JSX.Element {
             <tbody>
               {filtered.map((msg) => (
                 <tr key={msg.id}>
-                  <td style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: 'var(--text-sm)' }}>
                     {msg.createdAt ? format(parseISO(msg.createdAt), 'dd/MM HH:mm') : '-'}
                   </td>
                   <td style={{ fontWeight: 500 }}>{msg.clientName || msg.clientId.slice(0, 8)}</td>
-                  <td style={{ fontSize: 13 }}>{msg.phone}</td>
-                  <td style={{ fontSize: 13 }}>
+                  <td style={{ fontSize: 'var(--text-sm)' }}>{msg.phone}</td>
+                  <td style={{ fontSize: 'var(--text-sm)' }}>
                     {messageTypeLabels[msg.messageType] || msg.messageType}
                   </td>
                   <td
                     style={{
-                      fontSize: 13,
+                      fontSize: 'var(--text-sm)',
                       maxWidth: 300,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',

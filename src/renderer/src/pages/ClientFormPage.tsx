@@ -169,7 +169,7 @@ export function ClientFormPage(): JSX.Element {
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: 40, height: 40, margin: '0 auto',
-            border: '4px solid rgba(255,107,0,0.2)',
+            border: '4px solid color-mix(in srgb, var(--color-primary-container) 20%, transparent)',
             borderTopColor: 'var(--color-primary-container)', borderRadius: '50%',
             animation: 'spin 1s linear infinite'
           }} />
@@ -189,7 +189,7 @@ export function ClientFormPage(): JSX.Element {
         padding: '16px 24px', borderBottom: '1px solid var(--color-surface-container-high)',
         backgroundColor: 'var(--color-surface-container-low)'
       }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+        <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>
           {isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}
         </h2>
         <button className="btn btn-secondary" onClick={() => window.close()}>
@@ -275,7 +275,7 @@ export function ClientFormPage(): JSX.Element {
                       placeholder="Ingrese código numérico" maxLength={20}
                       style={{ fontFamily: 'monospace' }} required />
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
                     El cliente usará este código para ingresar al gimnasio. Máximo 20 dígitos.
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export function ClientFormPage(): JSX.Element {
 
           <div className="divider" />
 
-          <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 600 }}>Información Personal</h3>
+          <h3 style={{ marginBottom: 20, fontSize: 'var(--text-lg)', fontWeight: 600 }}>Información Personal</h3>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Fecha de Nacimiento</label>
@@ -296,7 +296,7 @@ export function ClientFormPage(): JSX.Element {
                 placeholder="Seleccionar fecha de nacimiento"
               />
               {age !== null && (
-                <div style={{ fontSize: 13, color: 'var(--color-secondary)', marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)', marginTop: 4 }}>
                   Edad: <strong>{age} años</strong>
                 </div>
               )}
@@ -344,7 +344,7 @@ export function ClientFormPage(): JSX.Element {
 
           <div className="divider" />
 
-          <h3 style={{ marginBottom: 20, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 style={{ marginBottom: 20, fontSize: 'var(--text-lg)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Icons.Bell />
             Contacto de Emergencia
           </h3>

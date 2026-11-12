@@ -208,7 +208,7 @@ export function ClientMembershipsModal({
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="avatar-initials" style={{ width: 40, height: 40, fontSize: 16 }}>
+            <div className="avatar-initials" style={{ width: 40, height: 40, fontSize: 'var(--text-lg)' }}>
               {client.photo ? (
                 <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
               ) : (
@@ -219,7 +219,7 @@ export function ClientMembershipsModal({
               <h2 className="modal-title" style={{ margin: 0 }}>
                 {client.fullName}
               </h2>
-              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
                 Código: {client.accessCode} {client.documentId ? `| Doc: ${client.documentId}` : ''}
               </div>
             </div>
@@ -320,7 +320,7 @@ export function ClientMembershipsModal({
                               ${debt.balance.toLocaleString('es-CO')}
                             </span>
                           ) : (
-                            <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>
+                            <span style={{ color: 'var(--color-secondary)', fontSize: 'var(--text-xs)' }}>
                               Al día
                             </span>
                           )}

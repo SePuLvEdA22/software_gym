@@ -86,7 +86,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
         <div className="modal-body">
           {error ? (
             <div style={{ textAlign: 'center', padding: 24 }}>
-              <div style={{ fontSize: 48, color: 'var(--color-error)', marginBottom: 16 }}>
+              <div style={{ fontSize: 'var(--text-display)', color: 'var(--color-error)', marginBottom: 16 }}>
                 <Icons.X />
               </div>
               <p style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</p>
@@ -118,7 +118,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
                 <video ref={videoRef} autoPlay playsInline className="camera-video" />
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
               </div>
-              <p style={{ fontSize: 13, color: 'var(--color-secondary)', marginTop: 8 }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)', marginTop: 8 }}>
                 Asegúrate de que el rostro esté bien iluminado y centrado
               </p>
               <button

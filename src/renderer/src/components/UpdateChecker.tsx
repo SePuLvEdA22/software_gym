@@ -85,7 +85,7 @@ export function UpdateChecker(): JSX.Element {
         <span>Actualizaciones</span>
       </div>
       <div className="card-body">
-        <p style={{ fontSize: 13, color: 'var(--color-secondary)', marginBottom: 16 }}>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)', marginBottom: 16 }}>
           Versión actual: {currentVersion}
         </p>
 
@@ -122,7 +122,7 @@ export function UpdateChecker(): JSX.Element {
                 transition: 'width 0.3s ease'
               }} />
             </div>
-            <p style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               {Math.round(progress)}%
             </p>
           </div>

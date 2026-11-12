@@ -46,7 +46,7 @@ function ToastItem({ toast }: { toast: Toast }): JSX.Element {
         {toast.title && (
           <div style={{ 
             fontWeight: 600, 
-            fontSize: 14,
+            fontSize: 'var(--text-md)',
             marginBottom: 4,
             color: 'var(--color-on-surface)'
           }}>
@@ -54,7 +54,7 @@ function ToastItem({ toast }: { toast: Toast }): JSX.Element {
           </div>
         )}
         <div style={{ 
-          fontSize: 13, 
+          fontSize: 'var(--text-sm)', 
           lineHeight: 1.5,
           color: 'var(--color-secondary)',
           whiteSpace: 'pre-line'

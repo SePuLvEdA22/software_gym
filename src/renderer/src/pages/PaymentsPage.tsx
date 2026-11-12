@@ -19,11 +19,12 @@ import {
 } from 'date-fns'
 
 const paymentMethods: { value: PaymentMethod; label: string; color: string }[] = [
-  { value: 'cash', label: 'Efectivo', color: '#4ade80' },
-  { value: 'transfer', label: 'Transferencia', color: '#60a5fa' },
-  { value: 'card', label: 'Tarjeta', color: '#f472b6' },
-  { value: 'nequi', label: 'Nequi', color: '#ff6b00' },
-  { value: 'daviplata', label: 'Daviplata', color: '#a78bfa' },
+  // Variables del tema: cambian de tono en claro/oscuro para mantener el contraste.
+  { value: 'cash', label: 'Efectivo', color: 'var(--color-success)' },
+  { value: 'transfer', label: 'Transferencia', color: 'var(--color-info)' },
+  { value: 'card', label: 'Tarjeta', color: 'var(--color-pink)' },
+  { value: 'nequi', label: 'Nequi', color: 'var(--color-primary-container)' },
+  { value: 'daviplata', label: 'Daviplata', color: 'var(--color-violet)' },
 ]
 
 function getPaymentMethodLabel(method: string): string {
@@ -39,9 +40,9 @@ function getPaymentMethodBadge(method: string): JSX.Element {
     <span
       className="status-badge status-badge-info"
       style={{
-        backgroundColor: `${color}20`,
+        backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
         color: color,
-        border: `1px solid ${color}40`,
+        border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
       }}
     >
       {getPaymentMethodLabel(method)}
@@ -333,10 +334,10 @@ export function PaymentsPage(): JSX.Element {
         <div className="metric-card">
           <div
             className="metric-card-blur"
-            style={{ background: '#f472b6', width: 100, height: 100, top: -30, right: -10 }}
+            style={{ background: 'var(--color-pink)', width: 100, height: 100, top: -30, right: -10 }}
           />
           <p className="metric-card-label">Tarde (después 12pm)</p>
-          <p className="metric-card-value" style={{ color: '#f472b6' }}>
+          <p className="metric-card-value" style={{ color: 'var(--color-pink)' }}>
             {formatCurrency(revenueByTime.afternoon)}
           </p>
         </div>
@@ -359,7 +360,7 @@ export function PaymentsPage(): JSX.Element {
         <div className="metric-card">
           <div
             className="metric-card-blur"
-            style={{ background: '#a78bfa', width: 100, height: 100, bottom: -30, right: -10 }}
+            style={{ background: 'var(--color-violet)', width: 100, height: 100, bottom: -30, right: -10 }}
           />
           <p className="metric-card-label">Anual ({selectedYear})</p>
           <p className="metric-card-value" style={{ color: 'var(--color-primary-container)' }}>
@@ -419,7 +420,7 @@ export function PaymentsPage(): JSX.Element {
                   width: 140,
                   height: 38,
                   padding: '8px 36px 8px 12px',
-                  fontSize: 13,
+                  fontSize: 'var(--text-sm)',
                   borderRadius: 9999,
                   alignSelf: 'center',
                 }}
@@ -442,7 +443,7 @@ export function PaymentsPage(): JSX.Element {
                   width: 110,
                   height: 38,
                   padding: '8px 36px 8px 12px',
-                  fontSize: 13,
+                  fontSize: 'var(--text-sm)',
                   borderRadius: 9999,
                   alignSelf: 'center',
                 }}
@@ -538,11 +539,11 @@ export function PaymentsPage(): JSX.Element {
                           </span>
                         </div>
                       </td>
-                      <td style={{ fontSize: 13 }}>
+                      <td style={{ fontSize: 'var(--text-sm)' }}>
                         {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
                       </td>
                       <td>
-                        <span style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-on-surface-variant)' }}>
                           {payment.description || '-'}
                         </span>
                       </td>
@@ -648,7 +649,7 @@ export function PaymentsPage(): JSX.Element {
                 <span className="label-md" style={{ textTransform: 'none', letterSpacing: 0 }}>
                   Ingresos Tarde
                 </span>
-                <span style={{ fontWeight: 600, color: '#f472b6' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-pink)' }}>
                   {formatCurrency(revenueByTime.afternoon)}
                 </span>
               </div>

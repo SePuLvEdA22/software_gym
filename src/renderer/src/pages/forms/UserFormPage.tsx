@@ -228,10 +228,10 @@ export function UserFormPage(): JSX.Element {
         <div style={{ marginTop: 24, borderTop: '1px solid var(--color-surface-container-high)', paddingTop: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <label className="form-label" style={{ fontSize: 15, marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 'var(--text-md)', marginBottom: 0 }}>
                 Permisos
               </label>
-              <p style={{ fontSize: 12, color: 'var(--color-secondary)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', margin: '4px 0 0' }}>
                 {form.role === 'admin'
                   ? 'El administrador tiene acceso total a todas las secciones.'
                   : 'Seleccione los permisos que tendrá este usuario'}
@@ -278,7 +278,7 @@ export function UserFormPage(): JSX.Element {
                       readOnly
                       style={{ accentColor: 'var(--color-primary-container)' }}
                     />
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>{group.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>{group.label}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 28 }}>
                     {group.permissions.map((perm) => {
@@ -308,7 +308,7 @@ export function UserFormPage(): JSX.Element {
                             onChange={() => togglePermission(perm.id)}
                             style={{ accentColor: 'var(--color-primary-container)' }}
                           />
-                          <span style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-on-surface-variant)' }}>
                             {perm.label}
                           </span>
                         </label>
@@ -327,7 +327,7 @@ export function UserFormPage(): JSX.Element {
                 padding: '8px 12px',
                 backgroundColor: 'var(--color-surface-container-high)',
                 borderRadius: 8,
-                fontSize: 12,
+                fontSize: 'var(--text-xs)',
                 color: 'var(--color-secondary)'
               }}
             >

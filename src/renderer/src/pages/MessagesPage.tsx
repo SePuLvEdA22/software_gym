@@ -100,9 +100,9 @@ export function MessagesPage(): JSX.Element {
                 <tr key={t.id}>
                   <td><strong>{t.name}</strong></td>
                   <td><span className={`badge ${t.type === 'whatsapp' ? 'badge-success' : 'badge-info'}`}>{t.type === 'whatsapp' ? 'WhatsApp' : 'Email'}</span></td>
-                  <td style={{ fontSize: 13 }}>{t.subject || '-'}</td>
-                  <td style={{ fontSize: 13, maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.content}</td>
-                  <td style={{ fontSize: 12 }}>{t.variables?.join(', ') || '-'}</td>
+                  <td style={{ fontSize: 'var(--text-sm)' }}>{t.subject || '-'}</td>
+                  <td style={{ fontSize: 'var(--text-sm)', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.content}</td>
+                  <td style={{ fontSize: 'var(--text-xs)' }}>{t.variables?.join(', ') || '-'}</td>
                   <td>
                     <div className="table-actions">
                       <button className="btn btn-sm btn-secondary" onClick={() => setSendModal({ template: t })} title="Enviar"><Icons.Send /></button>
@@ -125,7 +125,7 @@ export function MessagesPage(): JSX.Element {
               <button className="modal-close" onClick={() => setSendModal(null)}><Icons.Close /></button>
             </div>
             <div className="modal-body">
-              <p style={{ marginBottom: 16, fontSize: 14 }}>Seleccione el destinatario:</p>
+              <p style={{ marginBottom: 16, fontSize: 'var(--text-md)' }}>Seleccione el destinatario:</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setSendModal({ ...sendModal, all: true, client: undefined })}>
                   Enviar a TODOS los clientes activos
@@ -138,7 +138,7 @@ export function MessagesPage(): JSX.Element {
                   Enviar a clientes por vencer (7 días)
                 </button>
               </div>
-              <div style={{ borderTop: '1px solid var(--color-border)', margin: '12px 0', textAlign: 'center', paddingTop: 12, color: 'var(--color-secondary)', fontSize: 13 }}>
+              <div style={{ borderTop: '1px solid var(--color-border)', margin: '12px 0', textAlign: 'center', paddingTop: 12, color: 'var(--color-secondary)', fontSize: 'var(--text-sm)' }}>
                 O enviar a un cliente específico:
               </div>
               <div className="search-box" style={{ marginBottom: 12 }}>
@@ -155,7 +155,7 @@ export function MessagesPage(): JSX.Element {
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <span>{c.fullName}</span>
-                    <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{c.phone}</span>
+                    <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>{c.phone}</span>
                   </div>
                 ))}
                 {filteredClients.length === 0 && (
@@ -168,7 +168,7 @@ export function MessagesPage(): JSX.Element {
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 12 }}>
                   <button className="btn btn-secondary btn-sm" disabled={clientPage <= 1}
                     onClick={() => { setClientPage(p => p - 1); loadClients(clientPage - 1) }}>Anterior</button>
-                  <span style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                     Pág. {clientPage} de {clientTotalPages}
                   </span>
                   <button className="btn btn-secondary btn-sm" disabled={clientPage >= clientTotalPages}
