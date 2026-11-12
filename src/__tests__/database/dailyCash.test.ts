@@ -58,4 +58,14 @@ describe('Cierre de caja diario', () => {
     expect(html).toContain('&lt;b&gt;Cliente&lt;/b&gt;')
     expect(html).not.toContain('<b>Cliente')
   })
+
+  it('muestra el gimnasio escapado, la fecha en español y los encabezados de columna', () => {
+    const html = buildDailyCashHtml(getDailyCashData('2026-09-15'), { name: '<Gym>', address: 'Calle 1', phone: '300' })
+    expect(html).toContain('&lt;Gym&gt;')
+    expect(html).toContain('Calle 1 · 300')
+    expect(html).toContain('Martes 15 de septiembre de 2026')
+    for (const th of ['Método', 'Hora', 'Cliente', 'Concepto', 'Producto', 'Cantidad']) {
+      expect(html).toContain(`>${th}</th>`)
+    }
+  })
 })
