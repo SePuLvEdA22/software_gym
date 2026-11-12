@@ -673,6 +673,37 @@ export function updateMembership(
   return getMembershipById(id)
 }
 
+/**
+ * Elimina una membresía junto con sus pagos e historial de congelamiento
+ * (tablas hijas sin ON DELETE CASCADE). Los pagos dejan de contar en caja y
+ * reportes. Si el cliente queda sin membresía vigente, pasa a 'expired'.
+ * Devuelve la membresía y los pagos borrados (para el historial de cambios),
+ * o null si no existía.
+ */
+export function deleteMembership(id: string): { membership: Membership; payments: { id: string; amount: number; method: string; date: string }[] } | null {
+  const db = getDatabase()
+  const existing = getMembershipById(id)
+  if (!existing) return null
+
+  const payments = db.prepare(
+    'SELECT id, amount, method, date FROM payments WHERE membership_id = ?'
+  ).all(id) as { id: string; amount: number; method: string; date: string }[]
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM payments WHERE membership_id = ?').run(id)
+    db.prepare('DELETE FROM freeze_history WHERE membership_id = ?').run(id)
+    db.prepare('DELETE FROM memberships WHERE id = ?').run(id)
+  })()
+
+  const client = getClientById(existing.clientId)
+  if (client?.status === 'active' && !getActiveOrFrozenMembership(existing.clientId)) {
+    updateClientStatus(existing.clientId, 'expired')
+  }
+
+  clearQueryCache()
+  return { membership: existing, payments }
+}
+
 export function updateExpiredMemberships(): number {
   const db = getDatabase()
   // Día-consciente: una membresía que vence HOY no se marca como vencida hasta

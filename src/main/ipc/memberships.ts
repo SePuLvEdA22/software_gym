@@ -15,6 +15,7 @@ import {
   freezeMembership,
   unfreezeMembership,
   getFreezeHistory,
+  deleteMembership,
 } from '../database/memberships'
 import {
   recordPayment,
@@ -470,6 +471,30 @@ export function registerMembershipHandlers(): void {
       }
     },
   )
+
+  ipcMain.handle('membership:delete', async (_, membershipId: string) => {
+    const auth = requirePermission('memberships.delete')
+    if (auth) return auth
+    try {
+      const result = deleteMembership(membershipId)
+      if (!result) return { success: false, error: 'Membresía no encontrada' }
+      logChange(
+        'memberships',
+        membershipId,
+        'delete',
+        {
+          ...result.membership,
+          clientName: clientLabel(result.membership.clientId),
+          payments: result.payments,
+        },
+        null,
+      )
+      return { success: true, data: null }
+    } catch (error) {
+      log.error('Error deleting membership:', error)
+      return { success: false, error: sanitizeError(error) }
+    }
+  })
 
   ipcMain.handle('plans:create', async (_, data) => {
     const auth = requireRole('admin')
