@@ -5,6 +5,7 @@ import { Icons } from '@/components/Icons'
 import { PaymentHistoryModal } from '@/components/modals/PaymentHistoryModal'
 import { FreezeHistoryModal } from '@/components/modals/FreezeHistoryModal'
 import { RoutinesModal } from '@/components/modals/RoutinesModal'
+import { RowActionsMenu, RowAction } from '@/components/RowActionsMenu'
 import { getMembershipStatusBadge } from '@/components/StatusBadges'
 import { Client, Membership, ClientDebt } from '@shared/types'
 import { hasPermission } from '@shared/permissions'
@@ -112,6 +113,90 @@ export function ClientMembershipsModal({
     }
   }
 
+  /**
+   * Una acción principal visible con texto (la más urgente) y el resto en el
+   * menú "⋯": antes eran hasta 7 botones de solo ícono por fila.
+   */
+  const rowActions = (
+    membership: Membership,
+    debt: ClientDebt | undefined,
+  ): { primary: RowAction | null; menu: RowAction[] } => {
+    const hasDebt = !!debt && debt.balance > 0
+    const all: RowAction[] = []
+    if (membership.status === 'frozen')
+      all.push({
+        key: 'unfreeze',
+        label: 'Descongelar',
+        icon: <Icons.Play />,
+        onClick: () => handleUnfreeze(membership.id),
+      })
+    if (hasDebt)
+      all.push({
+        key: 'abono',
+        label: 'Registrar abono',
+        icon: <Icons.Plus />,
+        onClick: () =>
+          window.electronAPI.window.openForm('abono', {
+            clientId: client.id,
+            membershipId: membership.id,
+          }),
+      })
+    if (membership.status === 'active' || membership.status === 'scheduled')
+      all.push({
+        key: 'edit',
+        label: 'Editar membresía',
+        icon: <Icons.Edit />,
+        onClick: () =>
+          window.electronAPI.window.openForm('editMembership', {
+            membershipId: membership.id,
+            clientId: client.id,
+          }),
+      })
+    if (membership.status === 'active')
+      all.push({
+        key: 'freeze',
+        label: 'Congelar',
+        icon: <Icons.Snowflake />,
+        onClick: () => handleFreezeClick(membership),
+      })
+    if (canViewPayments)
+      all.push({
+        key: 'payments',
+        label: 'Ver pagos',
+        icon: <Icons.Search />,
+        onClick: () => {
+          setSelectedMembershipForPayments(membership.id)
+          setShowPaymentHistoryModal(true)
+        },
+      })
+    if (membership.status === 'frozen')
+      all.push({
+        key: 'freezeHistory',
+        label: 'Historial de congelaciones',
+        icon: <Icons.Clock />,
+        onClick: () => {
+          setSelectedMembershipForHistory(membership.id)
+          setShowFreezeHistoryModal(true)
+        },
+      })
+    if (canDelete)
+      all.push({
+        key: 'delete',
+        label: 'Eliminar membresía',
+        icon: <Icons.Trash />,
+        danger: true,
+        onClick: () => handleDelete(membership),
+      })
+
+    // Descongelar tiene prioridad sobre el abono: sin descongelar no puede entrenar.
+    const primary =
+      all.find((a) => a.key === 'unfreeze') || all.find((a) => a.key === 'abono') || null
+    return {
+      primary: primary && { ...primary, label: primary.key === 'abono' ? 'Abono' : primary.label },
+      menu: all.filter((a) => a !== primary),
+    }
+  }
+
   const activeMembership =
     memberships.find((m) => m.status === 'active' || m.status === 'frozen') || null
 
@@ -144,7 +229,11 @@ export function ClientMembershipsModal({
               className="btn btn-primary btn-sm"
               onClick={handleRenew}
               style={{ minHeight: 36 }}
-              title={activeMembership ? 'Agregar membresía encolada (se activará al vencer la actual)' : 'Renovar'}
+              title={
+                activeMembership
+                  ? 'Agregar membresía encolada (se activará al vencer la actual)'
+                  : 'Renovar'
+              }
             >
               <Icons.Plus />
               {activeMembership ? 'Agregar' : 'Renovar'}
@@ -203,7 +292,7 @@ export function ClientMembershipsModal({
                     <th>Vence</th>
                     <th>Estado</th>
                     <th>Saldo</th>
-                    <th style={{ width: 240 }}>Acciones</th>
+                    <th style={{ width: 200, textAlign: 'right' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -237,135 +326,32 @@ export function ClientMembershipsModal({
                           )}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            {membership.status === 'active' && (
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => handleFreezeClick(membership)}
-                                title="Congelar membresía"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Snowflake />
-                              </button>
-                            )}
-                            {membership.status === 'frozen' && (
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={() => handleUnfreeze(membership.id)}
-                                title="Descongelar membresía"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Play />
-                              </button>
-                            )}
-                            {(membership.status === 'active' || membership.status === 'scheduled') && (
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                onClick={() =>
-                                  window.electronAPI.window.openForm('editMembership', {
-                                    membershipId: membership.id,
-                                    clientId: client.id,
-                                  })
-                                }
-                                title="Editar membresía"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Edit />
-                              </button>
-                            )}
-                            {debt && debt.balance > 0 && (
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={() =>
-                                  window.electronAPI.window.openForm('abono', {
-                                    clientId: client.id,
-                                    membershipId: membership.id,
-                                  })
-                                }
-                                title="Registrar abono"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Plus />
-                              </button>
-                            )}
-                            {canViewPayments && (
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => {
-                                  setSelectedMembershipForPayments(membership.id)
-                                  setShowPaymentHistoryModal(true)
-                                }}
-                                title="Ver pagos"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Search />
-                              </button>
-                            )}
-                            {membership.status === 'frozen' && (
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => {
-                                  setSelectedMembershipForHistory(membership.id)
-                                  setShowFreezeHistoryModal(true)
-                                }}
-                                title="Historial de congelaciones"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Clock />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                className="btn btn-danger btn-sm"
-                                onClick={() => handleDelete(membership)}
-                                title="Eliminar membresía"
-                                style={{
-                                  minWidth: 36,
-                                  minHeight: 36,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Icons.Trash />
-                              </button>
-                            )}
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 6,
+                              alignItems: 'center',
+                              justifyContent: 'flex-end',
+                            }}
+                          >
+                            {(() => {
+                              const { primary, menu } = rowActions(membership, debt)
+                              return (
+                                <>
+                                  {primary && (
+                                    <button
+                                      className="btn btn-primary btn-sm"
+                                      onClick={primary.onClick}
+                                      style={{ minHeight: 36 }}
+                                    >
+                                      {primary.icon}
+                                      {primary.label}
+                                    </button>
+                                  )}
+                                  <RowActionsMenu actions={menu} />
+                                </>
+                              )
+                            })()}
                           </div>
                         </td>
                       </tr>
