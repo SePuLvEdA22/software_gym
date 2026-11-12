@@ -284,7 +284,7 @@ export function EditMembershipModal({
           className="card"
           style={{ padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}
         >
-          <div className="avatar" style={{ width: 48, height: 48, fontSize: 18, flexShrink: 0 }}>
+          <div className="avatar" style={{ width: 48, height: 48, fontSize: 'var(--text-xl)', flexShrink: 0 }}>
             {client.photo ? (
               <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
             ) : (
@@ -292,8 +292,8 @@ export function EditMembershipModal({
             )}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{client.fullName}</div>
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+            <div style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{client.fullName}</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
               Membresía: {membership.planName} •{' '}
               {format(parseISO(membership.startDate), 'dd/MM/yyyy')} -{' '}
               {format(parseISO(membership.endDate), 'dd/MM/yyyy')} • {membership.status}
@@ -316,7 +316,7 @@ export function EditMembershipModal({
             ))}
           </select>
           {selectedPlan && (
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               Duración del plan: {selectedPlan.durationDays} días • Valor:{' '}
               {formatCurrency(selectedPlan.price)}
             </div>
@@ -340,7 +340,7 @@ export function EditMembershipModal({
                     </>
                   )}
                 </strong>
-                <div style={{ fontSize: 12 }}>
+                <div style={{ fontSize: 'var(--text-xs)' }}>
                   El pago ligado se ajustará automáticamente al nuevo valor al guardar.
                 </div>
               </div>
@@ -369,7 +369,7 @@ export function EditMembershipModal({
               placeholder="Fecha de vencimiento"
             />
             {autoCalculated && (
-              <div style={{ fontSize: 11, color: 'var(--color-primary)', marginTop: 2 }}>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', marginTop: 2 }}>
                 Calculado automáticamente por el plan
               </div>
             )}
@@ -389,7 +389,7 @@ export function EditMembershipModal({
               </option>
             ))}
           </select>
-          <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
             Si lo dejas en Automático el sistema recalcula por fecha, pero aquí puedes forzarlo.
           </div>
         </div>
@@ -401,7 +401,7 @@ export function EditMembershipModal({
               <option value="">Cargando pagos...</option>
             </select>
           ) : paymentsError ? (
-            <div style={{ fontSize: 12, color: 'var(--color-error)' }}>{paymentsError}</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-error)' }}>{paymentsError}</div>
           ) : singlePayment ? (
             <>
               <select
@@ -416,24 +416,24 @@ export function EditMembershipModal({
                 ))}
               </select>
               {!blindMode && 'amount' in singlePayment && 'date' in singlePayment ? (
-                <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
                   Pago de {formatCurrency((singlePayment as Payment).amount)} •{' '}
                   {format(parseISO((singlePayment as Payment).date), 'dd/MM/yyyy')}
                 </div>
               ) : (
-                <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
                   Pago ligado (montos ocultos por tu rol)
                 </div>
               )}
             </>
           ) : linkedCount > 1 ? (
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
               Esta membresía tiene {linkedCount} pagos ligados
               {!blindMode && ` (${linkedPayments.map((p) => getMethodLabel(p.method)).join(', ')})`}.
               Modifica el método de cada pago desde el historial de pagos.
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
               Esta membresía no tiene pagos ligados.
             </div>
           )}
@@ -448,7 +448,7 @@ export function EditMembershipModal({
             rows={2}
             placeholder="Ej: duración mal digitada, se corrige de 30 a 15 días"
           />
-          <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
             Se guarda en el historial con tu nombre de usuario.
           </div>
         </div>

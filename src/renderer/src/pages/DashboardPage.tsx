@@ -34,7 +34,7 @@ function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
   return (
     <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="flex-row-between" style={{ marginBottom: 16 }}>
-        <h3 className="headline-md" style={{ fontSize: 18 }}>Accesos Recientes</h3>
+        <h3 className="headline-md" style={{ fontSize: 'var(--text-xl)' }}>Accesos Recientes</h3>
         <Icons.History style={{ color: 'var(--color-on-surface-variant)' }} />
       </div>
       {accesses.length === 0 ? (
@@ -76,7 +76,7 @@ function RevenueChart({ data }: { data: { month: string; revenue: number }[] }):
   return (
     <div className="bento-card">
       <div style={{ marginBottom: 16 }}>
-        <h3 className="headline-md" style={{ fontSize: 18 }}>Ingresos Mensuales</h3>
+        <h3 className="headline-md" style={{ fontSize: 'var(--text-xl)' }}>Ingresos Mensuales</h3>
       </div>
       <div className="chart-body">
         <ResponsiveContainer width="100%" height="100%">
@@ -123,7 +123,7 @@ function PeakHoursChart({ data }: { data: PeakHour[] }): JSX.Element {
   return (
     <div className="bento-card">
       <div style={{ marginBottom: 16 }}>
-        <h3 className="headline-md" style={{ fontSize: 18 }}>Horas Pico</h3>
+        <h3 className="headline-md" style={{ fontSize: 'var(--text-xl)' }}>Horas Pico</h3>
       </div>
       <div className="chart-body">
         {data.length === 0 ? (
@@ -164,7 +164,7 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
   return (
     <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ marginBottom: 16 }}>
-        <h3 className="headline-md" style={{ fontSize: 18 }}>Planes Más Vendidos</h3>
+        <h3 className="headline-md" style={{ fontSize: 'var(--text-xl)' }}>Planes Más Vendidos</h3>
       </div>
       <div className="chart-body" style={{ flex: 1 }}>
         {data.length === 0 ? (
@@ -232,7 +232,7 @@ function TopPlansChart({ data }: { data: PlanStat[] }): JSX.Element {
                 backgroundColor: CHART_COLORS[index % CHART_COLORS.length] 
               }} />
               <span style={{ 
-                fontSize: 11, 
+                fontSize: 'var(--text-xs)', 
                 fontWeight: 600,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -275,7 +275,7 @@ function QuickActions({ onAction }: { onAction: (action: string) => void }): JSX
             <div className="quick-action-icon" style={{ color: 'var(--color-primary-container)', display: 'flex' }}>
               <IconComponent />
             </div>
-            <span className="body-lg" style={{ fontSize: 14 }}>{action.label}</span>
+            <span className="body-lg" style={{ fontSize: 'var(--text-md)' }}>{action.label}</span>
           </div>
         )
       })}
@@ -468,12 +468,12 @@ export function DashboardPage(): JSX.Element {
         <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Bell style={{ color: 'var(--color-warning)' }} />
-            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 'var(--text-md)' }}>
               Próximos a Vencer (7 días)
             </h3>
           </div>
           {expiringSoon.length === 0 ? (
-            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 16 }}>
               No hay membresías próximas a vencer
             </p>
           ) : (
@@ -489,11 +489,11 @@ export function DashboardPage(): JSX.Element {
                                '3px solid var(--color-primary-container)'
                   }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
+                      <div style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{item.clientName}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
                     </div>
                     <div style={{
-                      fontWeight: 700, fontSize: 16,
+                      fontWeight: 700, fontSize: 'var(--text-lg)',
                       color: item.daysLeft <= 1 ? 'var(--color-error)' :
                              item.daysLeft <= 3 ? 'var(--color-warning)' :
                              'var(--color-primary-container)'
@@ -529,12 +529,12 @@ export function DashboardPage(): JSX.Element {
         <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Calendar style={{ color: 'var(--color-primary-container)' }} />
-            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 'var(--text-md)' }}>
               Cumpleaños del Mes
             </h3>
           </div>
           {birthdays.length === 0 ? (
-            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 16 }}>
               No hay cumpleaños este mes
             </p>
           ) : (
@@ -548,11 +548,11 @@ export function DashboardPage(): JSX.Element {
                     width: 36, height: 36, borderRadius: '50%',
                     backgroundColor: 'color-mix(in srgb, var(--color-primary-container) 15%, transparent)', color: 'var(--color-primary-container)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 14
+                    fontWeight: 700, fontSize: 'var(--text-md)'
                   }}>
                     {b.day}
                   </div>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>{b.clientName}</span>
+                  <span style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{b.clientName}</span>
                 </div>
               ))}
             </div>
@@ -562,12 +562,12 @@ export function DashboardPage(): JSX.Element {
         <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexShrink: 0 }}>
             <Icons.Clock style={{ color: 'var(--color-warning)' }} />
-            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 14 }}>
+            <h3 className="label-md" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: 'var(--text-md)' }}>
               Inactivos (+30d sin visitar)
             </h3>
           </div>
           {inactiveClients.length === 0 ? (
-            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 13, textAlign: 'center', padding: 16 }}>
+            <p style={{ color: 'var(--color-on-surface-variant)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 16 }}>
               No hay clientes inactivos
             </p>
           ) : (
@@ -578,10 +578,10 @@ export function DashboardPage(): JSX.Element {
                   padding: '8px 12px', backgroundColor: 'var(--color-surface-container-high)', borderRadius: 8
                 }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{item.clientName}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
+                    <div style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{item.clientName}</div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-on-surface-variant)' }}>{item.planName}</div>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-warning)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 'var(--text-lg)', color: 'var(--color-warning)' }}>
                     {item.daysSinceLastVisit}d
                   </div>
                 </div>

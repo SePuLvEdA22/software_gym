@@ -55,7 +55,7 @@ export function StaffSection(): JSX.Element {
         </div>
 
         <div style={{ margin: '20px 0', borderTop: '1px solid var(--color-border)', opacity: 0.3 }} />
-        <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Cambiar Contraseña</h3>
+        <h3 className="headline-md" style={{ fontSize: 'var(--text-lg)', marginBottom: 16 }}>Cambiar Contraseña</h3>
         <div className="form-row-3">
           <div className="form-group">
             <label className="form-label">Contraseña Actual</label>

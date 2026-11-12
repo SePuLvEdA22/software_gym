@@ -42,8 +42,8 @@ export function AttendanceStatsModal({
               )}
             </div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 16 }}>{client.fullName}</div>
-              <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)' }}>{client.fullName}</div>
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                 Código: {client.accessCode}
               </div>
             </div>
@@ -56,26 +56,26 @@ export function AttendanceStatsModal({
           ) : stats ? (
             <div className="grid grid-2" style={{ gap: 16 }}>
               <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas Totales</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-primary-container)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas Totales</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-primary-container)' }}>
                   {stats.totalVisits}
                 </div>
               </div>
               <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas este Mes</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-success)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginBottom: 4 }}>Visitas este Mes</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--color-success)' }}>
                   {stats.daysAttendedThisMonth}
                 </div>
               </div>
               <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Primera Visita</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginBottom: 4 }}>Primera Visita</div>
+                <div style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}>
                   {stats.firstVisit ? format(parseISO(stats.firstVisit), 'dd/MM/yyyy') : 'Sin visitas'}
                 </div>
               </div>
               <div className="kpi-card" style={{ padding: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginBottom: 4 }}>Última Visita</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginBottom: 4 }}>Última Visita</div>
+                <div style={{ fontSize: 'var(--text-md)', fontWeight: 600 }}>
                   {stats.lastVisit ? format(parseISO(stats.lastVisit), 'dd/MM/yyyy') : 'Sin visitas'}
                 </div>
               </div>

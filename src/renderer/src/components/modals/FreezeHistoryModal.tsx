@@ -55,17 +55,17 @@ export function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModal
                       <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                         Hasta: {format(parseISO(h.unfrozenAt), 'dd/MM/yyyy')}
                         {h.unfrozenBy === 'auto' && (
-                          <span className="badge badge-info" style={{ fontSize: 10 }}>Automático</span>
+                          <span className="badge badge-info" style={{ fontSize: 'var(--text-xs)' }}>Automático</span>
                         )}
                       </span>
                     )}
                   </div>
                   {h.reason && (
-                    <div style={{ fontSize: 13, marginBottom: 4 }}>
+                    <div style={{ fontSize: 'var(--text-sm)', marginBottom: 4 }}>
                       <strong>Motivo:</strong> {h.reason}
                     </div>
                   )}
-                  <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                     {h.plannedDays && <span>Planeado: {h.plannedDays} días | </span>}
                     {h.actualDays !== null && h.actualDays !== undefined
                       ? <span>Real: {h.actualDays} días</span>

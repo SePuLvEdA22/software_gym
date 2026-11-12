@@ -92,14 +92,14 @@ export function SystemSection(): JSX.Element {
                   }} />
                 <span style={{ fontWeight: 500 }}>Iniciar automáticamente con Windows</span>
               </label>
-              <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
+              <p className="body-lg" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
                 La aplicación se iniciará automáticamente cuando encienda el PC del gimnasio
               </p>
             </div>
           </div>
 
           <div className="glass-panel" style={{ padding: 20 }}>
-            <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 16 }}>Respaldo de Base de Datos</h3>
+            <h3 className="headline-md" style={{ fontSize: 'var(--text-lg)', marginBottom: 16 }}>Respaldo de Base de Datos</h3>
 
             <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--color-border)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: '4px 0' }}>
@@ -110,7 +110,7 @@ export function SystemSection(): JSX.Element {
                 />
                 <span style={{ fontWeight: 500 }}>Respaldo automático</span>
               </label>
-              <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
+              <p className="body-lg" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4, marginLeft: 28 }}>
                 Se crea una copia de la base de datos al iniciar la aplicación y luego cada 24 horas.
               </p>
 
@@ -136,7 +136,7 @@ export function SystemSection(): JSX.Element {
                 </button>
               </div>
 
-              <div style={{ marginTop: 12, fontSize: 13, color: 'var(--color-secondary)' }}>
+              <div style={{ marginTop: 12, fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                 {backupConfig.lastBackupAt
                   ? <>Último respaldo: <strong>{new Date(backupConfig.lastBackupAt).toLocaleString('es-CO')}</strong> · {backupConfig.count} copia(s) en carpeta local</>
                   : <>Aún no se ha creado ningún respaldo automático</>}
@@ -263,7 +263,7 @@ export function SystemSection(): JSX.Element {
                 Importar datos del sistema anterior
               </button>
             </div>
-            <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 8 }}>
+            <p className="body-lg" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 8 }}>
               El botón Guardar Copia genera un archivo .zip con la base de datos (clientes, membresías, pagos, registros de acceso y configuración) más las fotos de los clientes actuales. Los respaldos automáticos solo incluyen la base de datos (.db).
             </p>
           </div>
@@ -306,7 +306,7 @@ export function SystemSection(): JSX.Element {
 
             {migrationBackupPath && (migrationResult) && (
               <div className="glass-panel" style={{
-                marginTop: 16, padding: 12, fontSize: 12,
+                marginTop: 16, padding: 12, fontSize: 'var(--text-xs)',
                 textAlign: 'left',
                 background: 'color-mix(in srgb, var(--color-primary-container) 8%, transparent)'
               }}>

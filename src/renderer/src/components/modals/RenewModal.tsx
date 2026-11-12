@@ -159,7 +159,7 @@ export function RenewModal({
       <div className="modal-body">
           <div className="card" style={{ padding: 20, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div className="avatar" style={{ width: 56, height: 56, fontSize: 20, flexShrink: 0 }}>
+              <div className="avatar" style={{ width: 56, height: 56, fontSize: 'var(--text-xl)', flexShrink: 0 }}>
                 {client.photo ? (
                   <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
                 ) : (
@@ -167,8 +167,8 @@ export function RenewModal({
                 )}
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.fullName}</div>
-                <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.fullName}</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                   Código: {client.accessCode}
                 </div>
               </div>
@@ -222,7 +222,7 @@ export function RenewModal({
               max={12}
               placeholder="1"
             />
-            <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               {quantity > 1
                 ? `Se crearán ${quantity} membresías consecutivas (${selectedPlanData ? selectedPlanData.durationDays * quantity : 0} días en total) que se activarán una tras otra. Para días no consecutivos, crea con cantidad 1 y luego edita la fecha de inicio de la programada.`
                 : 'Compra una sola membresía. Si el cliente ya tiene una activa, la nueva quedará programada y se activará al vencer la actual.'}
@@ -314,7 +314,7 @@ export function RenewModal({
                   disabled
                   style={{ backgroundColor: 'var(--color-surface-container-low)', fontWeight: 600 }}
                 />
-                {quantity > 1 && selectedPlanData && <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 2 }}>{formatCurrency(Math.max(0, selectedPlanData.price - discount))} c/u</div>}
+                {quantity > 1 && selectedPlanData && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 2 }}>{formatCurrency(Math.max(0, selectedPlanData.price - discount))} c/u</div>}
               </div>
               <div className="form-group">
                 <label className="form-label">Monto Pagado {quantity > 1 ? `(por cuota)` : ''}</label>
@@ -331,7 +331,7 @@ export function RenewModal({
                   }}
                   placeholder="0"
                 />
-                {quantity > 1 && <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 2 }}>Se registrará {quantity} pagos de {formatCurrency(amount || 0)} c/u</div>}
+                {quantity > 1 && <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 2 }}>Se registrará {quantity} pagos de {formatCurrency(amount || 0)} c/u</div>}
               </div>
             </div>
             {selectedPlanData && amount < (selectedPlanData.price - discount) && (
@@ -339,7 +339,7 @@ export function RenewModal({
                 <Icons.Bell />
                 <div>
                   <strong>Saldo Pendiente: {formatCurrency(((selectedPlanData.price - discount) - amount) * (quantity > 1 ? quantity : 1))}</strong>
-                  <div style={{ fontSize: 12 }}>Este saldo quedará registrado como deuda del cliente {quantity > 1 ? `(${(selectedPlanData.price - discount) - amount} por cuota)` : ''}</div>
+                  <div style={{ fontSize: 'var(--text-xs)' }}>Este saldo quedará registrado como deuda del cliente {quantity > 1 ? `(${(selectedPlanData.price - discount) - amount} por cuota)` : ''}</div>
                 </div>
               </div>
             )}

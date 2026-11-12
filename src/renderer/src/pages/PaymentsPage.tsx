@@ -420,7 +420,7 @@ export function PaymentsPage(): JSX.Element {
                   width: 140,
                   height: 38,
                   padding: '8px 36px 8px 12px',
-                  fontSize: 13,
+                  fontSize: 'var(--text-sm)',
                   borderRadius: 9999,
                   alignSelf: 'center',
                 }}
@@ -443,7 +443,7 @@ export function PaymentsPage(): JSX.Element {
                   width: 110,
                   height: 38,
                   padding: '8px 36px 8px 12px',
-                  fontSize: 13,
+                  fontSize: 'var(--text-sm)',
                   borderRadius: 9999,
                   alignSelf: 'center',
                 }}
@@ -539,11 +539,11 @@ export function PaymentsPage(): JSX.Element {
                           </span>
                         </div>
                       </td>
-                      <td style={{ fontSize: 13 }}>
+                      <td style={{ fontSize: 'var(--text-sm)' }}>
                         {format(parseISO(payment.date), 'dd/MM/yyyy HH:mm')}
                       </td>
                       <td>
-                        <span style={{ fontSize: 13, color: 'var(--color-on-surface-variant)' }}>
+                        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-on-surface-variant)' }}>
                           {payment.description || '-'}
                         </span>
                       </td>

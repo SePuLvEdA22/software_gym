@@ -126,7 +126,7 @@ export function TemplateFormPage(): JSX.Element {
           style={{ resize: 'vertical', fontFamily: 'monospace' }}
           placeholder="Ej: Hola {{nombre}}, tenemos una promoción especial..."
         />
-        <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
           Variables disponibles: {'{nombre}'}, {'{documento}'}, {'{telefono}'}, {'{plan}'}, {'{vencimiento}'}
         </div>
       </div>

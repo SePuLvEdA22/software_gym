@@ -144,7 +144,7 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
                       backgroundColor: 'var(--color-primary-container)',
                       color: 'var(--color-on-primary-container)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 700, flexShrink: 0
+                      fontSize: 'var(--text-xs)', fontWeight: 700, flexShrink: 0
                     }}>{i + 1}</span>
                     
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -201,7 +201,7 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
                 <div className="empty-state" style={{ padding: 24 }}>
                   <div className="empty-state-icon"><Icons.Dumbbell /></div>
                   <p>No hay ejercicios para {DAY_NAMES[selectedDay]}</p>
-                  <p style={{ fontSize: 13, color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-on-surface-variant)', marginTop: 4 }}>
                     Haz clic en "Agregar Ejercicio" para empezar
                   </p>
                 </div>

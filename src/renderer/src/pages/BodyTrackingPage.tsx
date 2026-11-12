@@ -67,10 +67,10 @@ export function BodyTrackingPage(): JSX.Element {
                 onClick={() => { setSelectedClient(c.id); setSearchQuery('') }}
               >
                 <span>{c.fullName}</span>
-                <span style={{ fontSize: 13, opacity: 0.7 }}>{c.documentId} | Edad: {calculateAge(c.birthDate) ?? '-'}</span>
+                <span style={{ fontSize: 'var(--text-sm)', opacity: 0.7 }}>{c.documentId} | Edad: {calculateAge(c.birthDate) ?? '-'}</span>
               </div>
             ))}
-            {filteredClients.length === 0 && <div style={{ color: 'var(--color-secondary)', fontSize: 14 }}>Sin resultados</div>}
+            {filteredClients.length === 0 && <div style={{ color: 'var(--color-secondary)', fontSize: 'var(--text-md)' }}>Sin resultados</div>}
           </div>
         )}
       </div>
@@ -137,7 +137,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
 
       {measurements.length > 0 && (
         <div style={{ borderTop: '1px solid var(--color-border)' }}>
-          <div style={{ padding: 12, fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>Historial</div>
+          <div style={{ padding: 12, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-secondary)' }}>Historial</div>
           <div className="table-container">
             <table className="table">
               <thead>
@@ -154,7 +154,7 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
               <tbody>
                 {measurements.slice(0, 20).map(m => (
                   <tr key={m.id}>
-                    <td style={{ fontSize: 13 }}>{format(parseISO(m.date), 'dd/MM/yyyy')}</td>
+                    <td style={{ fontSize: 'var(--text-sm)' }}>{format(parseISO(m.date), 'dd/MM/yyyy')}</td>
                     <td>{m.weight ?? '-'}</td>
                     <td>{m.waist ?? '-'}</td>
                     <td>{m.chest ?? '-'}</td>
@@ -176,8 +176,8 @@ function MeasurementsPanel({ clientId, clientName }: { clientId: string; clientN
 function MeasurementItem({ label, value, unit }: { label: string; value: number | null | undefined; unit: string }): JSX.Element {
   return (
     <div style={{ textAlign: 'center', padding: '8px 4px', background: 'var(--color-bg)', borderRadius: 8 }}>
-      <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700 }}>
+      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>
         {value != null ? `${value} ${unit}` : '-'}
       </div>
     </div>
@@ -209,25 +209,25 @@ function GoalsPanel({ clientId, clientName }: { clientId: string; clientName: st
       <div style={{ padding: 16 }}>
         {goals.filter(g => g.isActive).map(g => (
           <div key={g.id} style={{ padding: '10px 12px', background: 'var(--color-bg)', borderRadius: 8, marginBottom: 8 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{goalLabels[g.goal] || g.goal}</div>
-            <div style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <div style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{goalLabels[g.goal] || g.goal}</div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               Desde: {format(parseISO(g.startDate), 'dd/MM/yyyy')}
               {g.targetDate && ` | Hasta: ${format(parseISO(g.targetDate), 'dd/MM/yyyy')}`}
             </div>
-            {g.notes && <div style={{ fontSize: 12, marginTop: 4 }}>{g.notes}</div>}
+            {g.notes && <div style={{ fontSize: 'var(--text-xs)', marginTop: 4 }}>{g.notes}</div>}
           </div>
         ))}
         {goals.filter(g => g.isActive).length === 0 && (
-          <div style={{ color: 'var(--color-secondary)', fontSize: 14 }}>Sin objetivos activos</div>
+          <div style={{ color: 'var(--color-secondary)', fontSize: 'var(--text-md)' }}>Sin objetivos activos</div>
         )}
 
         {goals.filter(g => !g.isActive).length > 0 && (
           <>
-            <div style={{ marginTop: 20, fontSize: 13, fontWeight: 600, color: 'var(--color-secondary)' }}>Historial</div>
+            <div style={{ marginTop: 20, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-secondary)' }}>Historial</div>
             {goals.filter(g => !g.isActive).map(g => (
               <div key={g.id} style={{ padding: '8px 12px', background: 'var(--color-bg)', borderRadius: 8, marginTop: 6, opacity: 0.6 }}>
-                <div style={{ fontSize: 13 }}>{goalLabels[g.goal] || g.goal}</div>
-                <div style={{ fontSize: 11, color: 'var(--color-secondary)' }}>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{goalLabels[g.goal] || g.goal}</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
                   {format(parseISO(g.startDate), 'dd/MM/yyyy')} - {format(parseISO(g.createdAt), 'dd/MM/yyyy')}
                 </div>
               </div>

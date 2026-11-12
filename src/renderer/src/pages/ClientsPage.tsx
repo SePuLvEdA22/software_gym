@@ -352,7 +352,7 @@ export function ClientsPage(): JSX.Element {
                           <div className="body-lg" style={{ fontWeight: 600 }}>
                             {client.fullName}
                           </div>
-                          <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>
                             {client.email || 'Sin correo'}
                           </div>
                         </div>
@@ -413,7 +413,7 @@ export function ClientsPage(): JSX.Element {
       {plans.length > 0 && (
         <div className="bento-card">
           <div className="card-header">
-            <h3 style={{ fontSize: 16, fontWeight: 600 }}>Planes Disponibles</h3>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Planes Disponibles</h3>
           </div>
           <div className="card-body">
             <div className="grid grid-4" style={{ gap: 20 }}>

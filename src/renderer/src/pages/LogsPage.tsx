@@ -147,31 +147,31 @@ export function LogsPage(): JSX.Element {
       <div className="grid grid-5" style={{ gap: 16 }}>
         <div className="kpi-card">
           <p className="kpi-label">Total Accesos</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>
+          <p className="kpi-value" style={{ fontSize: 'var(--text-2xl)' }}>
             {stats.total}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Permitidos</p>
-          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-success)', fontSize: 'var(--text-2xl)' }}>
             {stats.granted}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Denegados</p>
-          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-error)', fontSize: 'var(--text-2xl)' }}>
             {stats.denied}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">Vencidos</p>
-          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 28 }}>
+          <p className="kpi-value" style={{ color: 'var(--color-warning)', fontSize: 'var(--text-2xl)' }}>
             {stats.deniedExpired}
           </p>
         </div>
         <div className="kpi-card">
           <p className="kpi-label">No Encontrados</p>
-          <p className="kpi-value" style={{ fontSize: 28 }}>
+          <p className="kpi-value" style={{ fontSize: 'var(--text-2xl)' }}>
             {stats.deniedNotFound}
           </p>
         </div>
@@ -189,7 +189,7 @@ export function LogsPage(): JSX.Element {
           }}
         >
           <h3
-            style={{ fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ fontSize: 'var(--text-lg)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
           >
             <Icons.History />
             Historial de Accesos
@@ -228,7 +228,7 @@ export function LogsPage(): JSX.Element {
                 width: 160,
                 height: 38,
                 padding: '8px 36px 8px 12px',
-                fontSize: 13,
+                fontSize: 'var(--text-sm)',
                 borderRadius: 9999,
                 alignSelf: 'center',
               }}
@@ -283,7 +283,7 @@ export function LogsPage(): JSX.Element {
                 <tbody>
                   {logs.map((log) => (
                     <tr key={log.id}>
-                      <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}>
                         {format(parseISO(log.timestamp), 'dd/MM/yyyy HH:mm:ss')}
                       </td>
                       <td style={{ fontWeight: 500 }}>
@@ -309,7 +309,7 @@ export function LogsPage(): JSX.Element {
                           {getResultBadge(log.result)}
                         </div>
                       </td>
-                      <td style={{ fontSize: 13, color: 'var(--color-secondary)' }}>
+                      <td style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>
                         {log.message}
                       </td>
                     </tr>

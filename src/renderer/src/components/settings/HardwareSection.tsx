@@ -101,8 +101,8 @@ export function HardwareSection(): JSX.Element {
                   onChange={() => setDoorConfig(prev => ({ ...prev, connectionType: opt.value }))}
                   style={{ marginBottom: 4 }}
                 />
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{opt.label}</span>
-                <span style={{ fontSize: 12, color: 'var(--color-secondary)' }}>{opt.desc}</span>
+                <span style={{ fontWeight: 600, fontSize: 'var(--text-md)' }}>{opt.label}</span>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>{opt.desc}</span>
               </label>
             ))}
           </div>
@@ -117,7 +117,7 @@ export function HardwareSection(): JSX.Element {
               value={doorConfig.openDuration}
               onChange={(e) => setDoorConfig(prev => ({ ...prev, openDuration: Number(e.target.value.replace(/^0+(?=\d)/, '')) || 0 }))}
             />
-            <p className="body-lg" style={{ fontSize: 12, color: 'var(--color-secondary)', marginTop: 4 }}>
+            <p className="body-lg" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)', marginTop: 4 }}>
               Cuánto tiempo permanece la puerta abierta
             </p>
           </div>

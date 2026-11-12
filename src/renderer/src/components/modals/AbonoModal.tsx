@@ -71,7 +71,7 @@ export function AbonoModal({
       <div className="modal-body">
           <div className="card" style={{ padding: 16, marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div className="avatar" style={{ width: 48, height: 48, fontSize: 18, flexShrink: 0 }}>
+              <div className="avatar" style={{ width: 48, height: 48, fontSize: 'var(--text-xl)', flexShrink: 0 }}>
                 {client.photo ? (
                   <img src={`data:image/jpeg;base64,${client.photo}`} alt={client.fullName} />
                 ) : (
@@ -80,7 +80,7 @@ export function AbonoModal({
               </div>
               <div>
                 <div style={{ fontWeight: 600 }}>{client.fullName}</div>
-                <div style={{ fontSize: 13, color: 'var(--color-secondary)' }}>{membership.planName}</div>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-secondary)' }}>{membership.planName}</div>
               </div>
             </div>
           </div>

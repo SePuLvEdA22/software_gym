@@ -123,16 +123,16 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
         <div className="modal-body">
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
             <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Total Pagado</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalPagado)}</div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>Total Pagado</div>
+              <div style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalPagado)}</div>
             </div>
             <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Descuentos</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--color-warning)' }}>{formatCurrency(totalDescuento)}</div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>Descuentos</div>
+              <div style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-warning)' }}>{formatCurrency(totalDescuento)}</div>
             </div>
             <div className="kpi-card" style={{ flex: 1, padding: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--color-secondary)' }}>Pagos</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{payments.length}</div>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-secondary)' }}>Pagos</div>
+              <div style={{ fontSize: 'var(--text-xl)', fontWeight: 800 }}>{payments.length}</div>
             </div>
           </div>
 
@@ -173,7 +173,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                       )}
                     </td>
                     <td>{p.discount ? formatCurrency(p.discount) : '-'}</td>
-                    <td style={{ fontSize: 12, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.notes || '-'}</td>
+                    <td style={{ fontSize: 'var(--text-xs)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.notes || '-'}</td>
                     <td>
                       {editingId === p.id ? (
                         <div style={{ display: 'flex', gap: 4 }}>
@@ -209,7 +209,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                           <Icons.Edit />
                         </button>
                       ) : (
-                        <span style={{ color: 'var(--color-secondary)', fontSize: 12 }}>—</span>
+                        <span style={{ color: 'var(--color-secondary)', fontSize: 'var(--text-xs)' }}>—</span>
                       )}
                     </td>
                   </tr>

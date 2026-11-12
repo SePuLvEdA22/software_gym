@@ -161,7 +161,7 @@ export function MonthPicker({ value, max, onChange }: MonthPickerProps): JSX.Ele
         <Icons.Calendar className="dp-icon" />
         <span
           className="dp-input"
-          style={{ display: 'flex', alignItems: 'center', fontSize: 13, whiteSpace: 'nowrap' }}
+          style={{ display: 'flex', alignItems: 'center', fontSize: 'var(--text-sm)', whiteSpace: 'nowrap' }}
         >
           {formatMonthLabel(value)}
         </span>

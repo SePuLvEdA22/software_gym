@@ -162,7 +162,7 @@ export function WhatsappSection(): JSX.Element {
             )}
 
             <div style={{ margin: '20px 0', borderTop: '1px solid var(--color-border)', opacity: 0.3 }} />
-            <h3 className="headline-md" style={{ fontSize: 16, marginBottom: 20 }}>Recordatorios Automáticos</h3>
+            <h3 className="headline-md" style={{ fontSize: 'var(--text-lg)', marginBottom: 20 }}>Recordatorios Automáticos</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                 <input 

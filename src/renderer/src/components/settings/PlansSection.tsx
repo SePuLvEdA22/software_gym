@@ -180,7 +180,7 @@ export function PlansSection(): JSX.Element {
               return (
                 <div key={promo.id} className={`promo-card${promo.isActive ? ' active' : ''}`}>
                   <div className="plan-card-header">
-                    <h3 className="headline-md" style={{ margin: 0, fontSize: 16 }}>{promo.name}</h3>
+                    <h3 className="headline-md" style={{ margin: 0, fontSize: 'var(--text-lg)' }}>{promo.name}</h3>
                     <span className={`status-badge-${promo.isActive ? 'success' : 'error'}`}>
                       {promo.isActive ? 'Activa' : 'Inactiva'}
                     </span>
@@ -191,7 +191,7 @@ export function PlansSection(): JSX.Element {
                   <span className="promo-card-value">
                     {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue.toLocaleString('es-CO')}`}
                   </span>
-                  <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', margin: 0, fontSize: 13 }}>
+                  <p className="body-lg" style={{ color: 'var(--color-on-surface-variant)', margin: 0, fontSize: 'var(--text-sm)' }}>
                     {promo.startDate.split('T')[0]} → {promo.endDate.split('T')[0]}
                   </p>
                   <div className="plan-card-actions">

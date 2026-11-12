@@ -86,7 +86,7 @@ export function FacilitySection(): JSX.Element {
             <Icons.Calendar />
             <div>
               <span style={{ fontWeight: 600 }}>Sistema de Doble Pantalla:</span>
-              <span style={{ marginLeft: 8, color: 'var(--color-secondary)', fontSize: 13 }}>
+              <span style={{ marginLeft: 8, color: 'var(--color-secondary)', fontSize: 'var(--text-sm)' }}>
                 El kiosco se abre en una ventana SEPARADA, ideal para un segundo monitor en la entrada del gimnasio.
               </span>
             </div>
@@ -104,7 +104,7 @@ export function FacilitySection(): JSX.Element {
                 <div>
                   <p className="metric-card-label" style={{ margin: 0 }}>Estado del Kiosco</p>
                   <p className="metric-card-value" style={{ 
-                    fontSize: 24,
+                    fontSize: 'var(--text-2xl)',
                     color: kioskOpen ? 'var(--color-success)' : 'var(--color-secondary)'
                   }}>
                     {kioskOpen ? 'ACTIVO' : 'INACTIVO'}
@@ -135,11 +135,11 @@ export function FacilitySection(): JSX.Element {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-            <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'color-mix(in srgb, var(--color-primary-container) 8%, transparent)' }}>
+            <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-sm)', background: 'color-mix(in srgb, var(--color-primary-container) 8%, transparent)' }}>
               <Icons.User />
               <div><span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Monitor 1:</span> Panel Admin (Recepción)</div>
             </div>
-            <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, background: 'color-mix(in srgb, var(--color-success) 8%, transparent)' }}>
+            <div className="glass-panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-sm)', background: 'color-mix(in srgb, var(--color-success) 8%, transparent)' }}>
               <Icons.Door />
               <div><span style={{ fontWeight: 600, color: 'var(--color-success)' }}>Monitor 2:</span> Pantalla Kiosco (Entrada)</div>
             </div>
@@ -149,10 +149,10 @@ export function FacilitySection(): JSX.Element {
             <h4 className="label-md" style={{ marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Configuración de Inicio Automático
             </h4>
-            <p className="body-lg" style={{ color: 'var(--color-secondary)', lineHeight: 1.6, fontSize: 13 }}>
-              Para configurar qué modo se abre al iniciar, use la variable de entorno <code className="chip" style={{ fontFamily: 'monospace', fontSize: 12 }}>GYM_MODE</code>:
+            <p className="body-lg" style={{ color: 'var(--color-secondary)', lineHeight: 1.6, fontSize: 'var(--text-sm)' }}>
+              Para configurar qué modo se abre al iniciar, use la variable de entorno <code className="chip" style={{ fontFamily: 'monospace', fontSize: 'var(--text-xs)' }}>GYM_MODE</code>:
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, fontFamily: 'monospace', fontSize: 13 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, fontFamily: 'monospace', fontSize: 'var(--text-sm)' }}>
               <div className="glass-panel" style={{ padding: '8px 12px' }}>
                 <code>GYM_MODE=both</code> → Admin + Kiosco (por defecto)
               </div>
