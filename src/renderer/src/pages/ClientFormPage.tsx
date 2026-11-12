@@ -216,18 +216,18 @@ export function ClientFormPage(): JSX.Element {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button type="button" className="btn btn-sm btn-secondary"
+                <button aria-label="Subir foto desde archivos" type="button" className="btn btn-sm btn-secondary"
                   onClick={() => document.getElementById('photo-upload')?.click()}
                   title="Subir foto desde archivos">
                   <Icons.Upload />
                 </button>
-                <button type="button" className="btn btn-sm btn-secondary"
+                <button aria-label="Tomar foto con la cámara" type="button" className="btn btn-sm btn-secondary"
                   onClick={() => setShowCamera(true)}
                   title="Tomar foto con la cámara">
                   <Icons.Camera />
                 </button>
                 {formData.photo && (
-                  <button type="button" className="btn btn-sm btn-secondary"
+                  <button aria-label="Eliminar foto" type="button" className="btn btn-sm btn-secondary"
                     onClick={handleRemovePhoto} title="Eliminar foto"
                     style={{ color: 'var(--color-error)' }}>
                     <Icons.Trash />

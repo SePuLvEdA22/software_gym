@@ -477,7 +477,7 @@ export function EditMembershipModal({
       <div className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">Editar Membresía</h2>
-          <button className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar" title="Cerrar" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>

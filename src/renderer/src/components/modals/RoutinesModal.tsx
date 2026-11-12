@@ -98,7 +98,7 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
       <div className="modal modal-xl">
         <div className="modal-header">
           <h2 className="modal-title">Rutinas de {client.fullName}</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>
@@ -186,7 +186,7 @@ export function RoutinesModal({ client, onClose }: RoutinesModalProps): JSX.Elem
                       />
                     </div>
 
-                    <button
+                    <button aria-label="Quitar ejercicio" title="Quitar ejercicio"
                       className="icon-btn danger"
                       onClick={() => removeExercise(i)}
                       style={{ flexShrink: 0 }}

@@ -105,8 +105,8 @@ export function MessagesPage(): JSX.Element {
                   <td style={{ fontSize: 12 }}>{t.variables?.join(', ') || '-'}</td>
                   <td>
                     <div className="table-actions">
-                      <button className="btn btn-sm btn-secondary" onClick={() => setSendModal({ template: t })} title="Enviar"><Icons.Send /></button>
-                      <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('template', { id: t.id })} title="Editar"><Icons.Edit /></button>
+                      <button aria-label="Enviar" className="btn btn-sm btn-secondary" onClick={() => setSendModal({ template: t })} title="Enviar"><Icons.Send /></button>
+                      <button aria-label="Editar" className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('template', { id: t.id })} title="Editar"><Icons.Edit /></button>
                     </div>
                   </td>
                 </tr>
@@ -122,7 +122,7 @@ export function MessagesPage(): JSX.Element {
           <div className="modal">
             <div className="modal-header">
               <h2 className="modal-title">Enviar: {sendModal.template.name}</h2>
-              <button className="modal-close" onClick={() => setSendModal(null)}><Icons.Close /></button>
+              <button aria-label="Cerrar" title="Cerrar" className="modal-close" onClick={() => setSendModal(null)}><Icons.Close /></button>
             </div>
             <div className="modal-body">
               <p style={{ marginBottom: 16, fontSize: 14 }}>Seleccione el destinatario:</p>

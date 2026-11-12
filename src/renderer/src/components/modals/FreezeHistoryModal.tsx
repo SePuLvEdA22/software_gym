@@ -29,7 +29,7 @@ export function FreezeHistoryModal({ membershipId, onClose }: FreezeHistoryModal
       <div className="modal" style={{ maxWidth: 500 }}>
         <div className="modal-header">
           <h2 className="modal-title">Historial de Congelaciones</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>

@@ -134,13 +134,13 @@ export function PlansSection(): JSX.Element {
               <p className="plan-card-description">{plan.description}</p>
             )}
             <div className="plan-card-actions">
-              <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('plan', { id: plan.id })}>
+              <button aria-label="Editar plan" title="Editar plan" className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('plan', { id: plan.id })}>
                 <Icons.Edit />
               </button>
-              <button className="btn btn-sm btn-secondary" onClick={() => togglePlanActive(plan)}>
+              <button aria-label={plan.isActive ? 'Desactivar plan' : 'Activar plan'} title={plan.isActive ? 'Desactivar plan' : 'Activar plan'} className="btn btn-sm btn-secondary" onClick={() => togglePlanActive(plan)}>
                 {plan.isActive ? <Icons.X /> : <Icons.Check />}
               </button>
-              <button className="btn btn-sm btn-danger" onClick={() => deletePlan(plan.id)}>
+              <button aria-label="Eliminar plan" title="Eliminar plan" className="btn btn-sm btn-danger" onClick={() => deletePlan(plan.id)}>
                 <Icons.Trash />
               </button>
             </div>
@@ -195,13 +195,13 @@ export function PlansSection(): JSX.Element {
                     {promo.startDate.split('T')[0]} → {promo.endDate.split('T')[0]}
                   </p>
                   <div className="plan-card-actions">
-                    <button className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('promo', { id: promo.id })}>
+                    <button aria-label="Editar promoción" title="Editar promoción" className="btn btn-sm btn-secondary" onClick={() => window.electronAPI.window.openForm('promo', { id: promo.id })}>
                       <Icons.Edit />
                     </button>
-                    <button className="btn btn-sm btn-secondary" onClick={() => togglePromoActive(promo)}>
+                    <button aria-label={promo.isActive ? 'Desactivar promoción' : 'Activar promoción'} title={promo.isActive ? 'Desactivar promoción' : 'Activar promoción'} className="btn btn-sm btn-secondary" onClick={() => togglePromoActive(promo)}>
                       {promo.isActive ? <Icons.X /> : <Icons.Check />}
                     </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => deletePromo(promo.id)}>
+                    <button aria-label="Eliminar promoción" title="Eliminar promoción" className="btn btn-sm btn-danger" onClick={() => deletePromo(promo.id)}>
                       <Icons.Trash />
                     </button>
                   </div>

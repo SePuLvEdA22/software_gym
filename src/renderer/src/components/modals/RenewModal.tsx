@@ -371,7 +371,7 @@ export function RenewModal({
       <div className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">Nueva Membresía</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>

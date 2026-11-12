@@ -278,7 +278,7 @@ export function ClientsPage(): JSX.Element {
           Buscar
         </button>
 
-        <button
+        <button aria-label="Exportar CSV"
           className="btn btn-secondary"
           onClick={handleExportCsv}
           title="Exportar CSV"
@@ -374,7 +374,7 @@ export function ClientsPage(): JSX.Element {
                     </td>
                     <td>
                       <div className="table-actions" onClick={(e) => e.stopPropagation()}>
-                        <button
+                        <button aria-label="Estadísticas"
                           className="icon-btn"
                           onClick={() =>
                             window.electronAPI.window.openForm('stats', { clientId: client.id })
@@ -383,14 +383,14 @@ export function ClientsPage(): JSX.Element {
                         >
                           <Icons.Clock />
                         </button>
-                        <button
+                        <button aria-label="Editar"
                           className="icon-btn"
                           onClick={() => handleEdit(client)}
                           title="Editar"
                         >
                           <Icons.Edit />
                         </button>
-                        <button
+                        <button aria-label="Eliminar"
                           className="icon-btn danger"
                           onClick={() => handleDelete(client.id)}
                           title="Eliminar"

@@ -193,7 +193,7 @@ export function MonthPicker({ value, max, onChange }: MonthPickerProps): JSX.Ele
                 >
                   «
                 </button>
-                <button
+                <button aria-label="Año anterior"
                   type="button"
                   className="dp-nav"
                   onClick={() => setViewYear((y) => y - 1)}
@@ -203,7 +203,7 @@ export function MonthPicker({ value, max, onChange }: MonthPickerProps): JSX.Ele
                   <Icons.ChevronLeft />
                 </button>
                 <span className="dp-year-big">{viewYear}</span>
-                <button
+                <button aria-label="Año siguiente"
                   type="button"
                   className="dp-nav"
                   onClick={() => setViewYear((y) => y + 1)}

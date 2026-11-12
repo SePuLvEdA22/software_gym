@@ -79,7 +79,7 @@ export function CameraCapture({ onCapture, onClose }: CameraCaptureProps): JSX.E
       <div className="modal" style={{ maxWidth: 500 }}>
         <div className="modal-header">
           <h2 className="modal-title">Tomar Foto</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar cámara" title="Cerrar cámara" type="button" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>

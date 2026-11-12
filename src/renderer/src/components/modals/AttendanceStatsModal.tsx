@@ -101,7 +101,7 @@ export function AttendanceStatsModal({
       <div className="modal" style={{ maxWidth: 450 }}>
         <div className="modal-header">
           <h2 className="modal-title">Estadísticas de Asistencia</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
             <Icons.Close />
           </button>
         </div>

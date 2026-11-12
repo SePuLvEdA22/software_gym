@@ -91,7 +91,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
         <div className="modal" style={{ maxWidth: 500 }}>
           <div className="modal-header">
             <h2 className="modal-title">Historial de Pagos</h2>
-            <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
+            <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
           </div>
           <div className="modal-body">
             {loading ? (
@@ -118,7 +118,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
       <div className="modal modal-lg" style={{ maxWidth: 720 }}>
         <div className="modal-header">
           <h2 className="modal-title">Historial de Pagos</h2>
-          <button type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
+          <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}><Icons.Close /></button>
         </div>
         <div className="modal-body">
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
@@ -177,7 +177,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                     <td>
                       {editingId === p.id ? (
                         <div style={{ display: 'flex', gap: 4 }}>
-                          <button
+                          <button aria-label="Guardar método"
                             type="button"
                             className="btn btn-primary btn-sm"
                             onClick={() => saveMethod(p)}
@@ -187,7 +187,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                           >
                             <Icons.Check />
                           </button>
-                          <button
+                          <button aria-label="Cancelar"
                             type="button"
                             className="btn btn-secondary btn-sm"
                             onClick={cancelEditing}
@@ -199,7 +199,7 @@ export function PaymentHistoryModal({ membershipId, onClose }: PaymentHistoryMod
                           </button>
                         </div>
                       ) : canEditMethod ? (
-                        <button
+                        <button aria-label="Modificar método de pago"
                           type="button"
                           className="btn btn-secondary btn-sm"
                           onClick={() => startEditing(p)}
