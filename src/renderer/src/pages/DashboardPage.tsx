@@ -7,7 +7,7 @@ import { AccessLog, PeakHour, PlanStat, InactiveClient } from '../../../shared/t
 import { formatCurrency } from '@/utils/format'
 import { format, parseISO } from 'date-fns'
 
-const CHART_COLORS = ['var(--color-primary-container)', 'var(--color-success)', 'var(--color-error)', 'var(--color-info)', '#f472b6', '#a78bfa']
+const CHART_COLORS = ['var(--color-primary-container)', 'var(--color-success)', 'var(--color-error)', 'var(--color-info)', 'var(--color-pink)', 'var(--color-violet)']
 
 function RecentAccesses({ accesses }: { accesses: AccessLog[] }): JSX.Element {
   const getResultBadge = (result: string) => {
