@@ -1,0 +1,28 @@
+name: Build de prueba (Windows)
+
+# Instalador para pruebas manuales: NO publica release (electron-updater no lo ve).
+# Solo corre en ramas build/**; el .exe queda como artefacto del workflow.
+on:
+  push:
+    branches:
+      - 'build/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - name: Build instalador (sin publicar)
+        run: npm run build:win -- --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BodyFitGym-prueba-${{ github.sha }}
+          path: |
+            dist/*.exe
+          if-no-files-found: error
+          retention-days: 7
