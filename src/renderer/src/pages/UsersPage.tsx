@@ -302,13 +302,13 @@ export function UsersPage(): JSX.Element {
                     </td>
                     <td>
                       <div className="table-actions">
-                        <button className="btn btn-sm btn-secondary"
+                        <button aria-label="Editar" className="btn btn-sm btn-secondary"
                           onClick={() => window.electronAPI.window.openForm('user', { id: user.id })}
                           title="Editar">
                           <Icons.Edit />
                         </button>
                         {user.id !== 'user_admin' && (
-                          <button className="btn btn-sm btn-secondary"
+                          <button aria-label="Eliminar" className="btn btn-sm btn-secondary"
                             style={{ color: 'var(--color-error)' }}
                             onClick={() => handleDelete(user)}
                             title="Eliminar">

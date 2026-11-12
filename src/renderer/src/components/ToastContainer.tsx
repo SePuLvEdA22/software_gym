@@ -62,7 +62,7 @@ function ToastItem({ toast }: { toast: Toast }): JSX.Element {
           {toast.message}
         </div>
       </div>
-      <button
+      <button aria-label="Cerrar aviso" title="Cerrar aviso"
         onClick={() => removeToast(toast.id)}
         style={{
           background: 'none',

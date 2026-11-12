@@ -122,7 +122,7 @@ function ProductForm({ product, onClose, onSave }: ProductFormProps): JSX.Elemen
         <form onSubmit={handleSubmit}>
           <div className="modal-header">
             <h2 className="headline-md">{product ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-            <button type="button" className="modal-close" onClick={onClose}>
+            <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
               <Icons.Close />
             </button>
           </div>
@@ -309,7 +309,7 @@ function MovementForm({ product, onClose, onSave }: MovementFormProps): JSX.Elem
         <form onSubmit={handleSubmit}>
           <div className="modal-header">
             <h2 className="headline-md">Movimiento: {product.name}</h2>
-            <button type="button" className="modal-close" onClick={onClose}>
+            <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
               <Icons.Close />
             </button>
           </div>
@@ -779,7 +779,7 @@ export function InventoryPage(): JSX.Element {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, paddingTop: 4 }}>
-                        <button
+                        <button aria-label="Movimiento"
                           className="btn btn-sm btn-secondary"
                           onClick={() => {
                             setShowMovement(p)
@@ -788,7 +788,7 @@ export function InventoryPage(): JSX.Element {
                         >
                           <Icons.Plus />
                         </button>
-                        <button
+                        <button aria-label="Editar"
                           className="btn btn-sm btn-secondary"
                           onClick={() => {
                             setEditingProduct(p)
@@ -798,7 +798,7 @@ export function InventoryPage(): JSX.Element {
                         >
                           <Icons.Edit />
                         </button>
-                        <button
+                        <button aria-label="Eliminar"
                           className="btn btn-sm btn-secondary"
                           style={{ color: 'var(--color-error)', marginLeft: 'auto' }}
                           onClick={() => handleDelete(p)}

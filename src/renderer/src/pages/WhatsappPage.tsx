@@ -176,7 +176,7 @@ export function WhatsappPage(): JSX.Element {
               <option value="failed">Fallidos</option>
               <option value="pending">Pendientes</option>
             </select>
-            <button
+            <button aria-label="Actualizar" title="Actualizar"
               className="btn btn-secondary btn-sm"
               onClick={() => {
                 setPage(1)

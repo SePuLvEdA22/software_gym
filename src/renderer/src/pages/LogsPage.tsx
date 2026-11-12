@@ -239,7 +239,7 @@ export function LogsPage(): JSX.Element {
               <option value="denied_inactive">Cliente Inactivo</option>
               <option value="denied_not_found">No Encontrado</option>
             </select>
-            <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
+            <button aria-label="Actualizar" title="Actualizar" className="btn btn-secondary btn-sm" onClick={loadLogs}>
               <Icons.Refresh />
             </button>
             <button

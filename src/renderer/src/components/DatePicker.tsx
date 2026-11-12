@@ -236,7 +236,7 @@ export function DatePicker({
           onFocus={openPanel}
         />
         {value && clearable ? (
-          <button
+          <button aria-label="Limpiar fecha"
             type="button"
             className="dp-clear"
             tabIndex={-1}
@@ -271,11 +271,11 @@ export function DatePicker({
             >
               <div className="dp-header">
                 {mode === 'days' ? (
-                  <button type="button" className="dp-nav" onClick={goPrevMonth} title="Mes anterior" tabIndex={-1}>
+                  <button aria-label="Mes anterior" type="button" className="dp-nav" onClick={goPrevMonth} title="Mes anterior" tabIndex={-1}>
                     <Icons.ChevronLeft />
                   </button>
                 ) : (
-                  <button type="button" className="dp-nav" onClick={goPrevYear} title="Año anterior" tabIndex={-1}>
+                  <button aria-label="Año anterior" type="button" className="dp-nav" onClick={goPrevYear} title="Año anterior" tabIndex={-1}>
                     <Icons.ChevronLeft />
                   </button>
                 )}
@@ -293,11 +293,11 @@ export function DatePicker({
                   <Icons.ChevronDown className={`dp-title-caret${mode === 'months' ? ' dp-title-caret-open' : ''}`} />
                 </button>
                 {mode === 'days' ? (
-                  <button type="button" className="dp-nav" onClick={goNextMonth} title="Mes siguiente" tabIndex={-1}>
+                  <button aria-label="Mes siguiente" type="button" className="dp-nav" onClick={goNextMonth} title="Mes siguiente" tabIndex={-1}>
                     <Icons.ChevronRight />
                   </button>
                 ) : (
-                  <button type="button" className="dp-nav" onClick={goNextYear} title="Año siguiente" tabIndex={-1}>
+                  <button aria-label="Año siguiente" type="button" className="dp-nav" onClick={goNextYear} title="Año siguiente" tabIndex={-1}>
                     <Icons.ChevronRight />
                   </button>
                 )}
@@ -309,11 +309,11 @@ export function DatePicker({
                     <button type="button" className="dp-nav dp-nav-text" onClick={goPrevDecade} title="−10 años" tabIndex={-1}>
                       «
                     </button>
-                    <button type="button" className="dp-nav" onClick={goPrevYear} title="Año anterior" tabIndex={-1}>
+                    <button aria-label="Año anterior" type="button" className="dp-nav" onClick={goPrevYear} title="Año anterior" tabIndex={-1}>
                       <Icons.ChevronLeft />
                     </button>
                     <span className="dp-year-big">{viewDate.getFullYear()}</span>
-                    <button type="button" className="dp-nav" onClick={goNextYear} title="Año siguiente" tabIndex={-1}>
+                    <button aria-label="Año siguiente" type="button" className="dp-nav" onClick={goNextYear} title="Año siguiente" tabIndex={-1}>
                       <Icons.ChevronRight />
                     </button>
                     <button type="button" className="dp-nav dp-nav-text" onClick={goNextDecade} title="+10 años" tabIndex={-1}>

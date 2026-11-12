@@ -273,7 +273,7 @@ export function ClientMembershipsModal({
             >
               <Icons.Bell />
             </button>
-            <button type="button" className="modal-close" onClick={onClose}>
+            <button aria-label="Cerrar" title="Cerrar" type="button" className="modal-close" onClick={onClose}>
               <Icons.Close />
             </button>
           </div>

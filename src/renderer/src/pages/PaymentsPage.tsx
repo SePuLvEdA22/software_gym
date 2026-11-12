@@ -492,7 +492,7 @@ export function PaymentsPage(): JSX.Element {
                   </button>
                 </div>
               )}
-              <button
+              <button aria-label="Actualizar"
                 className="btn btn-secondary btn-sm"
                 onClick={loadPayments}
                 title="Actualizar"

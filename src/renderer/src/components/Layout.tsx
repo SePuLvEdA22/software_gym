@@ -213,14 +213,14 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
   return (
     <header className="header">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="sidebar-toggle" onClick={onToggleSidebar} title={sidebarCollapsed ? 'Mostrar menú' : 'Ocultar menú'}>
+        <button aria-label={sidebarCollapsed ? 'Mostrar menú' : 'Ocultar menú'} className="sidebar-toggle" onClick={onToggleSidebar} title={sidebarCollapsed ? 'Mostrar menú' : 'Ocultar menú'}>
           {sidebarCollapsed ? <Icons.Menu /> : <Icons.Close />}
         </button>
         <h1 className="header-title">{title}</h1>
       </div>
       <div className="header-actions" style={{ position: 'relative' }}>
         <div ref={notifRef} style={{ position: 'relative', display: 'inline-flex' }}>
-          <button className="header-icon-btn" title="Notificaciones" onClick={handleBellClick}>
+          <button className="header-icon-btn" title="Notificaciones" aria-label={totalNotifications > 0 ? `Notificaciones: ${totalNotifications} nuevas` : 'Notificaciones'} onClick={handleBellClick}>
             <Icons.Bell />
             {totalNotifications > 0 && (
               <span style={{
