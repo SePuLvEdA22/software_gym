@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icons } from './Icons'
+import { usePersistentState } from '../hooks/usePersistentState'
 import logoSrc from '../assets/logo.png'
 import { hasPermission } from '../../../shared/permissions'
 import type { User, UserRole } from '../../../shared/types'
@@ -112,24 +113,40 @@ interface HeaderProps {
   sidebarCollapsed?: boolean
 }
 
+interface Notification {
+  type: string
+  message: string
+  count: number
+  keys: string[]
+}
+
 export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: HeaderProps): JSX.Element {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [showMenu, setShowMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState<{ type: string; message: string; count: number }[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  // Avisos ya vistos (persisten entre reinicios). Solo guarda los vigentes al
+  // abrir la campana, así un cliente que vuelve a quedar en deuda avisa otra vez.
+  const [seenKeys, setSeenKeys] = usePersistentState<string[]>('bodyfitgym-notifications-seen', [])
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (): Promise<Notification[] | undefined> => {
     try {
-      const notifs: { type: string; message: string; count: number }[] = []
+      const notifs: Notification[] = []
       
       // Expiring memberships (next 3 days)
       const expiringResult = await window.electronAPI.dashboard.getExpiringSoon(3)
       if (expiringResult.success && expiringResult.data) {
         const expiring = expiringResult.data
         if (expiring.length > 0) {
-          notifs.push({ type: 'warning', message: `Membresías por vencer (3 días)`, count: expiring.length })
+          notifs.push({
+            type: 'warning',
+            message: `Membresías por vencer (3 días)`,
+            count: expiring.length,
+            // La fecha en la clave: si renueva y vuelve a estar por vencer, es un aviso nuevo.
+            keys: expiring.map((e) => `exp:${e.clientId}:${e.endDate}`),
+          })
         }
       }
       
@@ -138,11 +155,17 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
       if (debtorsResult.success && debtorsResult.data) {
         const debtors = debtorsResult.data
         if (debtors.length > 0) {
-          notifs.push({ type: 'error', message: `Clientes con deuda pendiente`, count: debtors.length })
+          notifs.push({
+            type: 'error',
+            message: `Clientes con deuda pendiente`,
+            count: debtors.length,
+            keys: debtors.map((d) => `debt:${d.clientId}`),
+          })
         }
       }
       
       setNotifications(notifs)
+      return notifs
     } catch { /* fallo silencioso: las notificaciones se recargan en el próximo intervalo */ }
   }
 
@@ -156,7 +179,16 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
     return () => clearInterval(interval)
   }, [])
 
-  const totalNotifications = notifications.reduce((sum, n) => sum + n.count, 0)
+  const allKeys = notifications.flatMap((n) => n.keys)
+  const totalNotifications = allKeys.filter((k) => !seenKeys.includes(k)).length
+
+  // Al abrir la campana, todo lo que se muestra queda como visto.
+  const handleBellClick = async () => {
+    const opening = !showNotifications
+    setShowNotifications(opening)
+    const current = await loadNotifications()
+    if (opening && current) setSeenKeys(current.flatMap((n) => n.keys))
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -183,7 +215,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
       </div>
       <div className="header-actions" style={{ position: 'relative' }}>
         <div ref={notifRef} style={{ position: 'relative', display: 'inline-flex' }}>
-          <button className="header-icon-btn" title="Notificaciones" onClick={() => { setShowNotifications(!showNotifications); loadNotifications(); }}>
+          <button className="header-icon-btn" title="Notificaciones" onClick={handleBellClick}>
             <Icons.Bell />
             {totalNotifications > 0 && (
               <span style={{
