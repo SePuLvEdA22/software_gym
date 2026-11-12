@@ -135,7 +135,8 @@ export function PaymentsPage(): JSX.Element {
   }
 
   const loadPayments = async () => {
-    setLoading(true)
+    // Sin setLoading(true): el spinner de pantalla completa es solo para la
+    // primera carga. Al cambiar de filtro se actualiza en sitio, sin perder el scroll.
     const { startDate, endDate } = getRangeDates()
 
     const methodParam = filterMethod === 'all' ? undefined : filterMethod

@@ -57,7 +57,8 @@ export function LogsPage(): JSX.Element {
   const [loading, setLoading] = useState(true)
 
   const loadLogs = async () => {
-    setLoading(true)
+    // Sin setLoading(true): el spinner de pantalla completa es solo para la
+    // primera carga. Al cambiar de filtro se actualiza en sitio, sin perder el scroll.
     const resultParam = filterResult === 'all' ? undefined : filterResult
     const options = { page, pageSize, result: resultParam }
 
