@@ -4,6 +4,7 @@ import log from 'electron-log'
 import { restoreDatabase, getDatabase } from '../database/index'
 import { createFullBackup, restoreFullBackup } from '../fullBackup'
 import { getDailyCashData, buildDailyCashHtml, renderPdf } from '../dailyCash'
+import { getGymSettings } from '../database/routines'
 import { autoUnfreezeDueMemberships, updateExpiredMemberships } from '../database/memberships'
 import {
   getSessionUser,
@@ -192,7 +193,7 @@ export function registerSystemHandlers(): void {
       return { success: false, error: 'Fecha inválida' }
     }
     try {
-      const pdf = await renderPdf(buildDailyCashHtml(getDailyCashData(dayKey)))
+      const pdf = await renderPdf(buildDailyCashHtml(getDailyCashData(dayKey), getGymSettings()))
       const { canceled, filePath } = await dialog.showSaveDialog({
         title: 'Guardar cierre de caja',
         defaultPath: `cierre-caja-${dayKey}.pdf`,
