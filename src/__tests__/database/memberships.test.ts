@@ -31,11 +31,13 @@ import {
   getPaymentsByDateRange,
   getMembershipPayments,
   getPaymentById,
-  updatePaymentMethod
+  updatePaymentMethod,
+  setMembershipPaidAmount
 } from '../../main/database/payments'
 import { getEffectivePrice, createPromotion, getActivePromotionForPlan, getAllPromotions } from '../../main/database/promotions'
 import { getTodayAccessCount } from '../../main/database/accessLogs'
 import type { Client } from '../../shared/types'
+import { m020AddMembershipPrice } from '../../main/database/migrations/020-add-membership-price'
 
 const sampleClientRaw: Omit<Client, 'id' | 'registrationDate'> = {
   fullName: 'Cliente Membresía',
@@ -717,6 +719,94 @@ describe('Memberships Database', () => {
 
     it('debería_retornar_null_si_no_existe', () => {
       expect(deleteMembership('no-existe')).toBeNull()
+    })
+  })
+  describe('Corregir el valor pagado de una membresía', () => {
+    const setup = (price: number) => {
+      const c = createClient({ ...sampleClientRaw, documentId: `PAG-${Date.now()}-${++seq}`, accessCode: `PG${Date.now()}${seq}` })
+      const plan = createPlan({ name: `Plan ${price}-${seq}`, type: 'daily', price, durationDays: 1, description: '' })
+      return { c, plan }
+    }
+
+    it('debería_anular_el_pago_y_dejar_saldo_al_poner_0', () => {
+      const { c, plan } = setup(4000)
+      const { membership, payment } = createMembershipWithPayment(c.id, plan.id, 4000, 'cash')
+      const r = setMembershipPaidAmount(membership!.id, 0, 'no pagó')
+      expect(r).toEqual({ ok: true, change: { oldTotal: 4000, newTotal: 0, maxAllowed: 4000 } })
+      expect(getPaymentById(payment!.id)).toBeNull()
+      expect(getClientMemberships(c.id)).toHaveLength(1)
+      expect(getClientDebt(c.id)[0].balance).toBe(4000)
+    })
+
+    it('debería_rechazar_un_valor_mayor_al_de_la_membresia', () => {
+      const { c, plan } = setup(4000)
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 2000, 'cash')
+      const r = setMembershipPaidAmount(membership!.id, 4001)
+      expect(r.ok).toBe(false)
+      expect(getMembershipPayments(membership!.id)[0].amount).toBe(2000)
+      expect(setMembershipPaidAmount(membership!.id, -1).ok).toBe(false)
+    })
+
+    it('debería_permitir_subir_hasta_el_tope_ajustando_el_ultimo_pago', () => {
+      const { c, plan } = setup(4000)
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 1000, 'cash')
+      expect(setMembershipPaidAmount(membership!.id, 4000).ok).toBe(true)
+      const pays = getMembershipPayments(membership!.id)
+      expect(pays).toHaveLength(1)
+      expect(pays[0].amount).toBe(4000)
+      expect(pays[0].notes).toContain('Ajuste de valor pagado: 1000 → 4000')
+    })
+
+    it('debería_restar_de_los_pagos_mas_recientes_primero', () => {
+      const { c, plan } = setup(10000)
+      const { membership, payment: first } = createMembershipWithPayment(c.id, plan.id, 6000, 'cash')
+      const abono = recordPayment(c.id, 4000, 'nequi', 'Abono', membership!.id)
+      getDatabase().prepare('UPDATE payments SET date = ? WHERE id = ?').run('2099-01-01T00:00:00-05:00', abono.id)
+
+      expect(setMembershipPaidAmount(membership!.id, 5000).ok).toBe(true)
+      expect(getPaymentById(abono.id)).toBeNull()          // 4000 del abono, borrado
+      expect(getPaymentById(first!.id)!.amount).toBe(5000) // y 1000 del primero
+      expect(getClientDebt(c.id)[0].balance).toBe(5000)
+    })
+
+    it('debería_tener_en_cuenta_el_descuento_y_conservarlo', () => {
+      const { c, plan } = setup(4000)
+      const { membership, payment } = createMembershipWithPayment(c.id, plan.id, 3000, 'cash', undefined, undefined, 1000)
+      expect(setMembershipPaidAmount(membership!.id, 3001).ok).toBe(false) // tope = 4000 - 1000
+      expect(setMembershipPaidAmount(membership!.id, 0).ok).toBe(true)
+      const kept = getPaymentById(payment!.id)!
+      expect(kept.amount).toBe(0)
+      expect(kept.discount).toBe(1000)
+      expect(getClientDebt(c.id)[0].balance).toBe(3000)
+    })
+
+    it('debería_usar_el_valor_con_que_se_vendio_aunque_cambie_el_precio_del_plan', () => {
+      const { c, plan } = setup(4000)
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 4000, 'cash')
+      expect(getClientMemberships(c.id)[0].price).toBe(4000)
+
+      updatePlan(plan.id, { price: 6000 }) // el gimnasio sube el precio después
+      expect(getClientDebt(c.id)).toHaveLength(0) // sigue al día: pagó lo que costaba
+      expect(setMembershipPaidAmount(membership!.id, 4001).ok).toBe(false)
+      expect(setMembershipPaidAmount(membership!.id, 1000).ok).toBe(true)
+      expect(getClientDebt(c.id)[0].balance).toBe(3000)
+    })
+
+    it('debería_llenar_el_valor_de_membresias_existentes_con_la_migracion', () => {
+      const { c, plan } = setup(4000)
+      const m = createMembership(c.id, plan.id)
+      const db = getDatabase()
+      db.prepare('UPDATE memberships SET price = NULL WHERE id = ?').run(m!.id)
+      db.prepare("DELETE FROM _migrations WHERE name = '020_add_membership_price'").run()
+      m020AddMembershipPrice.run(db)
+      expect(getClientMemberships(c.id)[0].price).toBe(4000)
+    })
+
+    it('no_debería_subir_si_no_hay_pagos', () => {
+      const { c, plan } = setup(4000)
+      const m = createMembership(c.id, plan.id)
+      expect(setMembershipPaidAmount(m!.id, 1000).ok).toBe(false)
+      expect(setMembershipPaidAmount('no-existe', 0).ok).toBe(false)
     })
   })
 })

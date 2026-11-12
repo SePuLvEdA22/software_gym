@@ -27,6 +27,7 @@ import {
   getMembershipPaymentMethods,
   getPaymentById,
   updatePaymentMethod,
+  setMembershipPaidAmount,
 } from '../database/payments'
 import { getEffectivePrice } from '../database/promotions'
 import { getClientById } from '../database/clients'
@@ -361,6 +362,37 @@ export function registerMembershipHandlers(): void {
       return { success: false, error: sanitizeError(error) }
     }
   })
+
+  ipcMain.handle(
+    'membership:setPaidAmount',
+    async (_, membershipId: string, amount: number, reason?: string) => {
+      // Permiso aparte de memberships.edit: por defecto solo admin.
+      const auth = requirePermission('payments.edit')
+      if (auth) return auth
+      try {
+        if (typeof amount !== 'number') return { success: false, error: 'Valor inválido' }
+        const membership = getMembershipById(membershipId)
+        if (!membership) return { success: false, error: 'Membresía no encontrada' }
+        const result = setMembershipPaidAmount(membershipId, amount, reason?.trim() || undefined)
+        if (!result.ok) return { success: false, error: result.error }
+        const { oldTotal, newTotal } = result.change
+        if (oldTotal !== newTotal) {
+          const clientName = clientLabel(membership.clientId)
+          logChange(
+            'memberships',
+            membershipId,
+            'update',
+            { paidAmount: oldTotal, clientName },
+            { paidAmount: newTotal, clientName, reason: reason?.trim() || null },
+          )
+        }
+        return { success: true, data: result.change }
+      } catch (error) {
+        log.error('Error setting membership paid amount:', error)
+        return { success: false, error: sanitizeError(error) }
+      }
+    },
+  )
 
   ipcMain.handle('membership:getEffectivePrice', async (_, planId) => {
     const auth = requirePermission('memberships.view')

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { formatISO } from 'date-fns'
 import { getPlanById } from './plans'
 import { getActiveOrFrozenMembership, createMembership } from './memberships'
+import { clearQueryCache } from './queryCache'
 
 export interface DbPayment {
   id: string
@@ -139,6 +140,78 @@ export function updatePaymentMethod(paymentId: string, method: PaymentMethod): P
   const updated = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId) as
     DbPayment | undefined
   return updated ? mapDbPayment(updated) : null
+}
+
+export interface PaidAmountChange {
+  oldTotal: number
+  newTotal: number
+  /** Tope permitido: precio del plan menos descuentos. */
+  maxAllowed: number
+}
+
+/**
+ * Corrige cuánto se pagó realmente por una membresía (p. ej. se registró el
+ * pago y el cliente no pagó, o pagó solo una parte). El total nunca puede
+ * superar el valor de la membresía: el precio con que se vendió menos
+ * descuentos.
+ *
+ * - Al bajar: descuenta de los pagos más recientes primero. Un pago que llega
+ *   a 0 se borra, salvo que lleve descuento (se deja en 0 para conservarlo).
+ * - Al subir: suma la diferencia al pago más reciente. Sin pagos no se puede
+ *   subir: el dinero nuevo se registra como abono, con su método y fecha.
+ * El saldo se recalcula solo porque se deriva de la suma de los pagos.
+ */
+export function setMembershipPaidAmount(
+  membershipId: string,
+  target: number,
+  reason?: string,
+): { ok: true; change: PaidAmountChange } | { ok: false; error: string } {
+  const db = getDatabase()
+  const m = db
+    .prepare('SELECT plan_id, price FROM memberships WHERE id = ?')
+    .get(membershipId) as { plan_id: string; price: number | null } | undefined
+  if (!m) return { ok: false, error: 'Membresía no encontrada' }
+  // Valor con que se vendió; respaldo al plan solo para filas sin precio.
+  const price = m.price ?? getPlanById(m.plan_id)?.price
+  if (price == null) return { ok: false, error: 'No se pudo determinar el valor de la membresía' }
+
+  const payments = db
+    .prepare('SELECT id, amount, discount, notes FROM payments WHERE membership_id = ? ORDER BY date DESC, created_at DESC')
+    .all(membershipId) as { id: string; amount: number; discount: number | null; notes: string | null }[]
+  const oldTotal = payments.reduce((s, p) => s + p.amount, 0)
+  const discounts = payments.reduce((s, p) => s + (p.discount || 0), 0)
+  const maxAllowed = Math.max(0, price - discounts)
+
+  if (!Number.isFinite(target) || target < 0) return { ok: false, error: 'El valor pagado no puede ser negativo' }
+  if (target > maxAllowed)
+    return { ok: false, error: `El valor pagado no puede superar el valor de la membresía (${maxAllowed})` }
+  if (target === oldTotal) return { ok: true, change: { oldTotal, newTotal: oldTotal, maxAllowed } }
+  if (payments.length === 0)
+    return { ok: false, error: 'La membresía no tiene pagos registrados: registra un abono' }
+
+  const note = `Ajuste de valor pagado: ${oldTotal} → ${target}${reason ? `. Motivo: ${reason}` : ''}`
+  const withNote = (n: string | null): string => (n ? `${n} | ${note}` : note)
+  const update = db.prepare('UPDATE payments SET amount = ?, notes = ? WHERE id = ?')
+  const remove = db.prepare('DELETE FROM payments WHERE id = ?')
+
+  db.transaction(() => {
+    if (target > oldTotal) {
+      const last = payments[0]
+      update.run(last.amount + (target - oldTotal), withNote(last.notes), last.id)
+      return
+    }
+    let toRemove = oldTotal - target
+    for (const p of payments) {
+      if (toRemove <= 0) break
+      const cut = Math.min(p.amount, toRemove)
+      toRemove -= cut
+      if (p.amount - cut === 0 && !p.discount) remove.run(p.id)
+      else update.run(p.amount - cut, withNote(p.notes), p.id)
+    }
+  })()
+
+  clearQueryCache()
+  return { ok: true, change: { oldTotal, newTotal: target, maxAllowed } }
 }
 
 export function recordPayment(

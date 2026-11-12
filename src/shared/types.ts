@@ -68,6 +68,8 @@ export interface Membership {
   frozenAt?: string | null
   freezeReason?: string | null
   freezeDays?: number | null
+  /** Valor con que se vendió (precio del plan en ese momento), sin descuentos. */
+  price?: number | null
 }
 
 export interface FreezeHistory {

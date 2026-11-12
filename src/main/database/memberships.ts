@@ -19,6 +19,7 @@ export interface DbMembership {
   frozen_at?: string | null
   freeze_reason?: string | null
   freeze_days?: number | null
+  price?: number | null
 }
 
 function mapDbMembership(dbMembership: DbMembership): Membership {
@@ -33,7 +34,8 @@ function mapDbMembership(dbMembership: DbMembership): Membership {
     createdAt: dbMembership.created_at,
     frozenAt: dbMembership.frozen_at || null,
     freezeReason: dbMembership.freeze_reason || null,
-    freezeDays: dbMembership.freeze_days || null
+    freezeDays: dbMembership.freeze_days || null,
+    price: dbMembership.price ?? null
   }
 }
 
@@ -54,7 +56,7 @@ export function getClientDebt(clientId: string): ClientDebt[] {
     SELECT 
       m.id as membershipId,
       m.plan_name as planName,
-      p.price as planPrice,
+      COALESCE(m.price, p.price) as planPrice,
       m.end_date as endDate,
       m.status,
       COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid,
@@ -94,7 +96,7 @@ export function getDebtors(): DebtorSummary[] {
       c.full_name as clientName,
       c.phone,
       m.id as membershipId,
-      p.price as planPrice,
+      COALESCE(m.price, p.price) as planPrice,
       COALESCE((SELECT SUM(pm.amount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalPaid,
       COALESCE((SELECT SUM(pm.discount) FROM payments pm WHERE pm.membership_id = m.id), 0) as totalDiscount
     FROM memberships m
@@ -102,8 +104,8 @@ export function getDebtors(): DebtorSummary[] {
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE m.status = 'active' OR m.status = 'frozen'
     GROUP BY m.id
-    HAVING totalPaid < (p.price - totalDiscount)
-    ORDER BY ((p.price - totalDiscount) - totalPaid) DESC
+    HAVING totalPaid < (planPrice - totalDiscount)
+    ORDER BY ((planPrice - totalDiscount) - totalPaid) DESC
   `).all() as { clientId: string; clientName: string; phone: string; membershipId: string; planPrice: number; totalPaid: number; totalDiscount: number }[]
 
   return rows.map(r => ({
@@ -283,12 +285,13 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     createdAt: formatISO(now),
     frozenAt: null,
     freezeReason: null,
-    freezeDays: null
+    freezeDays: null,
+    price: plan.price
   }
   
   const stmt = db.prepare(`
-    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at, frozen_at, freeze_reason, freeze_days)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO memberships (id, client_id, plan_id, plan_name, start_date, end_date, status, created_at, frozen_at, freeze_reason, freeze_days, price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   
   stmt.run(
@@ -302,7 +305,8 @@ export function createMembership(clientId: string, planId: string, startDate?: s
     newMembership.createdAt,
     newMembership.frozenAt,
     null,
-    null
+    null,
+    newMembership.price
   )
   
   if (newMembership.status === 'active') {
@@ -620,9 +624,12 @@ export function updateMembership(
   const persistOp = db.transaction(() => {
     db.prepare(`
       UPDATE memberships
-      SET plan_id = ?, plan_name = ?, start_date = ?, end_date = ?, status = ?, updated_at = ?
+      SET plan_id = ?, plan_name = ?, start_date = ?, end_date = ?, status = ?, updated_at = ?,
+          price = COALESCE(?, price)
       WHERE id = ?
-    `).run(newPlanId, newPlanName, newStartDateIso, newEndDateIso, newStatus, nowIso, id)
+    `).run(newPlanId, newPlanName, newStartDateIso, newEndDateIso, newStatus, nowIso,
+      // Cambiar de plan es venderle otro plan: la membresía toma su precio.
+      planChanged ? newPlanPrice : null, id)
 
     if (planChanged && newPlanPrice !== null) {
       // Consulta directa (sin importar payments.ts: import circular —

@@ -154,6 +154,12 @@ const electronAPI = {
       ipcRenderer.invoke('membership:delete', membershipId),
     getFreezeHistory: (membershipId: string): Promise<IpcResult<FreezeHistory[]>> =>
       ipcRenderer.invoke('membership:getFreezeHistory', membershipId),
+    setPaidAmount: (
+      membershipId: string,
+      amount: number,
+      reason?: string,
+    ): Promise<IpcResult<{ oldTotal: number; newTotal: number; maxAllowed: number }>> =>
+      ipcRenderer.invoke('membership:setPaidAmount', membershipId, amount, reason),
   },
 
   payment: {

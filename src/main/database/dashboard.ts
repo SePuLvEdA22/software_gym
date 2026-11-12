@@ -134,7 +134,7 @@ export function getDashboardMetrics(period?: 'day' | 'week' | 'month'): Dashboar
     JOIN membership_plans p ON p.id = m.plan_id
     WHERE (m.status = 'active' OR m.status = 'frozen')
       AND (SELECT COALESCE(SUM(pm.amount), 0) FROM payments pm WHERE pm.membership_id = m.id) 
-          < (p.price - (SELECT COALESCE(SUM(pm2.discount), 0) FROM payments pm2 WHERE pm2.membership_id = m.id))
+          < (COALESCE(m.price, p.price) - (SELECT COALESCE(SUM(pm2.discount), 0) FROM payments pm2 WHERE pm2.membership_id = m.id))
   `,
     )
     .get() as { count: number }
