@@ -93,7 +93,7 @@ export function HardwareSection(): JSX.Element {
                   ? '1px solid var(--color-primary)'
                   : '1px solid var(--color-surface-container-high)',
                 background: doorConfig.connectionType === opt.value
-                  ? 'rgba(255, 107, 0, 0.08)' : 'transparent'
+                  ? 'color-mix(in srgb, var(--color-primary-container) 8%, transparent)' : 'transparent'
               }}>
                 <input
                   type="radio" name="connTypeHardware"

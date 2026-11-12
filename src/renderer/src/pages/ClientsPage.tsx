@@ -323,7 +323,7 @@ export function ClientsPage(): JSX.Element {
                     style={{
                       cursor: 'pointer',
                       backgroundColor:
-                        selectedClient?.id === client.id ? 'rgba(255, 107, 0, 0.08)' : undefined,
+                        selectedClient?.id === client.id ? 'color-mix(in srgb, var(--color-primary-container) 8%, transparent)' : undefined,
                     }}
                     onMouseEnter={(e) => {
                       if (selectedClient?.id !== client.id) {

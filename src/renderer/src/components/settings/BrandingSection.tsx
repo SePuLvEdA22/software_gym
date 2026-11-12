@@ -25,14 +25,16 @@ export function BrandingSection(): JSX.Element {
               onClick={() => setTheme('dark')}
               style={{ flex: 1, justifyContent: 'center' }}
             >
-              🌙 Oscuro
+              <Icons.Moon />
+              Oscuro
             </button>
             <button
               className={`btn ${theme === 'light' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setTheme('light')}
               style={{ flex: 1, justifyContent: 'center' }}
             >
-              ☀️ Claro
+              <Icons.Sun />
+              Claro
             </button>
           </div>
           <p className="body-lg" style={{ color: 'var(--color-secondary)', marginTop: 12, fontSize: 13 }}>

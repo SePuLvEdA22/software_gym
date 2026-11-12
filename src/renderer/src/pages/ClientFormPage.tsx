@@ -169,7 +169,7 @@ export function ClientFormPage(): JSX.Element {
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: 40, height: 40, margin: '0 auto',
-            border: '4px solid rgba(255,107,0,0.2)',
+            border: '4px solid color-mix(in srgb, var(--color-primary-container) 20%, transparent)',
             borderTopColor: 'var(--color-primary-container)', borderRadius: '50%',
             animation: 'spin 1s linear infinite'
           }} />

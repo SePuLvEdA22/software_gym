@@ -91,7 +91,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
               borderRadius: '50%',
               objectFit: 'cover',
               border: '3px solid var(--color-primary-container)',
-              boxShadow: '0 0 20px rgba(255, 107, 0, 0.3)',
+              boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary-container) 30%, transparent)',
               marginBottom: 16,
             }}
           />
@@ -136,7 +136,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                   marginBottom: 16,
                   textAlign: 'center',
                   padding: 8,
-                  background: 'rgba(255,0,0,0.1)',
+                  background: 'color-mix(in srgb, var(--color-error) 12%, transparent)',
                   borderRadius: 8,
                 }}
               >
@@ -157,17 +157,17 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
           <form onSubmit={handleChangePassword}>
             <div
               style={{
-                color: 'var(--color-warning, #ffb300)',
+                color: 'var(--color-warning)',
                 fontSize: 13,
                 marginBottom: 20,
                 textAlign: 'center',
                 padding: 10,
-                background: 'rgba(255, 179, 0, 0.1)',
+                background: 'color-mix(in srgb, var(--color-warning) 12%, transparent)',
                 borderRadius: 8,
                 lineHeight: 1.5,
               }}
             >
-              ⚠️ Por seguridad, debe cambiar la contraseña por defecto del administrador antes de
+              Por seguridad, debe cambiar la contraseña por defecto del administrador antes de
               continuar.
             </div>
 
@@ -204,7 +204,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps): JSX.Element {
                   marginBottom: 16,
                   textAlign: 'center',
                   padding: 8,
-                  background: 'rgba(255,0,0,0.1)',
+                  background: 'color-mix(in srgb, var(--color-error) 12%, transparent)',
                   borderRadius: 8,
                 }}
               >

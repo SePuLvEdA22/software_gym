@@ -603,7 +603,7 @@ export function InventoryPage(): JSX.Element {
               <div className="metric-card-label">Total Productos</div>
               <div className="metric-card-value">{totalCount}</div>
             </div>
-            <div className="metric-card" style={{ borderColor: 'rgba(255, 180, 171, 0.3)' }}>
+            <div className="metric-card" style={{ borderColor: 'color-mix(in srgb, var(--color-error) 30%, transparent)' }}>
               <div
                 className="metric-card-blur"
                 style={{

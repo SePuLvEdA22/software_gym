@@ -61,7 +61,7 @@ export function BodyTrackingPage(): JSX.Element {
                 style={{
                   padding: '10px 12px', cursor: 'pointer', borderRadius: 8,
                   background: selectedClient === c.id ? 'var(--color-primary)' : 'transparent',
-                  color: selectedClient === c.id ? '#fff' : 'inherit',
+                  color: selectedClient === c.id ? 'var(--color-on-primary)' : 'inherit',
                   marginBottom: 4, display: 'flex', justifyContent: 'space-between'
                 }}
                 onClick={() => { setSelectedClient(c.id); setSearchQuery('') }}

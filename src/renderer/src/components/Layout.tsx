@@ -223,7 +223,7 @@ export function Header({ title, onLogout, onToggleSidebar, sidebarCollapsed }: H
                 minWidth: 18, height: 18,
                 borderRadius: 9, padding: '0 4px',
                 backgroundColor: 'var(--color-error)',
-                color: '#fff', fontSize: 11, fontWeight: 700,
+                color: 'var(--color-on-error)', fontSize: 11, fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 lineHeight: 1
               }}>
