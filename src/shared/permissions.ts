@@ -39,7 +39,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { id: 'memberships.view', label: 'Ver membresías' },
       { id: 'memberships.create', label: 'Crear membresías' },
       { id: 'memberships.edit', label: 'Editar membresías' },
-      { id: 'memberships.freeze', label: 'Congelar/Descongelar' }
+      { id: 'memberships.freeze', label: 'Congelar/Descongelar' },
+      { id: 'memberships.delete', label: 'Eliminar membresías' }
     ]
   },
   {

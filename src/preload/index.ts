@@ -150,6 +150,8 @@ const electronAPI = {
       ipcRenderer.invoke('membership:freeze', membershipId, reason, plannedDays),
     unfreeze: (membershipId: string): Promise<IpcResult<Membership | null>> =>
       ipcRenderer.invoke('membership:unfreeze', membershipId),
+    delete: (membershipId: string): Promise<IpcResult<null>> =>
+      ipcRenderer.invoke('membership:delete', membershipId),
     getFreezeHistory: (membershipId: string): Promise<IpcResult<FreezeHistory[]>> =>
       ipcRenderer.invoke('membership:getFreezeHistory', membershipId),
   },

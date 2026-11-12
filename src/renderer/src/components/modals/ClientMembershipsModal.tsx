@@ -20,11 +20,13 @@ export function ClientMembershipsModal({
   onClose,
 }: ClientMembershipsModalProps): JSX.Element {
   const showToast = useAppStore((state) => state.showToast)
+  const confirm = useAppStore((state) => state.confirm)
 
   const [memberships, setMemberships] = useState<Membership[]>([])
   const [debts, setDebts] = useState<ClientDebt[]>([])
   const [loading, setLoading] = useState(true)
   const [canViewPayments, setCanViewPayments] = useState(false)
+  const [canDelete, setCanDelete] = useState(false)
 
   const [showFreezeHistoryModal, setShowFreezeHistoryModal] = useState(false)
   const [selectedMembershipForHistory, setSelectedMembershipForHistory] = useState<string | null>(
@@ -55,7 +57,10 @@ export function ClientMembershipsModal({
     window.electronAPI.auth
       .checkSession()
       .then((r) => {
-        if (r.success && r.data) setCanViewPayments(hasPermission(r.data, 'payments.view'))
+        if (r.success && r.data) {
+          setCanViewPayments(hasPermission(r.data, 'payments.view'))
+          setCanDelete(hasPermission(r.data, 'memberships.delete'))
+        }
       })
       .catch(() => {})
   }, [loadData])
@@ -87,6 +92,23 @@ export function ClientMembershipsModal({
       loadData()
     } else {
       showToast('error', result.error || 'No se pudo descongelar la membresía', 'Error')
+    }
+  }
+
+  const handleDelete = async (membership: Membership) => {
+    const ok = await confirm({
+      title: 'Eliminar membresía',
+      message: `¿Eliminar la membresía "${membership.planName}"? También se eliminarán sus pagos e historial de congelamiento. Esta acción no se puede deshacer.`,
+      variant: 'danger',
+      confirmLabel: 'Eliminar',
+    })
+    if (!ok) return
+    const result = await window.electronAPI.membership.delete(membership.id)
+    if (result.success) {
+      showToast('success', 'Membresía eliminada', 'Listo')
+      loadData()
+    } else {
+      showToast('error', result.error || 'No se pudo eliminar la membresía', 'Error')
     }
   }
 
@@ -326,6 +348,22 @@ export function ClientMembershipsModal({
                                 }}
                               >
                                 <Icons.Clock />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => handleDelete(membership)}
+                                title="Eliminar membresía"
+                                style={{
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Icons.Trash />
                               </button>
                             )}
                           </div>

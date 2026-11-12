@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { formatISO, parseISO, differenceInDays } from 'date-fns'
 import { initDatabase, closeDatabase, getDatabase } from '../../main/database/index'
-import { createClient } from '../../main/database/clients'
+import { createClient, getClientById } from '../../main/database/clients'
 import {
   getAllPlans,
   getPlanById,
@@ -21,7 +21,8 @@ import {
   getClientDebt,
   getDebtors,
   getFreezeHistory,
-  updateMembership
+  updateMembership,
+  deleteMembership
 } from '../../main/database/memberships'
 import {
   createMembershipWithPayment,
@@ -683,6 +684,39 @@ describe('Memberships Database', () => {
       expect(updated).not.toBeNull()
       expect(updated!.planId).toBe(daily.id)
       expect(getMembershipPayments(m!.id)).toHaveLength(0)
+    })
+  })
+  describe('Eliminar membresía', () => {
+    it('debería_eliminar_membresia_con_sus_pagos_y_congelaciones', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `DEL-${Date.now()}-${++seq}`, accessCode: `DL${Date.now()}${seq}` })
+      const plan = createPlan({ name: 'Plan Borrar', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const { membership } = createMembershipWithPayment(c.id, plan.id, 50000, 'cash')
+      freezeMembership(membership!.id, 'viaje', 5)
+      unfreezeMembership(membership!.id)
+
+      const result = deleteMembership(membership!.id)
+      expect(result).not.toBeNull()
+      expect(result!.payments).toHaveLength(1)
+      expect(getClientMemberships(c.id)).toHaveLength(0)
+      expect(getMembershipPayments(membership!.id)).toHaveLength(0)
+      expect(getFreezeHistory(membership!.id)).toHaveLength(0)
+      expect(getClientById(c.id)!.status).toBe('expired')
+    })
+
+    it('debería_mantener_cliente_activo_si_queda_otra_membresia_vigente', () => {
+      const c = createClient({ ...sampleClientRaw, documentId: `DEL2-${Date.now()}-${++seq}`, accessCode: `DM${Date.now()}${seq}` })
+      const plan = createPlan({ name: 'Plan Borrar 2', type: 'monthly', price: 50000, durationDays: 30, description: '' })
+      const vigente = createMembership(c.id, plan.id)
+      const encolada = createMembership(c.id, plan.id)
+      expect(encolada!.status).toBe('scheduled')
+
+      deleteMembership(encolada!.id)
+      expect(getClientMemberships(c.id).map(m => m.id)).toEqual([vigente!.id])
+      expect(getClientById(c.id)!.status).toBe('active')
+    })
+
+    it('debería_retornar_null_si_no_existe', () => {
+      expect(deleteMembership('no-existe')).toBeNull()
     })
   })
 })
